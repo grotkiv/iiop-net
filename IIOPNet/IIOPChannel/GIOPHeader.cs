@@ -105,7 +105,7 @@ namespace Ch.Elca.Iiop {
         private byte m_flags;
         private uint m_msgLength = 0;
         private GiopMsgTypes m_type;
-        internal byte[] m_giop_magic = { 71, 73, 79, 80 };
+        internal byte[] m_giop_magic = { 71, 73, 79, 80 };        
         
         #endregion IFields
         #region IConstructors
@@ -141,11 +141,18 @@ namespace Ch.Elca.Iiop {
                 throw new omg.org.CORBA.MARSHAL(20, omg.org.CORBA.CompletionStatus.Completed_No);
             }
             m_flags = readBuffer[6];
-            m_type = ConvertType(readBuffer[7]);
-            if (!IsLittleEndian()) { // big endian
-                Array.Reverse(readBuffer, 8, 4);
-            }
-            m_msgLength = BitConverter.ToUInt32(readBuffer, 8);
+            m_type = ConvertType(readBuffer[7]);            
+            if (BitConverter.IsLittleEndian == IsLittleEndian()) {
+                m_msgLength = BitConverter.ToUInt32(readBuffer, 8);    
+            } else {
+                // BitConverter uses a different endian, convert to other endian variant
+                byte[] msgLengthBuffer = new byte[4]; // make sure to not change input array
+                msgLengthBuffer[0] = readBuffer[11];
+                msgLengthBuffer[1] = readBuffer[10];
+                msgLengthBuffer[2] = readBuffer[9];
+                msgLengthBuffer[3] = readBuffer[8];
+                m_msgLength = BitConverter.ToUInt32(msgLengthBuffer, 0);
+            }            
         }
 
         #endregion IConstructors
