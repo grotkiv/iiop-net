@@ -6,13 +6,16 @@ build: nunit-var junit-var
     cd Basic
     $(MAKE) build
     cd ..
-        cd Direct
+    cd TimeoutTest
     $(MAKE) build
-        cd ..
-        cd Multithread
-        $(MAKE) build
-        cd ..
-        cd JavaRMIIIOP
+    cd ..
+    cd Direct
+    $(MAKE) build
+    cd ..
+    cd Multithread
+    $(MAKE) build
+    cd ..
+    cd JavaRMIIIOP
     $(MAKE) build
     cd ..
     cd JavaRMIIIOPAsClient
@@ -70,12 +73,15 @@ test: nunit-var junit-var
     cd Basic
     $(MAKE) test
     cd ..
-        cd Direct
+    cd TimeoutTest
     $(MAKE) test
-        cd ..
-        cd Multithread
-        $(MAKE) test
-        cd ..
+    cd ..
+    cd Direct
+    $(MAKE) test
+    cd ..
+    cd Multithread
+    $(MAKE) test
+    cd ..
     cd JavaRMIIIOP
     $(MAKE) test
     cd ..
