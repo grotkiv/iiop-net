@@ -322,12 +322,12 @@ namespace Corba {
         #endregion IConstructors
     }
 
-    internal class AbstractIfTC : InterfaceTC {
+    internal class AbstractIFTC : InterfaceTC {
         
         #region IConstructors
 
-        public AbstractIfTC(CdrInputStream cdrStream) : base(cdrStream, TCKind.tk_abstract_interface) { }
-        public AbstractIfTC(string repositoryID, string name) : base(repositoryID, name, TCKind.tk_abstract_interface) { }
+        public AbstractIFTC(CdrInputStream cdrStream) : base(cdrStream, TCKind.tk_abstract_interface) { }
+        public AbstractIFTC(string repositoryID, string name) : base(repositoryID, name, TCKind.tk_abstract_interface) { }
 
         #endregion IConstructors
     }
@@ -1079,7 +1079,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             Corba.TCKind kind = (Corba.TCKind)Enum.ToObject(typeof(Corba.TCKind), kindVal);
             switch(kind) {
                 case Corba.TCKind.tk_abstract_interface :
-                    return new Corba.AbstractIfTC(sourceStream);
+                    return new Corba.AbstractIFTC(sourceStream);
                 case Corba.TCKind.tk_alias:
                     throw new NotImplementedException("alias not implemented");
                 case Corba.TCKind.tk_any:

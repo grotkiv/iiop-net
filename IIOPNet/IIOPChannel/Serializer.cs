@@ -502,7 +502,7 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// <summary>
     /// this class serializes .NET structs, which were mapped from an IDL-struct
     /// </summary>
-    public class IdlStructSerializer : Serialiser {
+    public class IDLStructSerializer : Serialiser {
 
         #region IMethods
     
@@ -591,7 +591,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             // deserialise as IDL-value-type
             CorbaTypeDesc descRes = (CorbaTypeDesc)m_valObjectSer.Deserialise(typeof(CorbaTypeDesc), attributes, sourceStream);
-            string repId = descRes.respositoryID;
+            string repId = descRes.m_respositoryID;
             Type result = Repository.GetTypeForId(repId); // get the type for the id
             return result;
         }
@@ -650,8 +650,8 @@ namespace Ch.Elca.Iiop.Marshalling {
 
     }
 
-    /// <summary>serializes idl sequences</summary>
-    public class IdlSequenceSerializer : Serialiser {
+    /// <summary>serializes arrays</summary>
+    public class IDLSequenceSerializer : Serialiser {
 
         #region IMethods
         

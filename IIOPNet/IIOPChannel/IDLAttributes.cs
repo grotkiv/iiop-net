@@ -75,8 +75,7 @@ namespace Ch.Elca.Iiop.Idl {
     /// <summary>
     /// this attribute specifies the repository id used in the IDL.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Struct | AttributeTargets.Enum, 
-                    AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Struct | AttributeTargets.Enum)]
     public sealed class RepositoryIDAttribute : Attribute, IIdlAttribute {
         
         #region IFields
@@ -94,9 +93,7 @@ namespace Ch.Elca.Iiop.Idl {
         #region IProperties
 
         public string Id {
-            get { 
-            	return m_id; 
-            }
+            get { return m_id; }
         }
 
         #endregion IProperties
@@ -139,9 +136,7 @@ namespace Ch.Elca.Iiop.Idl {
         #region IProperties
         
         public Type FromType {
-            get { 
-            	return m_type; 
-            }
+            get { return m_type; }
         }
 
         #endregion IProperties
@@ -163,7 +158,7 @@ namespace Ch.Elca.Iiop.Idl {
     /// <summary>
     /// this attribute is used to specify an implementation class for a value type
     /// </summary>
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class)]
     public sealed class ImplClassAttribute : Attribute, IIdlAttribute {
         
         #region IFields
@@ -181,9 +176,7 @@ namespace Ch.Elca.Iiop.Idl {
         #region IProperties
 
         public string ImplClass {
-            get { 
-            	return m_implClass; 
-            }
+            get { return m_implClass; }
         }
 
         #endregion IProperties
@@ -203,7 +196,7 @@ namespace Ch.Elca.Iiop.Idl {
     /// <summary>
     /// this attribute is used to specify, that a struct is mapped from the IDL-struct type
     /// </summary>
-    [AttributeUsage(AttributeTargets.Struct, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Struct)]
     public sealed class IdlStructAttribute : Attribute, IIdlAttribute {
         
         #region IMethods
@@ -223,7 +216,7 @@ namespace Ch.Elca.Iiop.Idl {
     /// <summary>
     /// this attribute is used to specify, that an enum is mapped from the IDL-enum type
     /// </summary>
-    [AttributeUsage(AttributeTargets.Enum, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Enum)]
     public sealed class IdlEnumAttribute : Attribute, IIdlAttribute {
         
         #region IMethods
@@ -243,13 +236,12 @@ namespace Ch.Elca.Iiop.Idl {
     /// <summary>
     /// this attribute is used to indicate a mapping from an IDL boxed value type
     /// </summary>
-    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property, 
-                    AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property)]
     public sealed class BoxedValueAttribute : Attribute, IIdlAttribute {
         
         #region IFields
         
-        private string m_repositoryId = null;
+        private string m_repositoryID = null;
         
         #endregion IFields
         #region IConstructors
@@ -257,18 +249,16 @@ namespace Ch.Elca.Iiop.Idl {
         /// <summary>
         /// Associate the CLS type with the outermost boxed value type, the mapping is done from
         /// </summary>
-        /// <param name="repositoryId">the repository id of the outermost boxed value type</param>
-        public BoxedValueAttribute(string repositoryId) {
-            m_repositoryId = repositoryId;
+        /// <param name="repositoryID">the repository id of the outermost boxed value type</param>
+        public BoxedValueAttribute(string repositoryID) {
+            m_repositoryID = repositoryID;
         }
 
         #endregion IConstructors
         #region IProperties
         
-        public string RepositoryId {
-            get { 
-            	return m_repositoryId; 
-            }
+        public string RepositoryID {
+            get { return m_repositoryID; }
         }
 
         #endregion IProperties
@@ -278,8 +268,7 @@ namespace Ch.Elca.Iiop.Idl {
         public CustomAttributeBuilder CreateAttributeBuilder() {
             Type attrType = this.GetType();
             ConstructorInfo attrConstr = attrType.GetConstructor(new Type[] { typeof(string) } );
-            CustomAttributeBuilder result = new CustomAttributeBuilder(attrConstr, 
-                                                                       new Object[] { m_repositoryId });
+            CustomAttributeBuilder result = new CustomAttributeBuilder(attrConstr, new Object[] { m_repositoryID });
             return result;
         }
 
@@ -294,8 +283,7 @@ namespace Ch.Elca.Iiop.Idl {
     /// IDL-sequences are mapped to .NET arrays. Because .NET arrays are not mapped to sequences, but instead
     /// to boxed value types, this attribute is used to distingish these cases.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property, 
-                    AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property)]
     public sealed class IdlSequenceAttribute : Attribute, IIdlAttribute {
         
         #region IMethods
@@ -316,7 +304,7 @@ namespace Ch.Elca.Iiop.Idl {
     /// <summary>
     /// this attribute is used to describe the IDL-type from which the .NET interface is mapped from
     /// </summary>
-    [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Interface)]
     public sealed class InterfaceTypeAttribute : Attribute, IIdlAttribute {
         
         #region IFields
@@ -334,9 +322,7 @@ namespace Ch.Elca.Iiop.Idl {
         #region IProperties
 
         public IdlTypeInterface IdlType {
-            get { 
-            	return m_idlType; 
-            }
+            get { return m_idlType; }
         }
         
         #endregion IProperties
@@ -358,8 +344,7 @@ namespace Ch.Elca.Iiop.Idl {
     /// <summary>
     /// this attribute is used to describe the IDL-type from which a parameter, field, retval of type object is mapped from
     /// </summary>
-    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property, 
-                    AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property)]    
     public sealed class ObjectIdlTypeAttribute : Attribute, IIdlAttribute {
         
         #region IFields
@@ -377,9 +362,7 @@ namespace Ch.Elca.Iiop.Idl {
         #region IProperties
         
         public IdlTypeObject IdlType {
-            get { 
-            	return m_idlType; 
-            }
+            get { return m_idlType; }
         }
         
         #endregion IProperties
@@ -407,8 +390,7 @@ namespace Ch.Elca.Iiop.Idl {
     /// IDL-type char and wchar are both mapped to System.Char, which is a wide char -->
     /// wide-chars are not alloewed for IDL-type char.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property, 
-                    AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property)]
     public sealed class WideCharAttribute : Attribute, IIdlAttribute {
         
         #region IFields
@@ -453,8 +435,7 @@ namespace Ch.Elca.Iiop.Idl {
     /// For preventing this standard mapping (is needed if mapping from IDL-string / IDL-wstring to .NET), this
     /// attribute is used.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property, 
-                    AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property)]    
     public sealed class StringValueAttribute : Attribute, IIdlAttribute {
 
         #region IMethods

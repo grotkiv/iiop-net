@@ -43,13 +43,13 @@ namespace Corba {
         
         #region IFields
 
-        public string respositoryID;
+        public string m_respositoryID;
 
         #endregion IFields
         #region IConstructors
         
         public CorbaTypeDesc(string repositoryID) {
-            this.respositoryID = repositoryID;
+            m_respositoryID = repositoryID;
         }
 
         #endregion IConstructors

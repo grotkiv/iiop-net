@@ -281,7 +281,6 @@ namespace omg.org.CosNaming.NamingContext_package {
     }
 
     [RepositoryIDAttribute("IDL:omg.org/CosNaming/NamingContext/NotFound:1.0")]
-    [Serializable]
     public class NotFound : AbstractUserException {
         
         #region IFields
@@ -307,7 +306,6 @@ namespace omg.org.CosNaming.NamingContext_package {
     } 
 
     [RepositoryIDAttribute("IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0")]
-    [Serializable]
     public class CannotProceed : AbstractUserException {
         
         #region IFields
@@ -327,7 +325,6 @@ namespace omg.org.CosNaming.NamingContext_package {
     } 
 
     [RepositoryIDAttribute("IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0")]
-    [Serializable]
     public class InvalidName : AbstractUserException {
         
         #region IConstructors
@@ -340,7 +337,6 @@ namespace omg.org.CosNaming.NamingContext_package {
     } 
 
     [RepositoryIDAttribute("IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0")]
-    [Serializable]
     public class AlreadyBound : AbstractUserException {
         
         #region IConstructors
@@ -353,7 +349,6 @@ namespace omg.org.CosNaming.NamingContext_package {
     }
 
     [RepositoryIDAttribute("IDL:omg.org/CosNaming/NamingContext/NotEmpty:1.0")]
-    [Serializable]
     public class NotEmpty : AbstractUserException {
         
         #region IConstructors

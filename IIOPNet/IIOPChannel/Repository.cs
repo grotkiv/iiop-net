@@ -50,8 +50,8 @@ namespace Ch.Elca.Iiop.Idl {
             
             #region IFields
 
-            private Type m_place1 = null;
-            private Type m_place2 = null;
+            private Type place1 = null;
+            private Type place2 = null;
 
             #endregion IFields
             #region IConstructors
@@ -64,20 +64,20 @@ namespace Ch.Elca.Iiop.Idl {
 
             public void Cache(Type type) {
                 lock(this) {
-                    m_place2 = m_place1;
-                    m_place1 = type;
+                    place2 = place1;
+                    place1 = type;
                 }
             }
 
             public Type GetType(string clsName) {
                 lock(this) {
-                    if ((m_place1 != null) && (m_place1.FullName.Equals(clsName))) { 
-                        return m_place1; 
+                    if ((place1 != null) && (place1.FullName.Equals(clsName))) { 
+                        return place1; 
                     }
-                    if ((m_place2 != null) && (m_place2.FullName.Equals(clsName))) { 
-                        Type result = m_place2;
-                        m_place2 = m_place1;
-                        m_place1 = result;
+                    if ((place2 != null) && (place2.FullName.Equals(clsName))) { 
+                        Type result = place2;
+                        place2 = place1;
+                        place1 = result;
                         return result; 
                     }
                 }
@@ -107,7 +107,7 @@ namespace Ch.Elca.Iiop.Idl {
         private static TypeCache s_typeCache = new TypeCache();
 
         // for efficiency reason: the evaluation of the following expressions is cached
-        private static Type s_repIdAttrType = typeof(RepositoryIDAttribute);
+        private static Type s_repIDAttrType = typeof(RepositoryIDAttribute);
         private static Type s_supInterfaceAttrType = typeof(SupportedInterfaceAttribute);
 
 
@@ -138,8 +138,7 @@ namespace Ch.Elca.Iiop.Idl {
         private static Type GetTypeForIDLId(string idlID) {
             idlID = idlID.Substring(4);
             if (idlID.IndexOf(":") < 0) { 
-                // invalid repository id: idlID
-                throw new INV_IDENT(10001, CompletionStatus.Completed_MayBe);
+                throw new Exception("invalid repository id: " + idlID); 
             }
             string typeName = idlID.Substring(0, idlID.IndexOf(":"));
             typeName = IdlNaming.MapIdltoClsName(typeName);
@@ -163,8 +162,7 @@ namespace Ch.Elca.Iiop.Idl {
             if (typeName.StartsWith("[")) {
                 string elemType = typeName.TrimStart(Char.Parse("["));
                 if ((elemType == null) || (elemType.Length == 0)) { 
-                    // invalid rmi-repository-id: typeName
-                    throw new INV_IDENT(10002, CompletionStatus.Completed_MayBe);
+                    throw new Exception("invalid rmi-repository-id: " + typeName); 
                 }
                 int arrayRank = typeName.Length - elemType.Length; // array rank = number of [ - characters
                 // parse the elem-type, which is in RMI-ID format
@@ -207,8 +205,7 @@ namespace Ch.Elca.Iiop.Idl {
                     return "short";
                 case 'L':
                     if (rmiElemType.Length <= 1) { 
-                        // invalid element type in RMI array repository id"
-                        throw new INV_IDENT(10004, CompletionStatus.Completed_MayBe);
+                        throw new Exception("invalid element type in RMI array repository id"); 
                     }
                     string elemTypeName = rmiElemType.Substring(1);
                     elemTypeName = elemTypeName.TrimEnd(Char.Parse(";"));
@@ -223,8 +220,7 @@ namespace Ch.Elca.Iiop.Idl {
                     }
                     return unqualName;
                 default:
-                    // invalid element type identifier in RMI array repository id: firstChar
-                    throw new INV_IDENT(10003, CompletionStatus.Completed_MayBe);
+                    throw new Exception("invalid element type identifier in RMI array repository id: " + firstChar);
             }
         }
 
@@ -236,7 +232,7 @@ namespace Ch.Elca.Iiop.Idl {
         /// <param name="type"></param>
         /// <returns></returns>
         public static string GetRepositoryID(Type type) {
-            object[] attr = type.GetCustomAttributes(s_repIdAttrType, true);    
+            object[] attr = type.GetCustomAttributes(s_repIDAttrType, true);    
             if (attr != null && attr.Length > 0) {
                 RepositoryIDAttribute repIDAttr = (RepositoryIDAttribute) attr[0];
                 return repIDAttr.Id;
@@ -351,11 +347,9 @@ namespace Ch.Elca.Iiop.Idl {
             return foundType;
         }
         
-        /// <summary>
-        /// loads the boxed value type for the BoxedValueAttribute
-        /// </summary>
+        /// <summary>loads the boxed value type for the BoxedValueAttribute</summary>
         public static Type GetBoxedValueType(BoxedValueAttribute attr) {
-            string repId = attr.RepositoryId; 
+            string repId = attr.RepositoryID; 
             Debug.WriteLine("getting boxed value type: " + repId);
             Type resultType = GetTypeForId(repId);
             return resultType;
@@ -429,7 +423,7 @@ namespace Ch.Elca.Iiop.Idl {
                                 structMembers);
         }
         public object MapToIdlAbstractInterface(Type clsType) {
-            return new AbstractIfTC(Repository.GetRepositoryID(clsType), clsType.FullName);
+            return new AbstractIFTC(Repository.GetRepositoryID(clsType), clsType.FullName);
         }
         public object MapToIdlConcreteInterface(Type clsType) {
             return new ObjRefTC(Repository.GetRepositoryID(clsType), clsType.FullName);
