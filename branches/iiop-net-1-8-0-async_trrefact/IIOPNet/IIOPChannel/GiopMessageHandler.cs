@@ -185,7 +185,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 // write a CORBA response message into the stream targetStream
                 GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.Reply);
                 CdrMessageOutputStream msgOutput = new CdrMessageOutputStream(targetStream, header);
-                GiopServerRequest request = new GiopServerRequest(requestMsg as IMethodCallMessage, 
+                GiopServerRequest request = new GiopServerRequest(requestMsg, 
                                                                   (ReturnMessage)replyMsg);
                 // serialize the message
                 GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
