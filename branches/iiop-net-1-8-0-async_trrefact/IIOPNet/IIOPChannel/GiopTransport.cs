@@ -662,6 +662,29 @@ namespace Ch.Elca.Iiop {
         }
         
         #endregion Exception handling
+        #region Cancel Pending
+        
+        /// <summary>abort all requests, which wait for a reply</summary>
+        private void AbortAllPendingRequestsWaiting() {
+            lock (m_waitingForResponse.SyncRoot) {
+                try {
+                    foreach (DictionaryEntry entry in m_waitingForResponse) {
+                        try {
+                            IResponseWaiter waiter = (IResponseWaiter)entry.Value;
+                            waiter.Problem = new omg.org.CORBA.COMM_FAILURE(209, CompletionStatus.Completed_MayBe);
+                            waiter.Notify();
+                        } catch (Exception ex) {
+                            Debug.WriteLine("exception while aborting message: " + ex);
+                        }
+                    }
+                    m_waitingForResponse.Clear();
+                } catch (Exception) {
+                    // ignore
+                }
+            }
+        }
+        
+        #endregion Cancel Pending
         #region Sending messages
 
         /// <summary>
@@ -937,6 +960,7 @@ namespace Ch.Elca.Iiop {
                     break;
                 case GiopMsgTypes.CloseConnection:
                     m_transport.CloseConnection();
+                    AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
                     break;
                 case GiopMsgTypes.CancelRequest:
                     CdrInputStreamImpl input = new CdrInputStreamImpl(messageStream);
@@ -945,8 +969,9 @@ namespace Ch.Elca.Iiop {
                     m_fragmentAssembler.CancelFragmentsIfInProgress(requestIdToCancel);
                     messageReceived.StartReceiveMessage(); // receive next message
                     break;                
-                case GiopMsgTypes.MessageError:
+                case GiopMsgTypes.MessageError:                    
                     CloseConnectionAfterUnexpectedException(new MARSHAL(16, CompletionStatus.Completed_MayBe));
+                    AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
                     break;
                 default:
                     // should not occur; 
@@ -961,14 +986,16 @@ namespace Ch.Elca.Iiop {
         }                
         
         internal void MsgReceivedCallbackException(MessageReceiveTask messageReceived, Exception ex) {
-            try {
+            try {                
                 if (ex is omg.org.CORBA.MARSHAL) {
+                    // Giop header was not ok
                     // send a message error, something wrong with the message format
                     SendErrorResponseMessage();
                 }                
                 CloseConnectionAfterUnexpectedException(ex);
             } catch (Exception) {                
-            }                        
+            }                 
+            AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them            
         }        
         
         /// <summary>
@@ -980,6 +1007,7 @@ namespace Ch.Elca.Iiop {
                 m_transport.CloseConnection();
             } catch (Exception) {                
             }
+            AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
         }
         
         protected virtual void HandleRequestMessage(Stream messageStream) {
@@ -1035,12 +1063,57 @@ namespace Ch.Elca.Iiop {
     /// </summary>
     public class GiopClientServerMessageHandler : GiopTransportMessageHandler {
         
+        #region Types
+        
+        /// <summary>
+        /// the type of request to process
+        /// </summary>
+        private enum RequestToProcessType {
+            Request, LocateRequest
+        }
+        
+        /// <summary>
+        /// encapsulates a request to process.
+        /// </summary>
+        private class RequestToProcess {
+            
+            private Stream m_messageStream;
+            private RequestToProcessType m_type;
+            
+            internal RequestToProcess(Stream messageStream, RequestToProcessType type) {
+                m_messageStream = messageStream;
+                m_type = type;
+            }
+            
+            internal Stream MessageStream {
+                get {
+                    return m_messageStream;
+                }
+            }
+            
+            internal RequestToProcessType Type {
+                get {
+                    return m_type;
+                }                    
+            }            
+        }
+        
+        #endregion Types
         #region IFields
         
         private IGiopRequestMessageReceiver m_receiver;
         // the connection desc for the handled connection.
         private GiopConnectionDesc m_conDesc = new GiopConnectionDesc();
-
+        
+        /// <summary>
+        /// the buffered requests.
+        /// </summary>
+        private Queue m_requestQueue = new Queue();
+        
+        /// <summary>
+        /// is currently a requestProcessing in progress.
+        /// </summary>
+        private bool m_processing = false;        
         
         #endregion IFields
         #region IProperties
@@ -1074,29 +1147,82 @@ namespace Ch.Elca.Iiop {
             m_receiver = receiver;
         }
         
+        private void CheckOrEnableProcessing() {            
+            if (!m_processing) {
+                // start processing
+                m_processing = true;
+                ThreadPool.QueueUserWorkItem(new WaitCallback(this.Process), null);
+            }
+        }        
 
         protected override void HandleRequestMessage(Stream messageStream) {
-            ThreadPool.QueueUserWorkItem(new WaitCallback(this.ProcessRequst), messageStream);
-        }
-        
-        protected override void HandleLocateRequestMessage(Stream messageStream) {
-            ThreadPool.QueueUserWorkItem(new WaitCallback(this.ProcessLocateRequst), messageStream);
-        }
-        
-        /// <summary>
-        /// called by the thread-pool
-        /// </summary>
-        private void ProcessRequst(object state) {
-            m_receiver.ProcessRequest((Stream)state, this);
-        }
-        
-        /// <summary>
-        /// called by the thread-pool
-        /// </summary>
-        private void ProcessLocateRequst(object state) {
-            m_receiver.ProcessLocateRequest((Stream)state, this);
+            // process in a separate thread to allow reading of next message in parallel.
+            lock(this) {
+                RequestToProcess req = new RequestToProcess(messageStream, RequestToProcessType.Request);
+                m_requestQueue.Enqueue(req);            
+                CheckOrEnableProcessing();
+            }
         }        
         
+        protected override void HandleLocateRequestMessage(Stream messageStream) {
+            lock(this) {
+                // process in a separate thread to allow reading of next message in parallel.
+                RequestToProcess req = new RequestToProcess(messageStream, RequestToProcessType.LocateRequest);
+                m_requestQueue.Enqueue(req);
+                CheckOrEnableProcessing();
+            }
+        }
+        
+        /// <summary>
+        /// processes requests incoming from one connection in order (otherwise problems with codeset establishment).
+        /// </summary>        
+        /// <remarks>
+        /// - Reduces the number of thread switches if many requests are concurrently arriving.
+        /// - If no more requests are pending, release thread for other tasks.
+        /// - called by the thread-pool
+        /// </remarks>
+        private void Process(object state) {
+            try {
+                while (true) {
+                    RequestToProcess req;
+                    lock(this) {
+                        // get next request to process.
+                        if (!(m_requestQueue.Count > 0)) {
+                            m_processing = false; // use a new thread for messages arraving from now on ...
+                            break; // nothing more to process
+                        }
+                        req = (RequestToProcess)m_requestQueue.Dequeue();
+                    }
+                    // process next request
+                    ProcessRequest(req);
+                }
+            } catch (Exception) {
+                // unexpected exception -> processing problem on this connection, close connection...
+                try {
+                    SendConnectionCloseMessage();
+                } finally {
+                    ForceCloseConnection();
+                }
+                // after this, no new thread should be started to process next requests, because
+                // connection closed -> don't set m_processing to false here
+            }
+        }
+        
+        private void ProcessRequest(RequestToProcess req) {
+            switch (req.Type) {
+                case RequestToProcessType.Request:
+                    m_receiver.ProcessRequest(req.MessageStream, this);
+                    break;
+                case RequestToProcessType.LocateRequest:
+                    m_receiver.ProcessLocateRequest(req.MessageStream, this);
+                    break;
+                default:
+                    Trace.WriteLine("unknown request type in Process: " + req.Type);
+                    // unknown, ignore
+                    break;
+            }
+        }
+                       
         #endregion IMethods
         
     }    
