@@ -37,11 +37,12 @@ using System.Reflection;
 using System.IO;
 using Ch.Elca.Iiop.Cdr;
 using Ch.Elca.Iiop.Marshalling;
-using Ch.Elca.Iiop.Services;
 using Ch.Elca.Iiop.Idl;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.CorbaObjRef;
+using Ch.Elca.Iiop.Services;
 using omg.org.CORBA;
+using omg.org.IOP;
 
 namespace Ch.Elca.Iiop.MessageHandling {
 
@@ -76,7 +77,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>the key to access the client side requested uri in the message properties</summary>
         public const string REQUESTED_URI_KEY = "_requested_uri_op";                   
         /// <summary>the key to access the called method info</summary>
-        public const string CALLED_METHOD_KEY = "_called_method";        
+        public const string CALLED_METHOD_KEY = "_called_method";
+        /// <summary>the key to access the service context for this message (either request or reply context, depending on the message</summary>
+        public const string SERVICE_CONTEXT = "_service_context";
+        /// <summary>the key to access the isAsyncMessage property in the message properties.</summary>
+        public const string IS_ASYNC_REQUEST = "_is_async_request";
         /// <summary>the key used to access the uri-property in messages</summary>         
         public const string URI_KEY = "__Uri";
         /// <summary>the key used to access the typename-property in messages</summary>
@@ -107,6 +112,41 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion
 
         #endregion IProperties
+        #region SMethods
+        
+        /// <summary>
+        /// helper method, which sets the service context inside the message
+        /// </summary>
+        internal static void SetServiceContextInMessage(IMessage msg, ServiceContextList svcContext) {
+            msg.Properties[SimpleGiopMsg.SERVICE_CONTEXT] = svcContext;                        
+        }
+
+        /// <summary>
+        /// helper method, which gets the service context from the message
+        /// </summary>        
+        internal static ServiceContextList GetServiceContextFromMessage(IMessage msg) {
+            return (ServiceContextList)msg.Properties[SimpleGiopMsg.SERVICE_CONTEXT];
+        }
+
+        /// <summary>
+        /// helper method, which sets the is_async to true for message
+        /// </summary>
+        internal static void SetMessageAsyncRequest(IMessage msg) {
+            msg.Properties[SimpleGiopMsg.IS_ASYNC_REQUEST] = true;
+        }        
+        
+        /// <summary>
+        /// helper method, which gets the is_async for the message
+        /// </summary>
+        internal static bool IsMessageAsyncRequest(IMessage msg) {
+            if (msg.Properties.Contains(SimpleGiopMsg.IS_ASYNC_REQUEST)) {
+                return (bool)msg.Properties[SimpleGiopMsg.IS_ASYNC_REQUEST];
+            } else {
+                return false;
+            }
+        }
+        
+        #endregion SMethods        
 
     }
     
@@ -161,15 +201,19 @@ namespace Ch.Elca.Iiop.MessageHandling {
         
         private Exception m_reason;
         private IMessage m_requestMessage;
+        private IMessage m_responseMessage;
 
         #endregion IFields
         #region IConstructors
         
         /// <param name="reason">the reason for deserialization error</param>
         /// <param name="requestMessage">the message decoded so far</param>
-        public RequestDeserializationException(Exception reason, IMessage requestMessage) {
+        /// <param name="responseMessage">the response message to this problem</param>
+        public RequestDeserializationException(Exception reason, IMessage requestMessage,
+                                               IMessage responseMessage) {
             m_reason = reason;
             m_requestMessage = requestMessage;
+            m_responseMessage = responseMessage;
         }
 
         #endregion IConstructors
@@ -184,6 +228,12 @@ namespace Ch.Elca.Iiop.MessageHandling {
         public IMessage RequestMessage {
             get { 
                 return m_requestMessage; 
+            }
+        }
+        
+        public IMessage ResponseMessage {
+            get {
+                return m_responseMessage;
             }
         }
 
@@ -228,33 +278,65 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #region IMethods
         
         #region Common
+        
+        /// <summary>
+        /// perform code set establishment on the client side
+        /// </summary>
+        protected void PerformCodeSetEstablishmentClient(Ior targetIor,
+                                                         GiopConnectionDesc conDesc,
+                                                         ServiceContextList cntxColl) {
+            
+            if (targetIor.Version.IsAfterGiop1_0()) {
 
-        protected void SerialiseContext(CdrOutputStream targetStream, ServiceContextCollection cntxColl) {
-            IEnumerator enumerator = cntxColl.GetEnumerator();
-            targetStream.WriteULong((uint)cntxColl.Count); // nr of service contexts
-            while (enumerator.MoveNext()) {
-                ServiceContext cntx = (ServiceContext) enumerator.Current;
-                cntx.Serialize(targetStream);    
+                if (!conDesc.IsCodeSetNegotiated()) {                               
+                    ITaggedComponent codeSetComponent = CodeSetService.FindCodeSetComponent(targetIor.Profiles);
+                    if (codeSetComponent != null) {
+                        int charSet = CodeSetService.ChooseCharSet((CodeSetComponentData)codeSetComponent.ComponentData);
+                        int wcharSet = CodeSetService.ChooseWCharSet((CodeSetComponentData)codeSetComponent.ComponentData);
+                        conDesc.SetNegotiatedCodeSets(charSet, wcharSet);
+                    } else {
+                        conDesc.SetCodeSetNegotiated();
+                    }                    
+                    Ch.Elca.Iiop.Services.CodeSetService.InsertCodeSetServiceContext(cntxColl,
+                                                                                     conDesc.CharSet, 
+                                                                                     conDesc.WCharSet);
+                }
+            } else {
+                // giop 1.0; don't send code set service context; don't check again
+                conDesc.SetCodeSetNegotiated();
+            }
+            
+        }
+        
+        /// <summary>
+        /// perform code set establishment on the server side
+        /// </summary>
+        protected void PerformCodeSetEstablishmentServer(GiopVersion version,
+                                                         GiopConnectionDesc conDesc, 
+                                                         ServiceContextList cntxColl) {
+            if (version.IsAfterGiop1_0()) {
+                if (!conDesc.IsCodeSetNegotiated()) {
+                    // check for code set establishment
+                    CodeSetServiceContext context = 
+                        CodeSetService.FindCodeSetServiceContext(cntxColl);
+                    if (context != null) {
+                        CodeSetService.CheckCodeSetCompatible(context.CharSet,
+                                                              context.WCharSet);
+                        conDesc.SetNegotiatedCodeSets(context.CharSet,
+                                                      context.WCharSet);
+                    }
+                }
+            } else {
+                conDesc.SetCodeSetNegotiated();
             }
         }
 
-        protected ServiceContextCollection DeserialiseContext(CdrInputStream sourceStream) {
-            ServiceContextCollection cntxColl = new ServiceContextCollection();
-            CosServices services = CosServices.GetSingleton();
-            uint nrOfContexts = sourceStream.ReadULong();
-            for (uint i = 0; i < nrOfContexts; i++) {
-                uint serviceId = sourceStream.ReadULong();
-                CorbaService service = services.GetForServiceId((int)serviceId);
-                CdrEncapsulationInputStream serviceData = sourceStream.ReadEncapsulation();
-                ServiceContext cntx = service.DeserialiseContext(serviceData);
-                // add the service context if not already present. 
-                // Important: Don't throw an exception if already present,
-                // because WAS4.0.4 includes more than one with same id.
-                if (!cntxColl.ContainsContextForService(cntx.ServiceID)) {
-                    cntxColl.AddServiceContext(cntx);
-                }
-            }
-            return cntxColl;
+        protected void SerialiseContext(CdrOutputStream targetStream, ServiceContextList cntxList) {
+            cntxList.WriteSvcContextList(targetStream);
+        }
+
+        protected ServiceContextList DeserialiseContext(CdrInputStream sourceStream) {
+            return new ServiceContextList(sourceStream);
         }
 
         protected void AlignBodyIfNeeded(CdrInputStream cdrStream, GiopVersion version) {
@@ -346,43 +428,47 @@ namespace Ch.Elca.Iiop.MessageHandling {
             Trace.WriteLine(String.Format("serializing request for method {0}; uri {1}; id {2}", 
                                           clientRequest.MethodToCall, clientRequest.Uri, 
                                           clientRequest.RequestId));
-            GiopVersion version = targetIor.Version;
-
-            ServiceContextCollection cntxColl = CosServices.GetSingleton().
-                                                    InformInterceptorsRequestToSend(clientRequest.Request, targetIor, 
-                                                                                    conDesc);
-
-            // set code-set for the stream
-            SetCodeSet(targetStream, conDesc);
-                        
-            if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1
-                SerialiseContext(targetStream, cntxColl); // service context                
+            try {
+                clientRequest.InterceptSendRequest();
+                GiopVersion version = targetIor.Version;
+                ServiceContextList cntxColl = clientRequest.RequestServiceContext;
+                // set code-set for the stream
+                PerformCodeSetEstablishmentClient(targetIor, conDesc, cntxColl);
+                SetCodeSet(targetStream, conDesc);
+                
+                if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1
+                    SerialiseContext(targetStream, cntxColl); // service context
+                }
+                
+                targetStream.WriteULong(clientRequest.RequestId);
+                byte responseFlags = 0;
+                if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1
+                    responseFlags = 1;
+                } else {
+                    // reply-expected, no DII-call --> must be 0x03, no reply --> must be 0x00
+                    responseFlags = 3;
+                }
+                if (clientRequest.IsOneWayCall) {
+                    responseFlags = 0;
+                } // check if one-way
+                // write response-flags
+                targetStream.WriteOctet(responseFlags);
+                
+                targetStream.WritePadding(3); // reserved bytes
+                WriteTarget(targetStream, targetIor.ObjectKey, version); // write the target-info
+                targetStream.WriteString(clientRequest.RequestMethodName); // write the method name
+                
+                if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1
+                    targetStream.WriteULong(0); // no principal
+                } else { // GIOP 1.2
+                    SerialiseContext(targetStream, cntxColl); // service context
+                }
+                SerialiseRequestBody(targetStream, clientRequest, version);                
+            } catch (Exception ex) {
+                Debug.WriteLine("exception while serialising request: " + ex);
+                clientRequest.InterceptReceiveException(ex);
+                throw;
             }
-
-            targetStream.WriteULong(clientRequest.RequestId);
-            byte responseFlags = 0;
-            if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1
-                responseFlags = 1;
-            } else {
-                // reply-expected, no DII-call --> must be 0x03, no reply --> must be 0x00
-                responseFlags = 3;
-            }
-            if (clientRequest.IsOneWayCall) { 
-                responseFlags = 0; 
-            } // check if one-way
-            // write response-flags
-            targetStream.WriteOctet(responseFlags); 
-                        
-            targetStream.WritePadding(3); // reserved bytes
-            WriteTarget(targetStream, targetIor.ObjectKey, version); // write the target-info            
-            targetStream.WriteString(clientRequest.RequestMethodName); // write the method name
-            
-            if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1
-                targetStream.WriteULong(0); // no principal
-            } else { // GIOP 1.2
-                SerialiseContext(targetStream, cntxColl); // service context
-            }
-            SerialiseRequestBody(targetStream, clientRequest, version);
         }
 
         private void SerialiseContextElements(CdrOutputStream targetStream, MethodInfo methodToCall,
@@ -432,12 +518,13 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <returns></returns>
         internal IMessage DeserialiseRequest(CdrInputStream cdrStream, GiopVersion version,
                                            GiopConnectionDesc conDesc) {            
+            MethodCall methodCallInfo = null;            
             GiopServerRequest serverRequest = new GiopServerRequest();
             serverRequest.Version = version;
             try {
+                ServiceContextList cntxColl = null;
                 if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1
-                    ServiceContextCollection coll = DeserialiseContext(cdrStream); // Service context deser
-                    CosServices.GetSingleton().InformInterceptorsReceivedRequest(coll, conDesc);
+                    cntxColl = DeserialiseContext(cdrStream); // Service context deser                    
                 }
                 
                 // read the request-ID and set it as a message property
@@ -459,20 +546,25 @@ namespace Ch.Elca.Iiop.MessageHandling {
                     uint principalLength = cdrStream.ReadULong();
                     cdrStream.ReadOpaque((int)principalLength);
                 } else {
-                    ServiceContextCollection coll = DeserialiseContext(cdrStream); // Service context deser
-                    CosServices.GetSingleton().InformInterceptorsReceivedRequest(coll, conDesc);
+                    cntxColl = DeserialiseContext(cdrStream); // Service context deser
                 }
+                PerformCodeSetEstablishmentServer(version, conDesc, cntxColl);
                 // set codeset for stream
                 SetCodeSet(cdrStream, conDesc);
                 // request header deserialised
 
+                serverRequest.RequestServiceContext = cntxColl;
+                serverRequest.InterceptReceiveRequestServiceContexts();
+                
                 IDictionary contextElements;
                 serverRequest.ResolveCall(); // determine the .net target method
-                DeserialiseRequestBody(cdrStream, version, serverRequest, out contextElements);
-                MethodCall methodCallInfo = new MethodCall(serverRequest.Request);
+                DeserialiseRequestBody(cdrStream, version, serverRequest, out contextElements);                
+                methodCallInfo = new MethodCall(serverRequest.Request);
                 if (contextElements != null) {
                     AddContextElementsToCallContext(methodCallInfo.LogicalCallContext, contextElements);
                 }
+                serverRequest.UpdateWithFinalRequest(methodCallInfo);                
+                serverRequest.InterceptReceiveRequest(); // all information now available
                 return methodCallInfo;
             } catch (Exception e) {
                 // an Exception encountered during deserialisation
@@ -481,7 +573,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 } catch (Exception) {
                     // ignore exception here, already an other exception leading to problems
                 }
-                throw new RequestDeserializationException(e, serverRequest.Request);
+                ReturnMessage exceptionResponse;
+                exceptionResponse = new ReturnMessage(e, methodCallInfo);
+                serverRequest.UpdateWithProcessingExceptionReply(exceptionResponse);
+                serverRequest.InterceptSendException(e);
+                throw new RequestDeserializationException(e, serverRequest.Request, exceptionResponse);
             }
         }
 
@@ -559,33 +655,47 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <param name="requestId">the requestId of the request, this response belongs to</param>
         internal void SerialiseReply(GiopServerRequest request, CdrOutputStream targetStream, 
                                    GiopVersion version,
-                                   GiopConnectionDesc conDesc) {
-            Trace.WriteLine("serializing response for method: " + request.CalledMethodName);
-            
-            ServiceContextCollection cntxColl = CosServices.GetSingleton().
-                                                    InformInterceptorsReplyToSend(conDesc);
-            // set codeset for stream
+                                   GiopConnectionDesc conDesc) {            
+            Trace.WriteLine("serializing response for method: " + request.GetRequestedMethodNameInternal());
+            bool isExceptionReply = request.IsExceptionReply;
+            Exception toSend = null;            
+            try {
+                // reply interception point
+                if (!request.IsExceptionReply) {
+                    request.InterceptSendReply();
+                } else {
+                    request.InterceptSendException(request.IdlException);
+                }
+            } catch (Exception ex) {
+                // update the reply with the exception from interception layer
+                isExceptionReply = true;
+                if (SerialiseAsSystemException(ex)) {
+                    toSend = ex;
+                } else {
+                    toSend = new UNKNOWN(300, CompletionStatus.Completed_MayBe);
+                }
+            }
+            ServiceContextList cntxColl = request.ResponseServiceContext;
             SetCodeSet(targetStream, conDesc);
-
+            
             if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1
                 SerialiseContext(targetStream, cntxColl); // serialize the context
             }
             
             targetStream.WriteULong(request.RequestId);
-
-            if (!request.IsExceptionReply) { 
+            
+            if (!isExceptionReply) {
                 Trace.WriteLine("sending normal response to client");
                 targetStream.WriteULong(0); // reply status ok
                 
                 if (!((version.Major == 1) && (version.Minor <= 1))) { // for GIOP 1.2 and later, service context is here
-                    SerialiseContext(targetStream, cntxColl); // serialize the context                
+                    SerialiseContext(targetStream, cntxColl); // serialize the context
                 }
                 // serialize a response to a successful request
                 SerialiseResponseOk(targetStream, request, version);
                 Trace.WriteLine("reply body serialised");
-            } else {
-                Trace.WriteLine("exception to pass to client: " + request.Exception.GetType());
-                Exception exceptionToSend = request.IdlException;
+            } else {                
+                Exception exceptionToSend = (toSend == null ? request.IdlException : toSend);
                 Trace.WriteLine("excpetion to send to client: " + exceptionToSend.GetType());
                 
                 if (SerialiseAsSystemException(exceptionToSend)) {
@@ -597,9 +707,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
                     targetStream.WriteULong(2);
                     exceptionToSend = new INTERNAL(204, CompletionStatus.Completed_Yes);
                 }
-
+                
                 if (!((version.Major == 1) && (version.Minor <= 1))) { // for GIOP 1.2 and later, service context is here
-                    SerialiseContext(targetStream, cntxColl); // serialize the context                
+                    SerialiseContext(targetStream, cntxColl); // serialize the context
                 }
                 AlignBodyIfNeeded(targetStream, version);
                 if (SerialiseAsSystemException(exceptionToSend)) {
@@ -653,62 +763,80 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
 
 
+        /// <summary>
+        /// helper method to update the GiopClientRequest with the new data from the reply
+        /// </summary>
+        private void UpdateClientRequestWithReplyData(GiopClientRequest request,
+                                                      IMessage response,
+                                                      ServiceContextList cntxColl) {
+            SimpleGiopMsg.SetServiceContextInMessage(response, cntxColl); // store the deserialised service context for handling in interceptors
+            request.Reply = response;
+        }
+        
         internal IMessage DeserialiseReply(CdrInputStream cdrStream, 
                                          GiopVersion version, GiopClientRequest request,
                                          GiopConnectionDesc conDesc) {
 
-            if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1, the service context is placed here
-                ServiceContextCollection coll = DeserialiseContext(cdrStream); // deserialize the service contexts
-                CosServices.GetSingleton().InformInterceptorsReceivedReply(coll, conDesc);
-            }
-            
-            uint forRequestId = cdrStream.ReadULong();
-            uint responseStatus = cdrStream.ReadULong();
-            if (!version.IsBeforeGiop1_2()) { // for GIOP 1.2 and later, service context is here
-                ServiceContextCollection coll = DeserialiseContext(cdrStream); // deserialize the service contexts
-                CosServices.GetSingleton().InformInterceptorsReceivedReply(coll, conDesc);
-            }
-            
-            // set codeset for stream
-            SetCodeSet(cdrStream, conDesc);
-            
+            ServiceContextList cntxColl = null;
             IMessage response = null;
             try {
+                if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1, the service context is placed here
+                    cntxColl = DeserialiseContext(cdrStream); // deserialize the service contexts
+                }
+                
+                uint forRequestId = cdrStream.ReadULong();
+                uint responseStatus = cdrStream.ReadULong();
+                if (!version.IsBeforeGiop1_2()) { // for GIOP 1.2 and later, service context is here
+                    cntxColl = DeserialiseContext(cdrStream); // deserialize the service contexts
+                }
+                // set codeset for stream
+                SetCodeSet(cdrStream, conDesc);                
                 switch (responseStatus) {
-                    case 0 : 
+                    case 0 :
                         Trace.WriteLine("deserializing normal reply for methodCall: " + request.MethodToCall);
-                        response = DeserialiseNormalReply(cdrStream, version, request); 
+                        response = DeserialiseNormalReply(cdrStream, version, request);
+                        UpdateClientRequestWithReplyData(request, response, cntxColl);
+                        request.InterceptReceiveReply();
                         break;
-                    case 1 :                         
+                    case 1 :
                         Exception userEx = DeserialiseUserException(cdrStream, version); // the error .NET message for this exception is created in the formatter
                         response = new ReturnMessage(userEx, request.Request);
+                        UpdateClientRequestWithReplyData(request, response, cntxColl);
+                        request.InterceptReceiveException(userEx);
                         break;
-                    case 2 : 
+                    case 2 :
                         Exception systemEx = DeserialiseSystemError(cdrStream, version); // the error .NET message for this exception is created in the formatter
                         response = new ReturnMessage(systemEx, request.Request);
+                        UpdateClientRequestWithReplyData(request, response, cntxColl);
+                        request.InterceptReceiveException(systemEx);
                         break;
                     case 3 :
                         // LOCATION_FORWARD:
                         // --> deserialise it and return location fwd message
-                        response = DeserialiseLocationFwdReply(cdrStream, version, request); 
+                        response = DeserialiseLocationFwdReply(cdrStream, version, request);
+                        UpdateClientRequestWithReplyData(request, response, cntxColl);
+                        request.InterceptReceiveOther();
                         break;
-                    default : 
-                        // deseralization of reply error, unknown reply status: responseStatus
-                        // the error .NET message for this exception is created in the formatter
-                        throw new MARSHAL(2401, CompletionStatus.Completed_MayBe);
+                        default :
+                            // deseralization of reply error, unknown reply status: responseStatus
+                            // the error .NET message for this exception is created in the formatter
+                            throw new MARSHAL(2401, CompletionStatus.Completed_MayBe);
                 }
-                request.Reply = response;
-            } catch (Exception e) {
-                Debug.WriteLine("exception while deserialising reply: " + e);
-                // do not corrupt stream --> skip
+            } catch (Exception ex) {
+                Debug.WriteLine("exception while deserialising reply: " + ex);
                 try {
                     cdrStream.SkipRest();
                 } catch (Exception) {
                     // ignore this one, already problems.
                 }
+                if (request.Reply == null) { // request.Reply is set in UpdateClientRequestWithReplyData
+                    // deserialisation not ok: interception not called;
+                    // call interceptors with this exception.
+                    request.Reply = new ReturnMessage(ex, request.Request as IMethodCallMessage);
+                    request.InterceptReceiveException(ex);
+                }
                 throw;
             }
-
             return response;
         }
 
@@ -865,13 +993,9 @@ namespace Ch.Elca.Iiop.Tests {
             stream.Seek(0, SeekOrigin.Begin);
             CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(stream);
             cdrIn.ConfigStream(0, new GiopVersion(1,2));
-            // call deser method via reflection, because of protection level
-            Type msgBodySerType = ser.GetType();
-            MethodInfo method = msgBodySerType.GetMethod("DeserialiseContext", BindingFlags.NonPublic | BindingFlags.Instance);
-            Assertion.Assert(method != null);
-            ServiceContextCollection result = (ServiceContextCollection) method.Invoke(ser, new object[] { cdrIn });
+            omg.org.IOP.ServiceContextList result = new ServiceContextList(cdrIn);
             // check if context is present
-            Assertion.Assert("expected context not in collection", result.ContainsContextForService(1234567) == true);
+            Assertion.Assert("expected context not in collection", result.ContainsServiceContext(1234567) == true);
         }        
                 
     }

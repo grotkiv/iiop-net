@@ -58,7 +58,7 @@ namespace Ch.Elca.Iiop {
         
         private Hashtable m_items = new Hashtable();                
         
-        private bool m_messagesExchanged = false;
+        private bool m_codeSetNegotiated = false;
 
         #endregion IFields
         #region IConstructors
@@ -73,17 +73,11 @@ namespace Ch.Elca.Iiop {
             get {
                 return m_charSetChosen;
             }
-            set {
-                m_charSetChosen = value;
-            }
         }
 
         public int WCharSet {
             get {
                 return m_wcharSetChosen;
-            }
-            set {
-                m_wcharSetChosen = value;
             }
         }
         
@@ -92,21 +86,31 @@ namespace Ch.Elca.Iiop {
                 return m_items;
             }
         }
+                        
+        #endregion IProperties
+        #region IMethods
         
         /// <summary>
-        /// Were any messages (request/reply) already exchanged
-        /// on this connection
+        /// is the codeset already negotiated?
         /// </summary>
-        public bool MessagesAlreadyExchanged {
-            get {
-                return m_messagesExchanged;    
-            }
-            set {
-                m_messagesExchanged = value;
-            }
+        public bool IsCodeSetNegotiated() {
+            return m_codeSetNegotiated;
+        }
+
+        /// <summary>
+        /// the codeset is already negotiated.
+        /// </summary>
+        public void SetCodeSetNegotiated() {
+            m_codeSetNegotiated = true;
         }
         
-        #endregion IProperties
+        public void SetNegotiatedCodeSets(int charSet, int wcharSet) {
+            m_charSetChosen = charSet;
+            m_wcharSetChosen = wcharSet;
+            SetCodeSetNegotiated();
+        }
+        
+        #endregion IMethods
 
     }
     
