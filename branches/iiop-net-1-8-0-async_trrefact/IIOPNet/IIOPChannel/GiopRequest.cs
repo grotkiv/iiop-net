@@ -214,18 +214,28 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>
         /// portable interception point: send request
         /// </summary>
+        /// <remarks>throws exception, if a problem occurs during call of send request interception points.
+        /// Client need to handle exception by calling InterceptReceiveException at the appropriate time and
+        /// pass the exception on to the client.</remarks>
         internal void InterceptSendRequest() {
-            RequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
-            // TODO
-            
-            
+            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
+            flow.SendRequest();            
         }
         
         /// <summary>
         /// portable interception point: receive reply
-        /// </summary>
+        /// </summary>        
+        /// <remarks>in case of interception point throwing an excpetion: pass the exception through
+        /// the remaining interception points by calling receive exception. The exception is at the
+        /// end thrown to the caller for further handling.</remarks>
         internal void InterceptReceiveReply() {
-            
+            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
+            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+            try {
+                flow.ReceiveReply();
+            } catch (Exception ex) {
+                throw flow.ReceiveException(ex);
+            }
         }
 
         /// <summary>
@@ -233,24 +243,35 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// </summary>        
         /// <returns>the modified or unmodified receivedException, depending on the interception chain:
         /// the interception chain may change the resulting exception.</returns>
+        /// <remarks>unexpected exceptions during interception chain processing are thrown to the caller.</remarks>
         internal Exception InterceptReceiveException(Exception receivedException) {
-            // TODO
-            return receivedException;
+            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
+            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+            return flow.ReceiveException(receivedException);            
         }
 
         /// <summary>
         /// portable interception point: receive other
         /// </summary>
+        /// <remarks>in case of interception point throwing an excpetion: pass the exception through
+        /// the remaining interception points by calling receive exception. The exception is at the
+        /// end thrown to the caller for further handling.</remarks>
         internal void InterceptReceiveOther() {
-            
+            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
+            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+            try {
+                flow.ReceiveOther();
+            } catch (Exception ex) {
+                throw flow.ReceiveException(ex);
+            }            
         }
         
         /// <summary>
         /// returns false, if reply interception chain has not yet been completed; otherwise true.
         /// </summary>
         internal bool IsReplyInterceptionChainCompleted() {
-            // TODO
-            return true;
+            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();            
+            return (flow.IsInReplyDirection() && !(flow.HasNextInterceptor()));
         }
         
         #endregion IMethods
@@ -673,7 +694,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion IProperties
         #region IMethods
         
-        private ServerRequestInterceptionFlow GetOrCreateClientInterceptionFlow() {
+        private ServerRequestInterceptionFlow GetOrCreateServerInterceptionFlow() {
             ServerRequestInterceptionFlow result = 
                 (ServerRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
             if (result ==  null) {
@@ -884,14 +905,27 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>
         /// portable interception point: receive request service contexts
         /// </summary>
+        /// <remarks>throws exception, if a problem occurs during call of  receive request service contexts interception points.
+        /// Client need to handle exception by calling InterceptSendException at the appropriate time and
+        /// pass the exception on to the client.</remarks>
         internal void InterceptReceiveRequestServiceContexts() {
-            
+            ServerRequestInterceptionFlow flow = GetOrCreateServerInterceptionFlow();
+            flow.ReceiveRequestServiceContexts();
         }
 
         /// <summary>
         /// portable interception point: receive request
         /// </summary>
         internal void InterceptReceiveRequest() {
+            ServerRequestInterceptionFlow flow = GetOrCreateServerInterceptionFlow();
+            try {
+                flow.ReceiveRequest();
+            } catch (Exception) {
+                // swith to reply direction and reset to first, because all Receive service contexts 
+                // interception points completed -> exception reply must pass all interception points.
+                flow.SwitchToReplyDirection();
+                flow.ResetToStart();
+            }
             
         }
         
@@ -900,15 +934,22 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// </summary>
         /// <returns>the modified or unmodified exception after the interception chain has completed.</returns>
         internal Exception InterceptSendException(Exception ex) {
-            // TODO
-            return ex;
+            ServerRequestInterceptionFlow flow = GetOrCreateServerInterceptionFlow();
+            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+            return flow.SendException(ex);
         }        
         
         /// <summary>
         /// portable interception point: send reply
         /// </summary>
         internal void InterceptSendReply() {
-            
+            ServerRequestInterceptionFlow flow = GetOrCreateServerInterceptionFlow();
+            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+            try {
+                flow.SendReply();
+            } catch (Exception ex) {
+                throw flow.SendException(ex);
+            }            
         }                
         
         #endregion IMethods
