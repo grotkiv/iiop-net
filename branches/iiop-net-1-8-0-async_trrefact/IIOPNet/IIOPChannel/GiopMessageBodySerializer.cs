@@ -344,7 +344,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                        CdrOutputStream targetStream, 
                                        Ior targetIor, GiopConnectionDesc conDesc) {
             Trace.WriteLine(String.Format("serializing request for method {0}; uri {1}; id {2}", 
-                                          clientRequest.MethodToCall, clientRequest.Request.Uri, 
+                                          clientRequest.MethodToCall, clientRequest.Uri, 
                                           clientRequest.RequestId));
             GiopVersion version = targetIor.Version;
 
