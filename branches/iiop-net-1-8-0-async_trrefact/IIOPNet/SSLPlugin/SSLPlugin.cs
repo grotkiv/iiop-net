@@ -45,7 +45,14 @@ namespace Ch.Elca.Iiop.Security.Ssl {
 
     /// <summary>Base class for ssl transports</summary>
     public class SslTransportBase : ITransport {
-                        
+        
+        #region SFields
+
+        private static System.Reflection.PropertyInfo s_secureTcpClientClientPropertyInfo =
+            typeof(SecureTcpClient).GetProperty("Client",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        
+        #endregion SFields                        
         #region IFields
         
         protected SecureNetworkStream m_stream;
@@ -76,6 +83,42 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             } catch (Exception) {}
             m_socket = null;
         }
+        
+        public IAsyncResult BeginRead(byte[] buffer, int offset, int size, AsyncCallback callback, object state) {
+            return m_stream.BeginRead(buffer, offset, size, callback, state);
+        }
+
+        public IAsyncResult BeginWrite(byte[] buffer, int offset, int size, AsyncCallback callback, object state) {
+            return m_stream.BeginWrite(buffer, offset, size, callback, state);
+        }
+        
+        public int EndRead(IAsyncResult asyncResult) {
+            return m_stream.EndRead(asyncResult);
+        }
+        
+        public void EndWrite(IAsyncResult asyncResult) {
+            m_stream.EndWrite(asyncResult);
+        }
+        
+        /// <summary><see cref="Ch.Elca.Iiop.ITransport.GetPeerAddress"/></summary>
+        public IPAddress GetPeerAddress() {
+            SecureSocket secureSocket = (SecureSocket)s_secureTcpClientClientPropertyInfo.GetValue(m_socket, null);
+            return ((IPEndPoint)secureSocket.RemoteEndPoint).Address;
+        }        
+        
+        /// <summary><see cref="Ch.Elca.Iiop.ITranport.IsConnectionOpen/></summary>
+        public bool IsConnectionOpen() {
+            if (m_socket == null) {
+                return false;
+            } else {
+                try {
+                    m_socket.GetStream(); // TODO, search a better way to do this
+                } catch (Exception) {
+                    return false;
+                }                                
+                return true; 
+            }
+        }        
         
         #endregion IMethods
         
@@ -154,21 +197,7 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             m_socket.SendTimeout = m_sendTimeOut;            
             m_stream = m_socket.GetStream();
         }
-                
-        /// <summary><see cref="Ch.Elca.Iiop.IClientTranport.IsConnectionOpen/></summary>
-        public bool IsConnectionOpen() {
-            if (m_socket == null) {
-                return false;
-            } else {
-                try {
-                    m_socket.GetStream(); // TODO, search a better way to do this
-                } catch (Exception) {
-                    return false;
-                }                                
-                return true; 
-            }
-        }
-        
+                        
         #endregion IMethods
         
     }
@@ -179,11 +208,7 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         #region SFields
         
         private static Type s_socketExType = typeof(SocketException);
-        
-        private static System.Reflection.PropertyInfo s_secureTcpClientClientPropertyInfo =
-            typeof(SecureTcpClient).GetProperty("Client",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
+                
         #endregion SFields
         #region IConstructors
         
@@ -199,13 +224,7 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         public bool IsConnectionCloseException(Exception e) {
             return s_socketExType.IsInstanceOfType(e.InnerException);            
         }
-        
-        /// <summary><see cref="Ch.Elca.Iiop.IServerTransport.GetClientAddress"/></summary>
-        public IPAddress GetClientAddress() {
-            SecureSocket secureSocket = (SecureSocket)s_secureTcpClientClientPropertyInfo.GetValue(m_socket, null);
-            return ((IPEndPoint)secureSocket.RemoteEndPoint).Address;
-        }
-                
+                        
         #endregion IMethods
         
     }        

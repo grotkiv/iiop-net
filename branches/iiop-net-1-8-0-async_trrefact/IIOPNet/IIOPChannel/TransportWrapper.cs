@@ -58,7 +58,21 @@ namespace Ch.Elca.Iiop {
         /// <summary>closes the connection</summary>
         void CloseConnection();
         
-        #endregion IMethods                
+        /// <summary>is the connection to the peer open</summary>
+        bool IsConnectionOpen();        
+        
+        IAsyncResult BeginRead(byte[] buffer, int offset, int size, AsyncCallback callback, object state);
+
+        IAsyncResult BeginWrite(byte[] buffer, int offset, int size, AsyncCallback callback, object state);
+        
+        int EndRead(IAsyncResult asyncResult);
+        
+		void EndWrite(IAsyncResult asyncResult);
+		
+		/// <summary>returns the ip address of the client</summary>
+        IPAddress GetPeerAddress();
+        
+        #endregion IMethods
         
     }
     
@@ -68,10 +82,7 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>opens a connection to the target, if not already open (when open do nothing)</summary>
         void OpenConnection();
-                
-        /// <summary>is the connection to the target open</summary>
-        bool IsConnectionOpen();
-        
+                        
         /// <summary>
         /// the receive timeout of the client connection (in ms); 0 means infinite timeout.
         /// </summary>
@@ -87,7 +98,6 @@ namespace Ch.Elca.Iiop {
             get;
             set;
         }
-
                 
     }
     
@@ -101,10 +111,7 @@ namespace Ch.Elca.Iiop {
                 
         /// <summary>Results the given exception from a connection close on client side</summary>
         bool IsConnectionCloseException(Exception e);
-        
-        /// <summary>returns the ip address of the client</summary>
-        IPAddress GetClientAddress();
-        
+                
     }
             
     

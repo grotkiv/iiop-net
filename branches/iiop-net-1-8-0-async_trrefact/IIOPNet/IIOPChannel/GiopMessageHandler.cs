@@ -600,7 +600,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(0, result.OutArgCount);
         }                
                 
-        [Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
+        //[Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
         public void TestLocationForward() {
             IiopChannel chan = new IiopChannel(8090);
             ChannelServices.RegisterChannel(chan);
@@ -633,7 +633,7 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }
                 
-        [Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
+        //[Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
         public void TestLocationForwardOnIsA() {
             // tests location forward, if we forward on is_a call            
             IiopChannel chan = new IiopChannel(8090);

@@ -140,6 +140,13 @@ namespace Ch.Elca.Iiop {
                         case IiopClientChannel.CLIENT_SEND_TIMEOUT_KEY:
                             clientProp[IiopClientChannel.CLIENT_SEND_TIMEOUT_KEY] = Convert.ToInt32(entry.Value);
                             break;
+                        case IiopClientChannel.CLIENT_REQUEST_TIMEOUT_KEY:
+                            clientProp[IiopClientChannel.CLIENT_REQUEST_TIMEOUT_KEY] = Convert.ToInt32(entry.Value);
+                            break;
+                        case IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY:
+                            clientProp[IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY] =
+                                Convert.ToInt32(entry.Value);
+                            break;
                         case TRANSPORT_FACTORY_KEY:
                             serverProp[TRANSPORT_FACTORY_KEY] =
                                 entry.Value;
@@ -251,6 +258,18 @@ namespace Ch.Elca.Iiop {
         /// the send timeout in milliseconds
         /// </summary>
         public const string CLIENT_SEND_TIMEOUT_KEY = "clientSendTimeOut";
+
+        /// <summary>
+        /// the giop request timeout in milliseconds; default is infinite
+        /// </summary>
+        public const string CLIENT_REQUEST_TIMEOUT_KEY = "clientRequestTimeOut";
+
+        /// <summary>
+        /// the time in milliseconds a unused connection is kept alive on client side; default is 60000ms
+        /// </summary>
+        public const string CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY = "unusedConnectionKeepAlive";
+        
+        private const int UNUSED_CLIENT_CONNECTION_TIMEOUT = 60000;
         
         #endregion Constants
         #region IFields
@@ -282,7 +301,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         public IiopClientChannel() {
-            InitChannel(new TcpTransportFactory());
+            InitChannel(new TcpTransportFactory(), 0, UNUSED_CLIENT_CONNECTION_TIMEOUT);
         }
         
         public IiopClientChannel(IDictionary properties) : 
@@ -300,6 +319,8 @@ namespace Ch.Elca.Iiop {
             IDictionary nonDefaultOptions = new Hashtable();
             int receiveTimeOut = 0;
             int sendTimeOut = 0;
+            int requestTimeOut = 0;
+            int unusedClientConnectionTimeout = UNUSED_CLIENT_CONNECTION_TIMEOUT;
             
             if (properties != null) {
                 foreach (DictionaryEntry entry in properties) {
@@ -321,6 +342,12 @@ namespace Ch.Elca.Iiop {
                         case IiopClientChannel.CLIENT_SEND_TIMEOUT_KEY:
                             sendTimeOut = Convert.ToInt32(entry.Value);
                             break;
+                        case IiopClientChannel.CLIENT_REQUEST_TIMEOUT_KEY:
+                            requestTimeOut = Convert.ToInt32(entry.Value);
+                            break;
+                        case IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY:
+                            unusedClientConnectionTimeout = Convert.ToInt32(entry.Value);
+                            break;
                         default: 
                             Debug.WriteLine("non-default property found for IIOPClient channel: " + entry.Key);
                             nonDefaultOptions[entry.Key] = entry.Value;
@@ -332,7 +359,7 @@ namespace Ch.Elca.Iiop {
             // handle the options now by transport factory
             clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
             clientTransportFactory.SetupClientOptions(nonDefaultOptions);
-            InitChannel(clientTransportFactory);
+            InitChannel(clientTransportFactory, requestTimeOut, unusedClientConnectionTimeout);
         }
 
         #endregion IConstructors
@@ -371,9 +398,15 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>initalize this channel</summary>
-        private void InitChannel(IClientTransportFactory transportFactory) {
+        private void InitChannel(IClientTransportFactory transportFactory, int requestTimeOut, 
+                                 int unusedClientConnectionTimeOut) {
             
-            m_conManager = new GiopClientConnectionManager(transportFactory);
+            if (requestTimeOut > 0) {
+                m_conManager = new GiopClientConnectionManager(transportFactory, TimeSpan.FromMilliseconds(requestTimeOut),
+                                                               unusedClientConnectionTimeOut);
+            } else {
+                m_conManager = new GiopClientConnectionManager(transportFactory, unusedClientConnectionTimeOut);
+            }
             
             IiopClientTransportSinkProvider transportProvider =
                 new IiopClientTransportSinkProvider(m_conManager);
@@ -687,9 +720,8 @@ namespace Ch.Elca.Iiop {
         /// this method handles the incoming messages; it's called by the IServerListener
         /// </summary>
         private void ProcessClientMessages(IServerTransport transport) {
-            ServerRequestHandler handler =
-                new ServerRequestHandler(transport, m_transportSink);
-            handler.StartMsgHandling();
+            GiopClientServerMessageHandler handler = new GiopClientServerMessageHandler(transport, m_transportSink);
+            handler.StartMessageReception();            
         }
             
         public void StopListening(object data) {
