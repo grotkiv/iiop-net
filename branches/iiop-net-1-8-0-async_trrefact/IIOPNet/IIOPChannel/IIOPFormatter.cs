@@ -354,8 +354,7 @@ namespace Ch.Elca.Iiop {
         /// <summary>serialises the .NET msg to a GIOP-message</summary>
         private void SerialiseResponse(IServerResponseChannelSinkStack sinkStack, IMessage requestMsg,
                                        GiopConnectionDesc conDesc, IMessage msg, 
-                                       ref ITransportHeaders headers, out Stream stream) {
-            uint requestId = Convert.ToUInt32(requestMsg.Properties[SimpleGiopMsg.REQUEST_ID_KEY]);
+                                       ref ITransportHeaders headers, out Stream stream) {            
             GiopVersion version = (GiopVersion)requestMsg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY];
             if (headers == null) {
                 headers = new TransportHeaders();
@@ -369,15 +368,14 @@ namespace Ch.Elca.Iiop {
                 stream = new MemoryStream(); // create a new stream
             }
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            handler.SerialiseOutgoingReplyMessage(msg, version, requestId, stream, conDesc);
+            handler.SerialiseOutgoingReplyMessage(msg, requestMsg, version, stream, conDesc);
         }
 
         /// <summary>serialises an Exception</summary>
         private void SerialiseExceptionResponse(Exception e, IMessage requestMsg,
                                                 GiopConnectionDesc conDesc,
                                                 out IMessage responseMsg,
-                                                ref ITransportHeaders headers, out Stream stream) {
-            uint requestId = Convert.ToUInt32(requestMsg.Properties[SimpleGiopMsg.REQUEST_ID_KEY]);
+                                                ref ITransportHeaders headers, out Stream stream) {            
             GiopVersion version = (GiopVersion)requestMsg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY];
             // serialise an exception response
             if (requestMsg is IMethodCallMessage) {
@@ -390,7 +388,7 @@ namespace Ch.Elca.Iiop {
             stream = new MemoryStream();
             // serialise a server result
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            handler.SerialiseOutgoingReplyMessage(responseMsg, version, requestId, stream, conDesc);
+            handler.SerialiseOutgoingReplyMessage(responseMsg, requestMsg, version, stream, conDesc);
         }
     
         #region Implementation of IServerChannelSink

@@ -86,9 +86,10 @@ namespace Ch.Elca.Iiop.MessageHandling {
             Debug.WriteLine("receive reply message at client side");            
             CdrMessageInputStream msgInput = new CdrMessageInputStream(sourceStream);
             CdrInputStream msgBody = msgInput.GetMessageContentReadingStream();
+            GiopClientRequest request = new GiopClientRequest(requestMessage);
             // deserialize message body
             GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
-            IMessage result = ser.DeserialiseReply(msgBody, msgInput.Header.Version, requestMessage,
+            IMessage result = ser.DeserialiseReply(msgBody, msgInput.Header.Version, request,
                                                    conDesc);
             if (!(result is LocationForwardMessage)) {
                 // a standard return message
@@ -138,9 +139,10 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 // serialize the message, this insert some data into msg, e.g. request-id
                 GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
                 msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = requestId; // set request-id
-                ser.SerialiseRequest(msg as IMethodCallMessage, 
+                GiopClientRequest request = new GiopClientRequest((IMethodCallMessage)msg);
+                ser.SerialiseRequest(request, 
                                      msgOutput.GetMessageContentWritingStream(),
-                                     target, requestId, conDesc);
+                                     target, conDesc);
                 msgOutput.CloseStream();
             } else {
                 throw new NotImplementedException("handling for this type of .NET message is not implemented at the moment, type: " +
@@ -149,20 +151,22 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
 
         /// <summary>serialises an outgoing .NET reply Message on server side</summary>
-        internal void SerialiseOutgoingReplyMessage(IMessage msg, GiopVersion version, uint forRequstId,
-                                                   Stream targetStream, GiopConnectionDesc conDesc) {
-            if (msg is ReturnMessage) {
+        internal void SerialiseOutgoingReplyMessage(IMessage replyMsg, IMessage requestMsg, GiopVersion version,
+                                                    Stream targetStream, GiopConnectionDesc conDesc) {
+            if (replyMsg is ReturnMessage) {
                 // write a CORBA response message into the stream targetStream
                 GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.Reply);
                 CdrMessageOutputStream msgOutput = new CdrMessageOutputStream(targetStream, header);
+                GiopServerRequest request = new GiopServerRequest(requestMsg as IMethodCallMessage, 
+                                                                  (ReturnMessage)replyMsg);
                 // serialize the message
                 GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
-                ser.SerialiseReply((ReturnMessage)msg, msgOutput.GetMessageContentWritingStream(), 
-                                   version, forRequstId, conDesc);
+                ser.SerialiseReply(request, msgOutput.GetMessageContentWritingStream(), 
+                                   version, conDesc);
                 msgOutput.CloseStream(); // write to the stream
             } else {
                 throw new NotImplementedException("handling for this type of .NET message is not implemented at the moment, type: " +
-                                                  msg.GetType());
+                                                  replyMsg.GetType());
             }
         }
 
@@ -458,17 +462,21 @@ namespace Ch.Elca.Iiop.Tests {
             MethodInfo methodToCall = typeof(TestService).GetMethod("Add");
             object[] args = new object[] { ((Int32) 1), ((Int32) 2) };
             string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
+            GiopVersion version = new GiopVersion(1, 2);
             TestMessage msg = new TestMessage(methodToCall, args, uri);
+            msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = (uint)5;
+            msg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY] = version;
+            msg.Properties[SimpleGiopMsg.CALLED_METHOD_KEY] = methodToCall;
             // create a connection context
             GiopConnectionDesc conDesc = new GiopConnectionDesc();
 
             // create the reply
-            ReturnMessage retMsg = new ReturnMessage((Int32) 3, new object[0], 0, null, msg);
+            ReturnMessage retMsg = new ReturnMessage((Int32) 3, new object[0], 0, null, msg);            
             
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
             MemoryStream targetStream = new MemoryStream();
-
-            handler.SerialiseOutgoingReplyMessage(retMsg, new GiopVersion(1, 2), 5, 
+            
+            handler.SerialiseOutgoingReplyMessage(retMsg, msg, version, 
                                                   targetStream, conDesc);
             
             // check to serialised stream

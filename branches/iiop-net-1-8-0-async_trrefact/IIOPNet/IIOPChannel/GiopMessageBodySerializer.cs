@@ -69,7 +69,15 @@ namespace Ch.Elca.Iiop.MessageHandling {
         public const string GIOP_VERSION_KEY = "_giop_version";
         /// <summary>the key to access the response-flags in the message properties</summary>
         public const string RESPONSE_FLAGS_KEY = "_response_flags";
-        /// <summary>the key used to access the uri-property in messages</summary>
+        /// <summary>the key to access the idl method name in the message properties</summary>
+        public const string IDL_METHOD_NAME_KEY = "_idl_method_name";        
+        /// <summary>the key to access the flag, specifying if one of the corba standard ops, like is_a is called or a regular object operation, in the message properties</summary>
+        public const string IS_STANDARD_CORBA_OP_KEY = "_is_standard_corba_op";           
+        /// <summary>the key to access the client side requested uri in the message properties</summary>
+        public const string REQUESTED_URI_KEY = "_requested_uri_op";                   
+        /// <summary>the key to access the called method info</summary>
+        public const string CALLED_METHOD_KEY = "_called_method";        
+        /// <summary>the key used to access the uri-property in messages</summary>         
         public const string URI_KEY = "__Uri";
         /// <summary>the key used to access the typename-property in messages</summary>
         public const string TYPENAME_KEY = "__TypeName";
@@ -282,7 +290,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>read the target for the request</summary>
         /// <returns>the objectURI extracted from this msg</returns>
         private string ReadTarget(CdrInputStream cdrStream, GiopVersion version) {
-            if ((version.Major == 1) && (version.Minor <= 1)) { 
+            if (version.IsBeforeGiop1_2()) {
                 // for GIOP 1.0 / 1.1 only object key is possible
                 return ReadTargetKey(cdrStream);
             }
@@ -323,199 +331,58 @@ namespace Ch.Elca.Iiop.MessageHandling {
             Debug.WriteLine("writing object key with length: " + objectKey.Length);
             cdrStream.WriteULong((uint)objectKey.Length); // object-key length
             cdrStream.WriteOpaque(objectKey);
-        }
-       
-        /// <summary>aquire the information for a specific object method call</summary>
-        /// <param name="serverType">the type of the object called</param>
-        /// <param name="calledMethodInfo">the MethodInfo of the method, which is called</param>
-        /// <returns>returns the mapped methodName of the operation to call of this object specific method</returns>
-        private MethodInfo DecodeObjectOperation(string methodName, Type serverType) {
-            // method name mapping
-            string resultMethodName;
-            if (ReflectionHelper.IIdlEntityType.IsAssignableFrom(serverType)) {
-                resultMethodName = methodName;
-                // an interface mapped to from Idl is implemented by server ->
-                // compensate 3.2.3.1: removal of _ for names, which clashes with CLS id's
-                if (IdlNaming.NameClashesWithClsKeyWord(methodName)) {
-                    resultMethodName = "_" + methodName;
-                } else if (methodName.StartsWith("_get_")) {
-                    // handle properties correctly
-                    PropertyInfo prop = serverType.GetProperty(methodName.Substring(5), BindingFlags.Instance | BindingFlags.Public);
-                    if (prop != null) {
-                        resultMethodName = prop.GetGetMethod().Name;
-                    }
-                } else if (methodName.StartsWith("_set_")) {
-                    // handle properties correctly
-                    PropertyInfo prop = serverType.GetProperty(methodName.Substring(5), BindingFlags.Instance | BindingFlags.Public);
-                    if (prop != null) {
-                        resultMethodName = prop.GetSetMethod().Name;
-                    }
-                }
-            } else {                
-                resultMethodName = IdlNaming.ReverseClsToIdlNameMapping(methodName);
-                if (resultMethodName.StartsWith("get_") || resultMethodName.StartsWith("set_")) {
-                    // special handling for properties, because properties with a name, which is transformed on mapping,
-                    // need to be specially identified, because porperty name is included in method name.
-                    string propName = IdlNaming.ReverseClsToIdlNameMapping(resultMethodName.Substring(4));
-                    PropertyInfo prop = serverType.GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
-                    if (prop != null) {
-                        if (resultMethodName.StartsWith("get_")) {
-                            resultMethodName = prop.GetGetMethod().Name;
-                        } else {
-                            resultMethodName = prop.GetSetMethod().Name;
-                        }
-                    }
-                }
-
-            }
-            
-            MethodInfo calledMethodInfo = serverType.GetMethod(resultMethodName);
-            if (calledMethodInfo == null) { 
-                // possibly an overloaded method!
-                calledMethodInfo = IdlNaming.FindClsMethodForOverloadedMethodIdlName(methodName, serverType);
-                if (calledMethodInfo == null) { // not found -> BAD_OPERATION
-                    throw new BAD_OPERATION(0, CompletionStatus.Completed_No); 
-                }
-            }
-            return calledMethodInfo;
-        }
-
-        /// <summary>
-        /// aquire the information needed to call a standard corba operation, which is possible for every object
-        /// </summary>
-        /// <param name="methodName">the name of the method called</param>
-        /// <returns>the method-info of the method which describes signature for deserialisation</returns>
-        private MethodInfo DecodeStandardOperation(string methodName) {
-            Type serverType = StandardCorbaOps.s_type; // generic handler
-            MethodInfo calledMethodInfo = serverType.GetMethod(methodName); // for parameter unmarshalling, use info of the signature method
-            if (calledMethodInfo == null) { 
-                // unexpected exception: can't load method of type StandardCorbaOps
-                throw new INTERNAL(2801, CompletionStatus.Completed_MayBe);
-            }
-            return calledMethodInfo;
-        }
-
-        private object[] AdaptArgsForStandardOp(object[] args, string objectUri) {
-            object[] result = new object[args.Length+1];
-            result[0] = objectUri; // this argument is passed to all standard operations
-            Array.Copy((Array)args, 0, result, 1, args.Length);
-            return result;
-        }
-        
-        /// <summary>generate the signature info for the method</summary>
-        private Type[] GenerateSigForMethod(MethodInfo method) {
-            ParameterInfo[] parameters = method.GetParameters();
-            Type[] result = new Type[parameters.Length];
-            for (int i = 0; i < parameters.Length; i++) {                             
-                result[i] = parameters[i].ParameterType;
-            }
-            return result;
-        }
-        
-        /// <summary>determines method called and adds this information to the message</summary>
-        /// <param name="callForMethod">the MethodInfo of the method targeted in request</param>
-        /// <param name="regularOp">true if regular object operation (non-pseudo op), otherwise false</returns>
-        private void DecodeCall(IMessage toMessage,
-                                string objectUri, string methodName, 
-                                 CdrInputStream cdrStream, GiopVersion version,
-                                out IDictionary contextElements) {
-            MethodInfo callForMethod;
-            bool regularOp;
-            string directedUri = objectUri;                                
-            Type serverType = RemotingServices.GetServerTypeForUri(objectUri);                        
-                                                
-            string internalMethodName; // the implementation method name
-            if (!StandardCorbaOps.CheckIfStandardOp(methodName)) {
-                regularOp = true; // non-pseude op
-                if (serverType == null) {
-                    throw new OBJECT_NOT_EXIST(0, CompletionStatus.Completed_No); 
-                }
-                // handle object specific-ops
-                callForMethod = DecodeObjectOperation(methodName, serverType);
-                internalMethodName = callForMethod.Name;
-                // to handle overloads correctly, add signature info:
-                Type[] sig = GenerateSigForMethod(callForMethod);
-                toMessage.Properties.Add(SimpleGiopMsg.METHOD_SIG_KEY, sig);
-            } else {
-                regularOp = false; // pseude-object op
-                // handle standard corba-ops like _is_a
-                callForMethod = DecodeStandardOperation(methodName);
-                MethodInfo internalCall = 
-                    StandardCorbaOps.GetMethodToCallForStandardMethod(callForMethod.Name);
-                if (internalCall == null) {
-                    throw new INTERNAL(2802, CompletionStatus.Completed_MayBe);    
-                }
-                internalMethodName = internalCall.Name;
-                directedUri = StandardCorbaOps.WELLKNOWN_URI; // change object-uri                    
-                serverType = StandardCorbaOps.s_type;
-            }
-            toMessage.Properties.Add(SimpleGiopMsg.URI_KEY, directedUri);
-            toMessage.Properties.Add(SimpleGiopMsg.TYPENAME_KEY, serverType.FullName);
-            toMessage.Properties.Add(SimpleGiopMsg.METHODNAME_KEY, internalMethodName);     
-                                    
-            // deserialse method arguments
-            object[] args = DeserialiseRequestBody(cdrStream, callForMethod,     
-                                                   !regularOp, objectUri, version, 
-                                                   out contextElements);
-            toMessage.Properties.Add(SimpleGiopMsg.ARGS_KEY, args);            
-        }
-        
-        
+        }               
 
         /// <summary>
         /// serialises the message body for a GIOP request
         /// </summary>
-        /// <param name="methodCall">the .NET remoting request Msg</param>
+        /// <param name="clientRequest">the giop request Msg</param>
         /// <param name="targetStream"></param>
-        /// <param name="version">the Giop version to use</param>
-        /// <param name="reqId">the request-id to use</param>
-        internal void SerialiseRequest(IMethodCallMessage methodCall,
-                                     CdrOutputStream targetStream, 
-                                     Ior targetIor, uint reqId,
-                                     GiopConnectionDesc conDesc) {
+        /// <param name="version">the Giop version to use</param>      
+        /// <param name="conDesc">the connection used for this request</param>  
+        internal void SerialiseRequest(GiopClientRequest clientRequest,
+                                       CdrOutputStream targetStream, 
+                                       Ior targetIor, GiopConnectionDesc conDesc) {
             Trace.WriteLine(String.Format("serializing request for method {0}; uri {1}; id {2}", 
-                                          methodCall.MethodBase, methodCall.Uri, reqId));
+                                          clientRequest.MethodToCall, clientRequest.Request.Uri, 
+                                          clientRequest.RequestId));
             GiopVersion version = targetIor.Version;
 
             ServiceContextCollection cntxColl = CosServices.GetSingleton().
-                                                    InformInterceptorsRequestToSend(methodCall, targetIor, 
+                                                    InformInterceptorsRequestToSend(clientRequest.Request, targetIor, 
                                                                                     conDesc);
 
             // set code-set for the stream
             SetCodeSet(targetStream, conDesc);
                         
-            if ((version.Major == 1) && (version.Minor <= 1)) { // for GIOP 1.0 / 1.1
+            if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1
                 SerialiseContext(targetStream, cntxColl); // service context                
             }
 
-            targetStream.WriteULong(reqId);
+            targetStream.WriteULong(clientRequest.RequestId);
             byte responseFlags = 0;
-            if ((version.Major == 1) && (version.Minor <= 1)) { // GIOP 1.0 / 1.1
+            if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1
                 responseFlags = 1;
             } else {
                 // reply-expected, no DII-call --> must be 0x03, no reply --> must be 0x00
                 responseFlags = 3;
             }
-            if (GiopMessageHandler.IsOneWayCall(methodCall)) { 
+            if (clientRequest.IsOneWayCall) { 
                 responseFlags = 0; 
             } // check if one-way
             // write response-flags
             targetStream.WriteOctet(responseFlags); 
                         
             targetStream.WritePadding(3); // reserved bytes
-            WriteTarget(targetStream, targetIor.ObjectKey, version); // write the target-info
-
-            string methodName = IdlNaming.GetRequestMethodName((MethodInfo)methodCall.MethodBase,
-                                                               RemotingServices.IsMethodOverloaded(methodCall));
-            targetStream.WriteString(methodName); // write the method name
+            WriteTarget(targetStream, targetIor.ObjectKey, version); // write the target-info            
+            targetStream.WriteString(clientRequest.RequestMethodName); // write the method name
             
-            if ((version.Major == 1) && (version.Minor <= 1)) { // GIOP 1.0 / 1.1
+            if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1
                 targetStream.WriteULong(0); // no principal
             } else { // GIOP 1.2
                 SerialiseContext(targetStream, cntxColl); // service context
             }
-            SerialiseRequestBody(targetStream, methodCall.Args, (MethodInfo)methodCall.MethodBase, version,
-                                 methodCall.LogicalCallContext);
+            SerialiseRequestBody(targetStream, clientRequest, version);
         }
 
         private void SerialiseContextElements(CdrOutputStream targetStream, MethodInfo methodToCall,
@@ -541,20 +408,20 @@ namespace Ch.Elca.Iiop.MessageHandling {
 
         /// <summary>serializes the request body</summary>
         /// <param name="targetStream"></param>
-        /// <param name="callArgs">the arguments for this methodcall</param>
-        /// <param name="methodToCall">the MethodInfo reflection-info for the method which should be called</param>
+        /// <param name="clientRequest">the request to serialise</param>
         /// <param name="version">the GIOP-version</param>
-        private void SerialiseRequestBody(CdrOutputStream targetStream, object[] callArgs,
-                                          MethodInfo methodToCall, GiopVersion version,
-                                          LogicalCallContext callContext) {
+        private void SerialiseRequestBody(CdrOutputStream targetStream, GiopClientRequest clientRequest,
+                                          GiopVersion version) {
             // body of request msg: serialize arguments
             // clarification from CORBA 2.6, chapter 15.4.1: no padding, when no arguments are serialised  -->
             // for backward compatibility, do it nevertheless
             AlignBodyIfNeeded(targetStream, version);
             ParameterMarshaller marshaller = ParameterMarshaller.GetSingleton();
-            marshaller.SerialiseRequestArgs(methodToCall, callArgs, targetStream);
+            marshaller.SerialiseRequestArgs(clientRequest.MethodToCall, clientRequest.RequestArguments, 
+                                            targetStream);
             // check for context elements
-            SerialiseContextElements(targetStream, methodToCall, callContext);
+            SerialiseContextElements(targetStream, clientRequest.MethodToCall,
+                                     clientRequest.RequestCallContext);
         }
 
         /// <summary>
@@ -564,30 +431,31 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <param name="version"></param>
         /// <returns></returns>
         internal IMessage DeserialiseRequest(CdrInputStream cdrStream, GiopVersion version,
-                                           GiopConnectionDesc conDesc) {
-            SimpleGiopMsg msg = new SimpleGiopMsg();
-            msg.Properties.Add(SimpleGiopMsg.GIOP_VERSION_KEY, version);
+                                           GiopConnectionDesc conDesc) {            
+            GiopServerRequest serverRequest = new GiopServerRequest();
+            serverRequest.Version = version;
             try {
-                if ((version.Major == 1) && (version.Minor <= 1)) { // GIOP 1.0 / 1.1
+                if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1
                     ServiceContextCollection coll = DeserialiseContext(cdrStream); // Service context deser
                     CosServices.GetSingleton().InformInterceptorsReceivedRequest(coll, conDesc);
                 }
                 
                 // read the request-ID and set it as a message property
                 uint requestId = cdrStream.ReadULong(); 
-                msg.Properties.Add(SimpleGiopMsg.REQUEST_ID_KEY, requestId);
+                serverRequest.RequestId = requestId;                
                 Trace.WriteLine("received a message with reqId: " + requestId);
                 // read response-flags:
                 byte respFlags = cdrStream.ReadOctet(); Debug.WriteLine("response-flags: " + respFlags);
                 cdrStream.ReadPadding(3); // read reserved bytes
-                msg.Properties.Add(SimpleGiopMsg.RESPONSE_FLAGS_KEY, respFlags);
+                serverRequest.ResponseFlags = respFlags;
                 
                 // decode the target of this request
-                string objectUri = ReadTarget(cdrStream, version);
-                string methodName = cdrStream.ReadString();
-                Trace.WriteLine("call for .NET object: " + objectUri + ", methodName: " + methodName);
+                serverRequest.RequestUri = ReadTarget(cdrStream, version);
+                serverRequest.RequestMethodName = cdrStream.ReadString();
+                Trace.WriteLine("call for .NET object: " + serverRequest.RequestUri + 
+                                ", methodName: " + serverRequest.RequestMethodName);
 
-                if ((version.Major == 1) && (version.Minor <= 1)) { // GIOP 1.0 / 1.1
+                if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1
                     uint principalLength = cdrStream.ReadULong();
                     cdrStream.ReadOpaque((int)principalLength);
                 } else {
@@ -598,12 +466,10 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 SetCodeSet(cdrStream, conDesc);
                 // request header deserialised
 
-                Type serverType = RemotingServices.GetServerTypeForUri(objectUri);
                 IDictionary contextElements;
-                DecodeCall(msg, objectUri, methodName, 
-                           cdrStream, version, out contextElements);             
-                                
-                MethodCall methodCallInfo = new MethodCall(msg);
+                serverRequest.ResolveCall(); // determine the .net target method
+                DeserialiseRequestBody(cdrStream, version, serverRequest, out contextElements);
+                MethodCall methodCallInfo = new MethodCall(serverRequest.Request);
                 if (contextElements != null) {
                     AddContextElementsToCallContext(methodCallInfo.LogicalCallContext, contextElements);
                 }
@@ -615,7 +481,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 } catch (Exception) {
                     // ignore exception here, already an other exception leading to problems
                 }
-                throw new RequestDeserializationException(e, msg);
+                throw new RequestDeserializationException(e, serverRequest.Request);
             }
         }
 
@@ -643,21 +509,27 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
             return result;
         }
+        
+        private object[] AdaptArgsForStandardOp(object[] args, string objectUri) {
+            object[] result = new object[args.Length+1];
+            result[0] = objectUri; // this argument is passed to all standard operations
+            Array.Copy((Array)args, 0, result, 1, args.Length);
+            return result;
+        }                                                
 
         /// <summary>deserialise the request body</summary>
-        /// <param name="contextElements">the deserialised context elements, if any or null</param>
-        /// <returns>the deserialized arguments</returns>
-        private object[] DeserialiseRequestBody(CdrInputStream cdrStream, MethodInfo calledMethodInfo,
-                                                bool isStandardOp, string calledUri, GiopVersion version,
-                                                out IDictionary contextElements) {
+        /// <param name="contextElements">the deserialised context elements, if any or null</param>        
+        private void DeserialiseRequestBody(CdrInputStream cdrStream, GiopVersion version,
+                                            GiopServerRequest request,
+                                            out IDictionary contextElements) {
             // unmarshall parameters
             ParameterMarshaller paramMarshaller = ParameterMarshaller.GetSingleton();
             object[] args;
             // clarification from CORBA 2.6, chapter 15.4.1: no padding, when no arguments/no context elements
             // are serialised, i.e. body empty
-            bool hasRequestArgs = paramMarshaller.HasRequestArgs(calledMethodInfo);
+            bool hasRequestArgs = paramMarshaller.HasRequestArgs(request.CalledMethod);
             AttributeExtCollection methodAttrs =
-                ReflectionHelper.GetCustomAttriutesForMethod(calledMethodInfo, true,
+                ReflectionHelper.GetCustomAttriutesForMethod(request.CalledMethod, true,
                                                              ReflectionHelper.ContextElementAttributeType);
             contextElements = null;
             if ((hasRequestArgs) || (methodAttrs.Count > 0)) {
@@ -666,18 +538,18 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 cdrStream.SkipRest(); // ignore paddings, if included    
             }
             if (hasRequestArgs) {
-                args = paramMarshaller.DeserialiseRequestArgs(calledMethodInfo, cdrStream);
+                args = paramMarshaller.DeserialiseRequestArgs(request.CalledMethod, cdrStream);
             } else {
-                args = new object[calledMethodInfo.GetParameters().Length];
+                args = new object[request.CalledMethod.GetParameters().Length];
             }
             if (methodAttrs.Count > 0) {
                 contextElements = DeserialseContextElements(cdrStream, methodAttrs);
             }            
             // for standard corba ops, adapt args:
-            if (isStandardOp) {
-                args = AdaptArgsForStandardOp(args, calledUri);
-            }                        
-            return args;
+            if (request.IsStandardCorbaOperation) {
+                args = AdaptArgsForStandardOp(args, request.RequestUri);
+            }
+            request.RequestArgs = args;            
         }
 
         #endregion Requests
@@ -685,23 +557,23 @@ namespace Ch.Elca.Iiop.MessageHandling {
 
         /// <summary>serialize the GIOP message body of a repsonse message</summary>
         /// <param name="requestId">the requestId of the request, this response belongs to</param>
-        internal void SerialiseReply(ReturnMessage msg, CdrOutputStream targetStream, 
-                                   GiopVersion version, uint requestId,
+        internal void SerialiseReply(GiopServerRequest request, CdrOutputStream targetStream, 
+                                   GiopVersion version,
                                    GiopConnectionDesc conDesc) {
-            Trace.WriteLine("serializing response for method: " + msg.MethodName);
+            Trace.WriteLine("serializing response for method: " + request.CalledMethodName);
             
             ServiceContextCollection cntxColl = CosServices.GetSingleton().
                                                     InformInterceptorsReplyToSend(conDesc);
             // set codeset for stream
             SetCodeSet(targetStream, conDesc);
 
-            if ((version.Major == 1) && (version.Minor <= 1)) { // for GIOP 1.0 / 1.1
+            if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1
                 SerialiseContext(targetStream, cntxColl); // serialize the context
             }
             
-            targetStream.WriteULong(requestId);
+            targetStream.WriteULong(request.RequestId);
 
-            if (msg.Exception == null) { 
+            if (!request.IsExceptionReply) { 
                 Trace.WriteLine("sending normal response to client");
                 targetStream.WriteULong(0); // reply status ok
                 
@@ -709,11 +581,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
                     SerialiseContext(targetStream, cntxColl); // serialize the context                
                 }
                 // serialize a response to a successful request
-                SerialiseResponseOk(targetStream, msg, version);
+                SerialiseResponseOk(targetStream, request, version);
                 Trace.WriteLine("reply body serialised");
             } else {
-                Trace.WriteLine("exception to pass to client: " + msg.Exception.GetType());
-                Exception exceptionToSend = DetermineExceptionToThrow(msg.Exception, msg.MethodBase);
+                Trace.WriteLine("exception to pass to client: " + request.Exception.GetType());
+                Exception exceptionToSend = DetermineExceptionToThrow(request.Exception, request.CalledMethod);
                 Trace.WriteLine("excpetion to send to client: " + exceptionToSend.GetType());
                 
                 if (SerialiseAsSystemException(exceptionToSend)) {
@@ -739,7 +611,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
         }
 
-        private void SerialiseResponseOk(CdrOutputStream targetStream, ReturnMessage msg,
+        private void SerialiseResponseOk(CdrOutputStream targetStream, GiopServerRequest request,
                                          GiopVersion version) {
             // reply body
             // clarification form CORBA 2.6, chapter 15.4.2: no padding, when no arguments are serialised  -->
@@ -747,8 +619,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
             AlignBodyIfNeeded(targetStream, version);
             // marshal the parameters
             ParameterMarshaller marshaller = ParameterMarshaller.GetSingleton();
-            marshaller.SerialiseResponseArgs((MethodInfo)msg.MethodBase, 
-                                             msg.ReturnValue, msg.OutArgs, targetStream);            
+            marshaller.SerialiseResponseArgs(request.CalledMethod, 
+                                             request.ReturnValue, request.OutArgs, targetStream);            
         }                
 
         /// <summary>serialize the exception as a CORBA System exception</summary>
@@ -833,17 +705,17 @@ namespace Ch.Elca.Iiop.MessageHandling {
 
 
         internal IMessage DeserialiseReply(CdrInputStream cdrStream, 
-                                         GiopVersion version, IMethodCallMessage methodCall,
+                                         GiopVersion version, GiopClientRequest request,
                                          GiopConnectionDesc conDesc) {
 
-            if ((version.Major == 1) && (version.Minor <= 1)) { // for GIOP 1.0 / 1.1, the service context is placed here
+            if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1, the service context is placed here
                 ServiceContextCollection coll = DeserialiseContext(cdrStream); // deserialize the service contexts
                 CosServices.GetSingleton().InformInterceptorsReceivedReply(coll, conDesc);
             }
             
             uint forRequestId = cdrStream.ReadULong();
             uint responseStatus = cdrStream.ReadULong();
-            if (!((version.Major == 1) && (version.Minor <= 1))) { // for GIOP 1.2 and later, service context is here
+            if (!version.IsBeforeGiop1_2()) { // for GIOP 1.2 and later, service context is here
                 ServiceContextCollection coll = DeserialiseContext(cdrStream); // deserialize the service contexts
                 CosServices.GetSingleton().InformInterceptorsReceivedReply(coll, conDesc);
             }
@@ -855,26 +727,28 @@ namespace Ch.Elca.Iiop.MessageHandling {
             try {
                 switch (responseStatus) {
                     case 0 : 
-                        Trace.WriteLine("deserializing normal reply for methodCall: " + methodCall.MethodBase);
-                        response = DeserialiseNormal(cdrStream, version, methodCall); break;
+                        Trace.WriteLine("deserializing normal reply for methodCall: " + request.MethodToCall);
+                        response = DeserialiseNormalReply(cdrStream, version, request); 
+                        break;
                     case 1 :                         
                         Exception userEx = DeserialiseUserException(cdrStream, version); // the error .NET message for this exception is created in the formatter
-                        response = new ReturnMessage(userEx, methodCall);
+                        response = new ReturnMessage(userEx, request.Request);
                         break;
                     case 2 : 
                         Exception systemEx = DeserialiseSystemError(cdrStream, version); // the error .NET message for this exception is created in the formatter
-                        response = new ReturnMessage(systemEx, methodCall);
+                        response = new ReturnMessage(systemEx, request.Request);
                         break;
                     case 3 :
                         // LOCATION_FORWARD:
                         // --> deserialise it and return location fwd message
-                        response = DeserialiseLocationFwd(cdrStream, version, methodCall); 
+                        response = DeserialiseLocationFwdReply(cdrStream, version, request); 
                         break;
                     default : 
                         // deseralization of reply error, unknown reply status: responseStatus
                         // the error .NET message for this exception is created in the formatter
                         throw new MARSHAL(2401, CompletionStatus.Completed_MayBe);
                 }
+                request.Reply = response;
             } catch (Exception e) {
                 Debug.WriteLine("exception while deserialising reply: " + e);
                 // do not corrupt stream --> skip
@@ -890,9 +764,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
 
         /// <summary>deserialize response with ok-status.</summary>
-        private IMessage DeserialiseNormal(CdrInputStream cdrStream, GiopVersion version, 
-                                           IMethodCallMessage methodCall) {
-            MethodInfo targetMethod = (MethodInfo)methodCall.MethodBase;
+        private IMessage DeserialiseNormalReply(CdrInputStream cdrStream, GiopVersion version, 
+                                                GiopClientRequest request) {
+            MethodInfo targetMethod = request.MethodToCall;
             ParameterMarshaller paramMarshaller = ParameterMarshaller.GetSingleton();
             object[] outArgs;
             object retVal = null;
@@ -906,7 +780,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 outArgs = new object[0];
                 cdrStream.SkipRest(); // skip padding, if present
             }
-            ReturnMessage response = new ReturnMessage(retVal, outArgs, outArgs.Length, null, methodCall);
+            ReturnMessage response = new ReturnMessage(retVal, outArgs, outArgs.Length, null, request.Request);
             LogicalCallContext dnCntx = response.LogicalCallContext;
             // TODO: fill in .NET context ...
             return response;
@@ -947,13 +821,13 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>
         /// deserialise the location fwd
         /// </summary>
-        private LocationForwardMessage DeserialiseLocationFwd(CdrInputStream cdrStream, 
-                                                              GiopVersion version,
-                                                              IMethodCallMessage request) {
+        private LocationForwardMessage DeserialiseLocationFwdReply(CdrInputStream cdrStream, 
+                                                                   GiopVersion version,
+                                                                   GiopClientRequest request) {
             AlignBodyIfNeeded(cdrStream, version);
             // read the Location fwd IOR
             Marshaller marshaller = Marshaller.GetSingleton();
-            MarshalByRefObject newProxy = marshaller.Unmarshal(request.MethodBase.DeclaringType, 
+            MarshalByRefObject newProxy = marshaller.Unmarshal(request.MethodToCall.DeclaringType, 
                                                                AttributeExtCollection.EmptyCollection, cdrStream)
                                               as MarshalByRefObject;
             if (newProxy == null) {
