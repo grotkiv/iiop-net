@@ -328,7 +328,12 @@ namespace Ch.Elca.Iiop.Tests {
         
         public object MethodSignature {
             get {
-                throw new NotImplementedException();
+                if (MethodBase != null) {
+                    return ReflectionHelper.GenerateSigForMethod(MethodBase);
+                } else {
+                    return null;
+                }
+                    
             }
         }
         
