@@ -1,0 +1,242 @@
+version 1.6.0 final (21 March 2003)
+-----------------------------------
+
+bugs fixed:
+
+- IDLToCLSCompiler: ParseException: wstring constant literals (bug #906401)
+- IDLToCLSCompiler: OverflowException for long long constant value -9.223.372.036.854.775.808: the smallest allowed long long (bug #909562)
+- value type impl source generator: missing inherited properties / methods fixed.
+
+new features:
+- IDLToCLSCompiler: now supports also octet integral constants
+- IDLToCLSCompiler: now able to generate strong name assemblies (feature request #901013) 
+- IIOPChannel: added list operation to NamingContext interface
+- Custom mapping mechanism: added support for java.lang.Long in ArrayLists / Hashmaps
+
+examples:
+- added EJB command pattern example in directory Examples\EJBCommandPattern\Jboss3.2
+
+
+documentation:
+- added the whole website as documentation (directory Doc)
+
+new tests:
+- multi-threading test
+
+
+version 1.6.0 rc0 (22 January 2003)
+-----------------------------------
+
+new features:
+- IDLToCLSCompiler is now able to generate a skeleton for value type implementation classes. 
+  Use the option -vtSkel to turn on generation of the .cs files containing the skeletons.
+- IIOPChannel: added runtime check for bounded sequences
+
+changes:
+- IDLToCLSCompiler generates now only one dll without an additional .netmodule file. This resolves the problem with
+  C# VS.NET intellisense.
+- Performance improvment.
+- improved some error messages from the IDLToCLSCompiler.
+
+bugs fixed:
+
+- IIOPChannel: Strings deserialized from "any" are assumed to be boxed (bug #858354)
+- IIOPChannel: (W)StringTC deserialization incorrect (bug #860267)
+- IDLToCLSCompiler: problem with recursive structs (sequence) (bug #866708)
+
+
+
+Version 1.5.1 (02 Decembre 2003)
+-------------------------------
+
+new features:
+- added custom mapping: java.util.Hashmap <-> System.Collections.Hashtable
+- code set conversion sets are now also considered by IIOP.NET clients (not only native sets)
+- use _is_a call, when deserialising a object reference, when type information in IOR is not enough to
+  determine assignablity to formal parameter.
+- improved debugging support (channel creates debug output file in debug mode)
+
+changes:
+- Custom mapping: renamed java collection mapping dll from customCollectionMappings.dll to IIOPNetCustomJavaTypeMapping.dll
+- IDLTOCLSCompiler: ignore inheritance from java.io.Serializable in IDL, because this is illegal in IDL; (rmic creates this illegal IDL)
+
+bugs fixed:
+- IDLToCLSCompiler crashed when generating big unions (bug #831611)
+- IDLToCLSCompiler crashes on some recursive type definitions: TypeLoadException (bug #837808)
+- constant values not usable in other IDL definitions (bug #840585)
+- incorrect handling of char constants (bug #841774)
+- incorrect serialisation/deserialisation of some idl sequences (bug #845223)
+- passing null for idl abstract value types causes exception (bug #841258)
+- IDLToCLSCompiler: ID, prefix are no longer considered as grammar keywords in IDL
+
+partly fixed:
+- IDLToCLSCompiler: character / string literals bug (bug #794060)
+
+new tests:
+- OmniORB 4.0.2 integration test for IDL unions
+
+
+Version 1.5.0 (13 Octobre 2003)
+-------------------------------
+
+new features:
+
+- support for IDL unions
+- support for IDL constants
+
+changes:
+
+- IDL to CLS compiler is now implemented in C# instead of J#.
+
+new tests:
+
+- MICO integration test for IDL unions
+
+
+Version 1.4.1 (22 Septembre 2003)
+---------------------------------
+
+new features:
+
+- initial support for IDL local interfaces
+- IDLPreprocessor: now supports #ifdef, #else.
+
+
+new demos:
+
+- Callback demo: between a IIOP.NET client and an IIOP.NET server.
+
+
+bugs fixed:
+- IIOPChannel: paramter attributes of overriden methods not considered on serialising / deserialising; bug #803645
+- IIOPChannel: oneway calls: IIOP.NET clients waits for answers (in a separate Thread, but mustn't); bug #802992
+- IDL to CLS compiler: IndexOutOfBoundExceptions fixed (see Discussion in forum: http://sourceforge.net/forum/forum.php?thread_id=922161&forum_id=274081)
+- IDL to CLS compiler: some scoped IDL names couldn't be resolved by compiler; bug #800911
+- IDLPreprocessor: sematic of "" and <> for include directives corrected
+
+
+changes:
+
+- automated jboss / WAS5 integration test
+- workaround for IDL bounded sequences: now mapped to unbounded + warning on compilation
+- IDLPreprocessor: now wirtten in C# instead of J#
+
+
+Version 1.4.0 (26 August 2003)
+------------------------------
+
+new features:
+
+- corbaloc:iiop support -> improved nameservice access for JBoss
+- JBoss 3.2.1 EJB demo added
+- custom mapping support: possible to specify a different mapping, e.g. for Collections:
+  CLS ArrayList directly mapped to java ArrayList and vice versa. (see MappingPlugin Integration tests)
+- automation of integration / unit tests
+- mapping document added
+
+
+new tests:
+
+- more integration tests, e.g. WLS6.1 test
+
+
+changes:
+
+- loading of assemblies for serialisation / deserialisation improved:
+  now considers RelativeSearchPath of Appdomain
+- chunked encoded value types deserialisation problems corrected
+- improved mapping of type/method-names
+- CLS server objects; support for is_a CORBA standard methods reestablished
+- EJBChatRoom refactoring: ChatroomClients renamed to ChatroomServer
+
+
+
+Version 1.3.1 (05 August 2003)
+------------------------------
+
+This release is a bug-fix release.
+
+bugs fixed:
+
+- fixed attributes-bug in Channel/Compiler (bug #773479)
+- oneway CLS methods now supported
+- CLS to IDL generator bug #780820 fixed (Idl for dependant types not generated for interfaces).
+- name mapping implementation (from IDL to CLS and from CLS to IDL names) imporved. 
+  Special names (name mapping exceptions) are now better supported.
+- .NET server states now in the IOR sent to clients in every case, that remote object supports GIOP 1.2.
+- overloaded CLS methods are now handled corretly
+
+new features:
+
+- added initial support for LocateRequest/LocateReply GIOP messages
+- added a -r option to IDL to CLS compiler for using types from assembly instead of generating them.
+
+new tests:
+
+- added more integration tests, e.g. WAS5 test
+
+
+Version 1.3.0 (15 July 2003)
+----------------------------
+
+This release is a bug-fix and compatibility improvement release.
+
+- improved compatibility with websphere 5.0 (passing String is now ok)
+
+- bugs fixed in CLS to IDL generator:
+  IDL generated for CLS properties is now correct
+  no longer generate IDL files in some cases, which reference themself (bug #770106)
+  MarshalByRef now correctly mapped to IDL (bug #770104)
+
+- bug fixed in IDL to CLS compiler:
+  code generated for idl enums now correct (bug #768271)
+  code generated for idl wchar is now correct (bug #768298)
+  CLS for IDL attributes is now correct
+
+- IIOP.NET channel
+  wchar for IIOP 1.2 now correct
+  client does not ignore codeset in IOR's anymore (bug #767166)
+  corrected problems when passing string[] (bug #768328)
+  corrected some problems with jagged arrays (bug #770854)
+  
+- added Integration tests  
+
+
+Version 1.2.3 (02 July 2003)
+-----------------------------
+
+- improved compatibility with Websphere 4.0 / 5.0
+- bug fix for bug #764523 (IIOP.NET channel)
+- updated EJB interop example to use RmiIiopInit instead of CorbaInit
+
+
+Version 1.2.2 (24 June 2003)
+-----------------------------
+
+- added EJB interop example
+- Bug fixes for bugs #758697 and #758341 (IDLtoCLSCompiler)
+
+Version 1.2.1 (16 June 2003)
+----------------------------
+
+- Improved IIOP.Net channel
+- supports now simple two way interoperability with Mico ORB
+- Bug fix for bug #754820 (Generator)
+
+
+Version 1.2 (09 June 2003)
+--------------------------
+- IDL to CLS compiler
+- GettingStarted examples showing how to use the tools
+
+
+Version 1.1 (28 May 2003)
+-------------------------
+- improved version of the IIOP.NET Channel
+- GenericCollections example
+- CLS to IDL generator
+
+
+Version 1.0 (05 May 2003)
+-------------------------
+- first version of the IIOP.NET Channel
