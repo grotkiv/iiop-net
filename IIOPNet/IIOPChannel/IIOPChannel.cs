@@ -300,7 +300,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         public IiopClientChannel() {
-            InitChannel(new TcpTransportFactory(), new MessageTimeout(), UNUSED_CLIENT_CONNECTION_TIMEOUT);
+            InitChannel(new TcpTransportFactory(), MessageTimeout.Infinite, UNUSED_CLIENT_CONNECTION_TIMEOUT);
         }
         
         public IiopClientChannel(IDictionary properties) : 
@@ -318,7 +318,7 @@ namespace Ch.Elca.Iiop {
             IDictionary nonDefaultOptions = new Hashtable();
             int receiveTimeOut = 0;
             int sendTimeOut = 0;
-            MessageTimeout requestTimeOut = new MessageTimeout();
+            MessageTimeout requestTimeOut = MessageTimeout.Infinite;
             int unusedClientConnectionTimeout = UNUSED_CLIENT_CONNECTION_TIMEOUT;
             
             if (properties != null) {

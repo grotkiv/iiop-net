@@ -50,12 +50,22 @@ namespace Ch.Elca.Iiop {
     /// </summary>
     internal class MessageTimeout {
         
+    	#region SFields
+    	
+    	private static MessageTimeout s_infiniteTimeOut = new MessageTimeout();
+    	
+    	#endregion SFields
+    	#region IFields
+    	
         private object m_timeOut = null;
+        
+        #endregion IFields
+        #region IConstructors
         
         /// <summary>
         /// infinite connection timeout
         /// </summary>
-        internal MessageTimeout() {
+        private MessageTimeout() {
             m_timeOut = null;
         }
         
@@ -65,6 +75,21 @@ namespace Ch.Elca.Iiop {
         internal MessageTimeout(TimeSpan timeOut) {
             m_timeOut = timeOut;
         }
+
+        #endregion IConstructors
+        #region SProperties
+
+        /// <summary>
+        /// returns an instance of MessageTimeout with infinite timeout.
+        /// </summary>
+        internal static MessageTimeout Infinite {
+        	get {
+        		return s_infiniteTimeOut;
+        	}
+        }
+        
+        #endregion SProperties        
+        #region IProperties
         
         internal TimeSpan TimeOut {
             get {
@@ -83,7 +108,9 @@ namespace Ch.Elca.Iiop {
             get {
                 return m_timeOut == null;
             }
-        }
+        }                
+        
+        #endregion IProperties
                                 
     }
     
@@ -550,7 +577,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         /// <summary>creates a giop transport message handler, which doesn't accept request messages</summary>
-        internal GiopTransportMessageHandler(ITransport transport) : this(transport, new MessageTimeout()) {            
+        internal GiopTransportMessageHandler(ITransport transport) : this(transport, MessageTimeout.Infinite) {            
         }
         
         /// <summary>creates a giop transport message handler, which doesn't accept request messages</summary>

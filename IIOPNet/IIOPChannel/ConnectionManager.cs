@@ -157,7 +157,7 @@ namespace Ch.Elca.Iiop {
         }
         
         internal GiopClientConnectionManager(IClientTransportFactory transportFactory, int unusedKeepAliveTime) :
-            this(transportFactory, new MessageTimeout(), unusedKeepAliveTime) {
+            this(transportFactory, MessageTimeout.Infinite, unusedKeepAliveTime) {
         }
         
         #endregion IConstructors
