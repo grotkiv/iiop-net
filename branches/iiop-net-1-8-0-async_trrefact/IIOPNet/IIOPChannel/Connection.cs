@@ -159,7 +159,7 @@ namespace Ch.Elca.Iiop {
         /// <param name="connectionKey">the key describing the connection</param>
         /// <param name="transport">an already connected client transport</param>
         internal GiopClientConnection(string connectionKey, IClientTransport transport) : 
-            this(connectionKey, transport, new MessageTimeout()) {
+            this(connectionKey, transport, MessageTimeout.Infinite) {
         }        
         
         
