@@ -2226,12 +2226,21 @@ public class MetaDataGenerator : IDLParserVisitor {
             m_ilEmitHelper.AddMethod(typeAtBuild, methodName, transmittedName,
                                      parameters, returnType,
                                      MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public | MethodAttributes.HideBySig);
-        if ((node.jjtGetNumChildren() > 2) && (node.jjtGetChild(2) is ASTraises_expr)) {
+        int currentChild = 2;
+        if ((node.jjtGetNumChildren() > currentChild) && (node.jjtGetChild(currentChild) is ASTraises_expr)) {
             // has a raises expression, add attributes for allowed exceptions
             Type[] exceptionTypes = (Type[])node.jjtGetChild(2).jjtAccept(this, buildInfo);
             foreach (Type exceptionType in exceptionTypes) {
                 methodBuilder.SetCustomAttribute(
                     new ThrowsIdlExceptionAttribute(exceptionType).CreateAttributeBuilder());
+            }
+            currentChild++;
+        }        
+        if ((node.jjtGetNumChildren() > currentChild) && (node.jjtGetChild(currentChild) is ASTcontext_expr)) {
+            string[] contextElementAttrs = (string[])node.jjtGetChild(currentChild).jjtAccept(this, buildInfo);
+            foreach (string contextElem in contextElementAttrs) {
+                methodBuilder.SetCustomAttribute(
+                    new ContextElementAttribute(contextElem).CreateAttributeBuilder());
             }
         }
         return null;
@@ -2337,7 +2346,15 @@ public class MetaDataGenerator : IDLParserVisitor {
      * @see parser.IDLParserVisitor#visit(ASTcontext_expr, Object)
      */
     public Object visit(ASTcontext_expr node, Object data) {
-        return null; // TBD: ???
+        ArrayList result = new ArrayList();
+        foreach (string element in node.GetContextElements()) {
+            if (!element.EndsWith("*")) {
+                result.Add(element);
+            } else {
+                Console.WriteLine("warning: context element with * at the end not supported by IIOP.NET; ignoring");
+            }
+        }
+        return (string[])result.ToArray(ReflectionHelper.StringType);
     }
 
     /**

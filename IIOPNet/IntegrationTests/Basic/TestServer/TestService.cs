@@ -27,6 +27,7 @@
 
 
 using System;
+using System.Runtime.Remoting.Messaging;
 using Ch.Elca.Iiop.Idl;
 
 namespace Ch.Elca.Iiop.IntegrationTests {
@@ -450,6 +451,18 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         [ThrowsIdlException(typeof(TestNetExceptionMappedToIdl))]        
         public void ThrowUnKnownException() {
             throw new NotSupportedException("test-ex");
+        }
+
+        [ContextElement("element1")]
+        [return: StringValue()]
+        [return: WideChar(false)]
+        public string TestContextElementPassing() {
+            string result = "";
+            CorbaContextElement elem = CallContext.GetData("element1") as CorbaContextElement;
+            if (elem != null) {
+                result = elem.ElementValue;
+            }
+            return result;
         }
 
         public bool TestPropWithGetUserException {

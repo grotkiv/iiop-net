@@ -29,6 +29,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Specialized;
 using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting;
 using System.Diagnostics;
@@ -201,6 +202,21 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
 
         #endregion SMethods
+        #region IFields
+
+        private MarshallerForType m_contextSeqMarshaller;
+
+        #endregion IFields
+        #region IConstructors
+
+        private GiopMessageBodySerialiser() {            
+            m_contextSeqMarshaller = new MarshallerForType(typeof(string[]), 
+                                        new AttributeExtCollection(new Attribute[] { new IdlSequenceAttribute(0L),
+                                                                                     new StringValueAttribute(),
+                                                                                     new WideCharAttribute(false) }));
+        }
+
+        #endregion IConstructors
         #region IMethods
         
         #region Common
@@ -401,7 +417,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <param name="regularOp">true if regular object operation (non-pseudo op), otherwise false</returns>
         private void DecodeCall(IMessage toMessage,
                                 string objectUri, string methodName, 
-                                 CdrInputStream cdrStream, GiopVersion version) {
+                                 CdrInputStream cdrStream, GiopVersion version,
+                                out IDictionary contextElements) {
             MethodInfo callForMethod;
             bool regularOp;
             string directedUri = objectUri;                                
@@ -438,7 +455,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                     
             // deserialse method arguments
             object[] args = DeserialiseRequestBody(cdrStream, callForMethod,     
-                                                   !regularOp, objectUri, version);
+                                                   !regularOp, objectUri, version, 
+                                                   out contextElements);
             toMessage.Properties.Add(SimpleGiopMsg.ARGS_KEY, args);            
         }
         
@@ -496,7 +514,29 @@ namespace Ch.Elca.Iiop.MessageHandling {
             } else { // GIOP 1.2
                 SerialiseContext(targetStream, cntxColl); // service context
             }
-            SerialiseRequestBody(targetStream, methodCall.Args, (MethodInfo)methodCall.MethodBase, version);
+            SerialiseRequestBody(targetStream, methodCall.Args, (MethodInfo)methodCall.MethodBase, version,
+                                 methodCall.LogicalCallContext);
+        }
+
+        private void SerialiseContextElements(CdrOutputStream targetStream, MethodInfo methodToCall,
+                                              LogicalCallContext callContext) {
+            AttributeExtCollection methodAttrs =
+                ReflectionHelper.GetCustomAttriutesForMethod(methodToCall, true,
+                                                             ReflectionHelper.ContextElementAttributeType);
+            if (methodAttrs.Count > 0) {
+                string[] contextSeq = new string[methodAttrs.Count * 2];
+                for (int i = 0; i < methodAttrs.Count; i++) {
+                    string contextKey =
+                        ((ContextElementAttribute)methodAttrs.GetAttributeAt(i)).ContextElementKey;
+                    contextSeq[i * 2] = contextKey;
+                    if (callContext.GetData(contextKey) != null) {
+                        contextSeq[i * 2 + 1] = callContext.GetData(contextKey).ToString();
+                    } else {
+                        contextSeq[i * 2 + 1] = "";
+                    }
+                }
+                m_contextSeqMarshaller.Marshal(contextSeq, targetStream);
+            }
         }
 
         /// <summary>serializes the request body</summary>
@@ -505,13 +545,16 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <param name="methodToCall">the MethodInfo reflection-info for the method which should be called</param>
         /// <param name="version">the GIOP-version</param>
         private void SerialiseRequestBody(CdrOutputStream targetStream, object[] callArgs,
-                                          MethodInfo methodToCall, GiopVersion version) {
+                                          MethodInfo methodToCall, GiopVersion version,
+                                          LogicalCallContext callContext) {
             // body of request msg: serialize arguments
             // clarification from CORBA 2.6, chapter 15.4.1: no padding, when no arguments are serialised  -->
             // for backward compatibility, do it nevertheless
             AlignBodyIfNeeded(targetStream, version);
             ParameterMarshaller marshaller = ParameterMarshaller.GetSingleton();
             marshaller.SerialiseRequestArgs(methodToCall, callArgs, targetStream);
+            // check for context elements
+            SerialiseContextElements(targetStream, methodToCall, callContext);
         }
 
         /// <summary>
@@ -556,10 +599,14 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 // request header deserialised
 
                 Type serverType = RemotingServices.GetServerTypeForUri(objectUri);
+                IDictionary contextElements;
                 DecodeCall(msg, objectUri, methodName, 
-                           cdrStream, version);             
+                           cdrStream, version, out contextElements);             
                                 
                 MethodCall methodCallInfo = new MethodCall(msg);
+                if (contextElements != null) {
+                    AddContextElementsToCallContext(methodCallInfo.LogicalCallContext, contextElements);
+                }
                 return methodCallInfo;
             } catch (Exception e) {
                 // an Exception encountered during deserialisation
@@ -568,23 +615,60 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
         }
 
+        private void AddContextElementsToCallContext(LogicalCallContext callContext, IDictionary elements) {
+            foreach (DictionaryEntry entry in elements) {
+                callContext.SetData((string)entry.Key, new CorbaContextElement((string)entry.Value));
+            }
+        }
+
+        private IDictionary DeserialseContextElements(CdrInputStream cdrStream, AttributeExtCollection contextElemAttrs) {
+            IDictionary result = new HybridDictionary();
+            string[] contextElems = (string[])m_contextSeqMarshaller.Unmarshal(cdrStream);
+            if (contextElems.Length % 2 != 0) {
+                throw new MARSHAL(67, CompletionStatus.Completed_No);
+            }
+            for (int i = 0; i < contextElems.Length; i += 2) {
+                string contextElemKey = contextElems[i];
+                // insert into call context, if part of signature
+                foreach (ContextElementAttribute attr in contextElemAttrs) {
+                    if (attr.ContextElementKey == contextElemKey) {
+                        result[contextElemKey] = contextElems[i + 1];
+                        break;
+                    }
+                }
+            }
+            return result;
+        }
+
         /// <summary>deserialise the request body</summary>
+        /// <param name="contextElements">the deserialised context elements, if any or null</param>
         /// <returns>the deserialized arguments</returns>
         private object[] DeserialiseRequestBody(CdrInputStream cdrStream, MethodInfo calledMethodInfo,
-                                                bool isStandardOp, string calledUri, GiopVersion version) {
+                                                bool isStandardOp, string calledUri, GiopVersion version,
+                                                out IDictionary contextElements) {
             // unmarshall parameters
             ParameterMarshaller paramMarshaller = ParameterMarshaller.GetSingleton();
             object[] args;
-            // clarification from CORBA 2.6, chapter 15.4.1: no padding, when no arguments are serialised            
-            if (paramMarshaller.HasRequestArgs(calledMethodInfo)) {
-                AlignBodyIfNeeded(cdrStream, version);
+            // clarification from CORBA 2.6, chapter 15.4.1: no padding, when no arguments/no context elements
+            // are serialised, i.e. body empty
+            bool hasRequestArgs = paramMarshaller.HasRequestArgs(calledMethodInfo);
+            AttributeExtCollection methodAttrs =
+                ReflectionHelper.GetCustomAttriutesForMethod(calledMethodInfo, true,
+                                                             ReflectionHelper.ContextElementAttributeType);
+            contextElements = null;
+            if ((hasRequestArgs) || (methodAttrs.Count > 0)) {
+                AlignBodyIfNeeded(cdrStream, version); // aling request body
+            } else {
+                cdrStream.SkipRest(); // ignore paddings, if included    
+            }
+            if (hasRequestArgs) {
                 args = paramMarshaller.DeserialiseRequestArgs(calledMethodInfo, cdrStream);
-            } else {                
-                // no args or only out args
+            } else {
                 args = new object[calledMethodInfo.GetParameters().Length];
-                cdrStream.SkipRest(); // ignore paddings, if included
+            }
+            if (methodAttrs.Count > 0) {
+                contextElements = DeserialseContextElements(cdrStream, methodAttrs);
             }            
-
             // for standard corba ops, adapt args:
             if (isStandardOp) {
                 args = AdaptArgsForStandardOp(args, calledUri);
