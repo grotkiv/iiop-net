@@ -93,8 +93,12 @@ namespace Ch.Elca.Iiop.MessageHandling {
                     request.InterceptSendRequest();
                 } catch (Exception ex) {
                     request.Reply = new ReturnMessage(ex, requestMessage);
-                    request.InterceptReceiveException(ex);
-                    throw;
+                    Exception newException = request.InterceptReceiveException(ex);
+                    if (newException == ex) {
+                        throw;
+                    } else {
+                        throw newException; // exeption has been changed by interception point
+                    }
                 }
             }
             // deserialize message body

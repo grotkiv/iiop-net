@@ -34,8 +34,10 @@ using System.Runtime.Remoting.Messaging;
 using System.Diagnostics;
 using Ch.Elca.Iiop.Idl;
 using Ch.Elca.Iiop.Util;
+using Ch.Elca.Iiop.Interception;
 using omg.org.CORBA;
 using omg.org.IOP;
+using omg.org.PortableInterceptor;
 
 namespace Ch.Elca.Iiop.MessageHandling {
           
@@ -192,12 +194,31 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 
         #endregion IProperties
         #region IMethods
+        
+        private ClientRequestInterceptionFlow GetOrCreateClientInterceptionFlow() {
+            ClientRequestInterceptionFlow result = 
+                (ClientRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
+            if (result ==  null) {
+                ClientRequestInterceptor[] interceptors = new ClientRequestInterceptor[0]; // TODO
+                if (interceptors.Length == 0) {
+                    result = new ClientRequestInterceptionFlow();
+                } else {
+                    ClientRequestInfo info = null; // TODO
+                    result = new ClientRequestInterceptionFlow(interceptors, info);
+                }
+                SimpleGiopMsg.SetInterceptionFlow(m_requestMessage, result);
+            }
+            return result;
+        }
                 
         /// <summary>
         /// portable interception point: send request
         /// </summary>
         internal void InterceptSendRequest() {
-                
+            RequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
+            // TODO
+            
+            
         }
         
         /// <summary>
@@ -210,8 +231,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>
         /// portable interception point: receive exception
         /// </summary>        
-        internal void InterceptReceiveException(Exception receivedException) {
-            
+        /// <returns>the modified or unmodified receivedException, depending on the interception chain:
+        /// the interception chain may change the resulting exception.</returns>
+        internal Exception InterceptReceiveException(Exception receivedException) {
+            // TODO
+            return receivedException;
         }
 
         /// <summary>
@@ -219,6 +243,14 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// </summary>
         internal void InterceptReceiveOther() {
             
+        }
+        
+        /// <summary>
+        /// returns false, if reply interception chain has not yet been completed; otherwise true.
+        /// </summary>
+        internal bool IsReplyInterceptionChainCompleted() {
+            // TODO
+            return true;
         }
         
         #endregion IMethods
@@ -641,6 +673,21 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion IProperties
         #region IMethods
         
+        private ServerRequestInterceptionFlow GetOrCreateClientInterceptionFlow() {
+            ServerRequestInterceptionFlow result = 
+                (ServerRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
+            if (result ==  null) {
+                ServerRequestInterceptor[] interceptors = new ServerRequestInterceptor[0]; // TODO
+                if (interceptors.Length == 0) {
+                    result = new ServerRequestInterceptionFlow();
+                } else {
+                    ServerRequestInfo info = null; // TODO
+                    result = new ServerRequestInterceptionFlow(interceptors, info);
+                }
+                SimpleGiopMsg.SetInterceptionFlow(m_requestMessage, result);
+            }
+            return result;
+        }
         
         /// <summary>
         /// returns the idl method name if available or null, if not yet available.
@@ -833,15 +880,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             m_requestCallMessage = requestCallMessage;            
             m_requestMessage = requestCallMessage;               
         }
-        
-        /// <summary>
-        /// set the response message, if a problem occured during request deserialisation.
-        /// </summary>
-        /// <param name="requestCallMessage"></param>
-        internal void UpdateWithProcessingExceptionReply(ReturnMessage response) {
-            m_replyMessage = response;
-        }        
-        
+                
         /// <summary>
         /// portable interception point: receive request service contexts
         /// </summary>
@@ -859,8 +898,10 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>
         /// portable interception point: send exception
         /// </summary>
-        internal void InterceptSendException(Exception ex) {
-            
+        /// <returns>the modified or unmodified exception after the interception chain has completed.</returns>
+        internal Exception InterceptSendException(Exception ex) {
+            // TODO
+            return ex;
         }        
         
         /// <summary>

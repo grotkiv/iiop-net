@@ -41,8 +41,10 @@ using Ch.Elca.Iiop.Idl;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.CorbaObjRef;
 using Ch.Elca.Iiop.Services;
+using Ch.Elca.Iiop.Interception;
 using omg.org.CORBA;
 using omg.org.IOP;
+
 
 namespace Ch.Elca.Iiop.MessageHandling {
 
@@ -80,6 +82,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         public const string CALLED_METHOD_KEY = "_called_method";
         /// <summary>the key to access the service context for this message (either request or reply context, depending on the message</summary>
         public const string SERVICE_CONTEXT = "_service_context";
+        /// <summary>the key to access the interception flow instance in this message</summary>
+        public const string INTERCEPTION_FLOW = "_interception_flow";
         /// <summary>the key to access the isAsyncMessage property in the message properties.</summary>
         public const string IS_ASYNC_REQUEST = "_is_async_request";
         /// <summary>the key used to access the uri-property in messages</summary>         
@@ -127,13 +131,27 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal static ServiceContextList GetServiceContextFromMessage(IMessage msg) {
             return (ServiceContextList)msg.Properties[SimpleGiopMsg.SERVICE_CONTEXT];
         }
+        
+        /// <summary>
+        /// helper method to the the interception flow  inside a message
+        /// </summary>
+        internal static void SetInterceptionFlow(IMessage msg, RequestInterceptionFlow flow) {
+            msg.Properties[SimpleGiopMsg.INTERCEPTION_FLOW] = flow;
+        }
+        
+        /// <summary>
+        /// helper method to extract the interception flow from inside a message
+        /// </summary>
+        internal static RequestInterceptionFlow GetInterceptionFlow(IMessage msg) {
+            return (RequestInterceptionFlow)msg.Properties[SimpleGiopMsg.INTERCEPTION_FLOW];
+        }
 
         /// <summary>
         /// helper method, which sets the is_async to true for message
         /// </summary>
         internal static void SetMessageAsyncRequest(IMessage msg) {
             msg.Properties[SimpleGiopMsg.IS_ASYNC_REQUEST] = true;
-        }        
+        }                        
         
         /// <summary>
         /// helper method, which gets the is_async for the message
@@ -466,8 +484,12 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 SerialiseRequestBody(targetStream, clientRequest, version);                
             } catch (Exception ex) {
                 Debug.WriteLine("exception while serialising request: " + ex);
-                clientRequest.InterceptReceiveException(ex);
-                throw;
+                Exception newException = clientRequest.InterceptReceiveException(ex); // interception point may change exception
+                if (newException == ex) {
+                    throw;
+                } else {
+                    throw newException; // exception has been changed by interception point
+                }
             }
         }
 
@@ -575,9 +597,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 }
                 ReturnMessage exceptionResponse;
                 exceptionResponse = new ReturnMessage(e, methodCallInfo);
-                serverRequest.UpdateWithProcessingExceptionReply(exceptionResponse);
-                serverRequest.InterceptSendException(e);
                 throw new RequestDeserializationException(e, serverRequest.Request, exceptionResponse);
+                // send exception interception point will be called when serialising exception response
             }
         }
 
@@ -658,21 +679,21 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                    GiopConnectionDesc conDesc) {            
             Trace.WriteLine("serializing response for method: " + request.GetRequestedMethodNameInternal());
             bool isExceptionReply = request.IsExceptionReply;
-            Exception toSend = null;            
+            Exception exceptionToSend = null;            
             try {
                 // reply interception point
                 if (!request.IsExceptionReply) {
                     request.InterceptSendReply();
-                } else {
-                    request.InterceptSendException(request.IdlException);
+                } else {                    
+                    exceptionToSend = request.InterceptSendException(request.IdlException);
                 }
             } catch (Exception ex) {
                 // update the reply with the exception from interception layer
                 isExceptionReply = true;
                 if (SerialiseAsSystemException(ex)) {
-                    toSend = ex;
+                    exceptionToSend = ex;
                 } else {
-                    toSend = new UNKNOWN(300, CompletionStatus.Completed_MayBe);
+                    exceptionToSend = new UNKNOWN(300, CompletionStatus.Completed_MayBe);
                 }
             }
             ServiceContextList cntxColl = request.ResponseServiceContext;
@@ -695,7 +716,6 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 SerialiseResponseOk(targetStream, request, version);
                 Trace.WriteLine("reply body serialised");
             } else {                
-                Exception exceptionToSend = (toSend == null ? request.IdlException : toSend);
                 Trace.WriteLine("excpetion to send to client: " + exceptionToSend.GetType());
                 
                 if (SerialiseAsSystemException(exceptionToSend)) {
@@ -800,15 +820,15 @@ namespace Ch.Elca.Iiop.MessageHandling {
                         break;
                     case 1 :
                         Exception userEx = DeserialiseUserException(cdrStream, version); // the error .NET message for this exception is created in the formatter
-                        response = new ReturnMessage(userEx, request.Request);
-                        UpdateClientRequestWithReplyData(request, response, cntxColl);
-                        request.InterceptReceiveException(userEx);
+                        UpdateClientRequestWithReplyData(request, new ReturnMessage(userEx, request.Request), cntxColl);
+                        userEx = request.InterceptReceiveException(userEx);
+                        response = new ReturnMessage(userEx, request.Request); // definitive exception only available here, because interception chain may change exception
                         break;
                     case 2 :
-                        Exception systemEx = DeserialiseSystemError(cdrStream, version); // the error .NET message for this exception is created in the formatter
-                        response = new ReturnMessage(systemEx, request.Request);
-                        UpdateClientRequestWithReplyData(request, response, cntxColl);
-                        request.InterceptReceiveException(systemEx);
+                        Exception systemEx = DeserialiseSystemError(cdrStream, version); // the error .NET message for this exception is created in the formatter                        
+                        UpdateClientRequestWithReplyData(request, new ReturnMessage(systemEx, request.Request), cntxColl);
+                        systemEx = request.InterceptReceiveException(systemEx);
+                        response = new ReturnMessage(systemEx, request.Request); // definitive exception only available here, because interception chain may change exception
                         break;
                     case 3 :
                         // LOCATION_FORWARD:
@@ -823,17 +843,20 @@ namespace Ch.Elca.Iiop.MessageHandling {
                             throw new MARSHAL(2401, CompletionStatus.Completed_MayBe);
                 }
             } catch (Exception ex) {
-                Debug.WriteLine("exception while deserialising reply: " + ex);
+                Trace.WriteLine("exception while deserialising reply: " + ex);                
                 try {
                     cdrStream.SkipRest();
                 } catch (Exception) {
                     // ignore this one, already problems.
                 }
-                if (request.Reply == null) { // request.Reply is set in UpdateClientRequestWithReplyData
+                if (!request.IsReplyInterceptionChainCompleted()) { // reply interception chain not yet called for this reply
                     // deserialisation not ok: interception not called;
                     // call interceptors with this exception.
                     request.Reply = new ReturnMessage(ex, request.Request as IMethodCallMessage);
-                    request.InterceptReceiveException(ex);
+                    Exception newException = request.InterceptReceiveException(ex); // exception may be changed by interception point
+                    if (ex != newException) {
+                        throw newException; // exception have been changed by interception point
+                    }
                 }
                 throw;
             }
