@@ -153,11 +153,11 @@ namespace Ch.Elca.Iiop {
                 responseStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
                 sinkStack.AsyncProcessResponse(responseHeaders, responseStream);
             } else {
-                if (resultException != null) {
-                    throw resultException;
-                } else {
-                    throw new omg.org.CORBA.INTERNAL(79, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+                Exception toThrow = resultException;
+                if (toThrow == null) {
+                    toThrow = new omg.org.CORBA.INTERNAL(79, omg.org.CORBA.CompletionStatus.Completed_MayBe);
                 }
+                sinkStack.DispatchException(toThrow);
             }                        
         }
 
