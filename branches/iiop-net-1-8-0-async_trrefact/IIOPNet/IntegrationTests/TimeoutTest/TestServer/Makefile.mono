@@ -1,3 +1,4 @@
+CSC=gmcs
 IIOPCHANNEL = ../../../IIOPChannel/bin/IIOPChannel.dll
 LAUNCH = ../../Utils/launch.exe
 KILL = ../../Utils/kill.exe
@@ -16,7 +17,7 @@ $(bin)IIOPChannel.dll: $(IIOPCHANNEL)
 	cp $(IIOPCHANNEL) $(bin)
 
 $(bin)TestServer.exe: $(bin)IIOPChannel.dll *.cs
-	mcs $(CSFLAGS) /t:exe /r:$(bin)IIOPChannel.dll /out:$(bin)TestServer.exe *.cs
+	$(CSC) $(CSFLAGS) /t:exe /r:$(bin)IIOPChannel.dll /out:$(bin)TestServer.exe *.cs
     
 IDL/Ch/Elca/Iiop/IntegrationTests/TestService.idl: $(bin)TestServer.exe
 	mono ../../../CLSToIDLGenerator/bin/CLSIDLGenerator.exe -o IDL Ch.Elca.Iiop.IntegrationTests.TestService $(bin)TestServer.exe
