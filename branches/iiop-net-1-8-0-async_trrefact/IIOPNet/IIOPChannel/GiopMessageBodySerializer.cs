@@ -585,7 +585,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 Trace.WriteLine("reply body serialised");
             } else {
                 Trace.WriteLine("exception to pass to client: " + request.Exception.GetType());
-                Exception exceptionToSend = DetermineExceptionToThrow(request.Exception, request.CalledMethod);
+                Exception exceptionToSend = request.IdlException;
                 Trace.WriteLine("excpetion to send to client: " + exceptionToSend.GetType());
                 
                 if (SerialiseAsSystemException(exceptionToSend)) {
@@ -632,58 +632,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         private bool SerialiseAsUserException(Exception e) {
             return (e is AbstractUserException);
         }
-        
-        /// <summary>
-        /// determines, which exception to return to the client based on
-        /// the called method/attribute and on the Exception thrown.
-        /// Make sure to return only exceptions, which are allowed for the thrower; e.g.
-        /// only those specified in the interface for methods and for attributes only system exceptions.
-        /// </summary>
-        private Exception DetermineExceptionToThrow(Exception thrown, MethodBase thrower) {
-            if (SerialiseAsSystemException(thrown)) {
-                return thrown; // system exceptions are not wrapped or transformed
-            }
-            Exception exceptionToThrow;
-            if ((thrower is MethodInfo) && (!((MethodInfo)thrower).IsSpecialName)) { // is a normal method (i.e. no property accessor, ...)
-                if (ReflectionHelper.IIdlEntityType.IsAssignableFrom(thrower.DeclaringType)) { 
-                    exceptionToThrow = DetermineIdlExceptionToThrow(thrown,
-                                                                    (MethodInfo)thrower);
-                } else {
-                    if (ReflectionHelper.IsExceptionInRaiseAttributes(thrown, (MethodInfo)thrower) &&
-                        (thrown is AbstractUserException)) {
-                        exceptionToThrow = thrown; // a .NET method could also use ThrowsIdlException attribute to return non-wrapped exceptions
-                    } else {
-                        // wrap into generic user exception, because CLS to IDL gen adds this exception to
-                        // all methods
-                        exceptionToThrow = new GenericUserException(thrown);
-                    }
-                }
-            } else if ((thrower is MethodInfo) && (((MethodInfo)thrower).IsSpecialName)) { // is a special method (i.e. a property accessor, ...) 
-                exceptionToThrow = new UNKNOWN(190, CompletionStatus.Completed_Yes);
-            } else {
-                // thrower == null means here, that the target method was not determined,
-                // i.e. the request deserialisation was not ok
-                Debug.WriteLine("exception encountered before remote method call target determined: " + 
-                                thrown);
-                exceptionToThrow = new UNKNOWN(201, CompletionStatus.Completed_No);
-            }
-            return exceptionToThrow;
-        }
-        
-        /// <summary>
-        /// for methods mapped from idl, check if exception is allowed to throw
-        /// according to throws clause and if not creae a unknown exception instead.
-        /// </summary>
-        private Exception DetermineIdlExceptionToThrow(Exception thrown, MethodInfo thrower) {            
-            // for idl interfaces, check if thrown exception is in the raises clause;
-            // if not, throw an unknown system exception
-            if (ReflectionHelper.IsExceptionInRaiseAttributes(thrown, thrower) && (thrown is AbstractUserException)) {
-                return thrown;
-            } else {
-                return new UNKNOWN(189, CompletionStatus.Completed_Yes); // if not in raises clause
-            }
-        }
-        
+
         private void SerialiseSystemException(CdrOutputStream targetStream, Exception corbaEx) {
             // serialize a system exception
             if (!(corbaEx is AbstractCORBASystemException)) {
