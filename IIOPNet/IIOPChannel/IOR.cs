@@ -801,12 +801,12 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         public ITaggedComponent ReadFromStream(CdrInputStream cdrStream) {
             if (m_encodingRules.IsEncapsulated) {
                 CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();                
-                ITaggedComponentData data = m_componentDataMarshaller.Unmarshal(encap) as
-                                                ITaggedComponentData;
+                ITaggedComponentData data = 
+                    (ITaggedComponentData)m_componentDataMarshaller.Unmarshal(encap);                                                
                 return new TaggedComponent(m_id, data);                
             } else {
-                ITaggedComponentData data = m_componentDataMarshaller.Unmarshal(cdrStream) as
-                                                ITaggedComponentData;
+                ITaggedComponentData data = 
+                    (ITaggedComponentData)m_componentDataMarshaller.Unmarshal(cdrStream);
                 return new TaggedComponent(m_id, data);                
             }                    
         }
@@ -831,6 +831,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         #region Constants
         
         public const int CODESET_COMPONENT_ID = 1;
+        public const int ALTERNATE_IIOP_ADDRESS = 3;
         public const int TAG_SSL_SEC_TRANS = 20;        
         
         #endregion Constants
@@ -864,6 +865,9 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             AddTaggedComponentSer(new TaggedComponentSerializer(TaggedComponentIds.CODESET_COMPONENT_ID, typeof(CodeSetComponentData),
                                                                 new TaggedComponentEncodingRules(true)));
             AddTaggedComponentSer(new TaggedComponentSerializer(TaggedComponentIds.TAG_SSL_SEC_TRANS, typeof(SSLComponentData),
+                                                                new TaggedComponentEncodingRules(true)));
+            AddTaggedComponentSer(new TaggedComponentSerializer(TaggedComponentIds.ALTERNATE_IIOP_ADDRESS,
+                                                                typeof(AlternateIiopAddressComponentData),
                                                                 new TaggedComponentEncodingRules(true)));
         }
 
