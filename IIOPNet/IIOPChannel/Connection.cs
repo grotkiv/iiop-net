@@ -150,9 +150,17 @@ namespace Ch.Elca.Iiop {
 
         /// <param name="connectionKey">the key describing the connection</param>
         /// <param name="transport">an already connected client transport</param>
-        internal GiopClientConnection(string connectionKey, IClientTransport transport) {
-            Initalize(connectionKey, new GiopTransportMessageHandler(transport), false);
+        internal GiopClientConnection(string connectionKey, IClientTransport transport,
+                                      MessageTimeout requestTimeOut) {            
+            Initalize(connectionKey, new GiopTransportMessageHandler(transport, requestTimeOut), false);
         }
+        
+        /// <param name="connectionKey">the key describing the connection</param>
+        /// <param name="transport">an already connected client transport</param>
+        internal GiopClientConnection(string connectionKey, IClientTransport transport) : 
+            this(connectionKey, transport, new MessageTimeout()) {
+        }        
+        
         
         #endregion IConstructors
         #region IProperties
@@ -178,10 +186,11 @@ namespace Ch.Elca.Iiop {
         #endregion IProperties
         #region IMethods
 
-        private void Initalize(string connectionKey, GiopTransportMessageHandler transportHandler, bool isBidir) {
+        private void Initalize(string connectionKey, GiopTransportMessageHandler transportHandler,
+                               bool isBidir) {
             m_connectionKey = connectionKey;
             m_assocDesc = new GiopClientConnectionDesc();            
-            m_transportHandler = transportHandler;
+            m_transportHandler = transportHandler;            
             m_transportHandler.StartMessageReception(); // begin listening for messages
             m_isBidir = isBidir;
         }

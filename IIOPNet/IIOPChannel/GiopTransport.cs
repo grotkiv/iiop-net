@@ -46,6 +46,49 @@ namespace Ch.Elca.Iiop {
     
     
     /// <summary>
+    /// represents a message timeout (can be infinite or finite)
+    /// </summary>
+    internal class MessageTimeout {
+        
+        private object m_timeOut = null;
+        
+        /// <summary>
+        /// infinite connection timeout
+        /// </summary>
+        internal MessageTimeout() {
+            m_timeOut = null;
+        }
+        
+        /// <summary>
+        /// timeout set to the argument parameter.
+        /// </summary>
+        internal MessageTimeout(TimeSpan timeOut) {
+            m_timeOut = timeOut;
+        }
+        
+        internal TimeSpan TimeOut {
+            get {
+                if (m_timeOut != null) {
+                    return (TimeSpan)m_timeOut;
+                } else {
+                    throw new BAD_OPERATION(109, CompletionStatus.Completed_MayBe);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// is no timeout defined ?
+        /// </summary>
+        internal bool IsUnlimited {
+            get {
+                return m_timeOut == null;
+            }
+        }
+                                
+    }
+    
+    
+    /// <summary>
     /// inteface of a giop request message receiver;    
     /// </summary>
     /// <remarks>the methods of this interface are called in a ThreadPool thread</remarks>
@@ -388,16 +431,16 @@ namespace Ch.Elca.Iiop {
             private IClientChannelSinkStack m_clientSinkStack;
             private GiopClientConnection m_clientConnection;
             private Timer m_timer;
-            private int m_timeOut;
+            private MessageTimeout m_timeOut;
             private bool m_alreadyNotified;
             private uint m_requestId;
                         
-            public AsynchronousResponseWaiter(GiopTransportMessageHandler transportHandler,
-                                              uint requestId,
-                                              AsyncResponseAvailableCallBack callback,
-                                              IClientChannelSinkStack clientSinkStack,
-                                              GiopClientConnection connection, 
-                                              int timeOut) {
+            internal AsynchronousResponseWaiter(GiopTransportMessageHandler transportHandler,
+                                                uint requestId,
+                                                AsyncResponseAvailableCallBack callback,
+                                                IClientChannelSinkStack clientSinkStack,
+                                                GiopClientConnection connection, 
+                                                MessageTimeout timeOut) {
                 Initalize(transportHandler, requestId, callback, clientSinkStack, connection, timeOut);
             }            
                         
@@ -431,7 +474,7 @@ namespace Ch.Elca.Iiop {
                                    AsyncResponseAvailableCallBack callback,
                                    IClientChannelSinkStack clientSinkStack,
                                    GiopClientConnection connection, 
-                                   int timeOutMillis) {
+                                   MessageTimeout timeOutMillis) {
                 m_alreadyNotified = false;                
                 m_transportHandler = transportHandler;
                 m_requestId = requestId;
@@ -456,10 +499,10 @@ namespace Ch.Elca.Iiop {
             }
             
             public bool StartWaiting() {
-                if (m_timeOut != Timeout.Infinite) {
+                if (!m_timeOut.IsUnlimited) {
                     m_timer = new Timer(new TimerCallback(this.TimeOutCallback),
                                         null,
-                                        m_timeOut,
+                                        (int)Math.Round(m_timeOut.TimeOut.TotalMilliseconds),
                                         Timeout.Infinite);                    
                 }
                 return true;
@@ -493,7 +536,7 @@ namespace Ch.Elca.Iiop {
         #region IFields
                 
         private ITransport m_transport;
-        private object m_timeout; // a TimeSpan or null if not set
+        private MessageTimeout m_timeout;
         private AutoResetEvent m_writeLock;
         
         private IDictionary m_waitingForResponse = new ListDictionary();
@@ -505,12 +548,11 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         /// <summary>creates a giop transport message handler, which doesn't accept request messages</summary>
-        internal GiopTransportMessageHandler(ITransport transport) {
-            Initalize(transport, null);
+        internal GiopTransportMessageHandler(ITransport transport) : this(transport, new MessageTimeout()) {            
         }
         
         /// <summary>creates a giop transport message handler, which doesn't accept request messages</summary>
-        internal GiopTransportMessageHandler(ITransport transport, TimeSpan timeout) {            
+        internal GiopTransportMessageHandler(ITransport transport, MessageTimeout timeout) {            
             Initalize(transport, timeout);
         }
         
@@ -526,7 +568,7 @@ namespace Ch.Elca.Iiop {
         #endregion IProperties
         #region IMethods        
         
-        private void Initalize(ITransport transport, object timeout) {
+        private void Initalize(ITransport transport, MessageTimeout timeout) {
             m_transport = transport;            
             m_timeout = timeout;            
             m_writeLock = new AutoResetEvent(true);
@@ -539,8 +581,8 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         /// <returns>true, if ok, false if timeout occured</returns>
         private bool WaitForEvent(WaitHandle waiter) {
-            if (m_timeout != null) {
-                return waiter.WaitOne((TimeSpan)m_timeout, false);                
+            if (!m_timeout.IsUnlimited) {
+                return waiter.WaitOne(m_timeout.TimeOut, false);
             } else {
                 return waiter.WaitOne();
             }
@@ -693,12 +735,8 @@ namespace Ch.Elca.Iiop {
             IResponseWaiter waiter;
             lock (m_waitingForResponse.SyncRoot) {
                 // create and register wait handle                
-                int timeoutMillis = Timeout.Infinite;
-                if (m_timeout != null) {
-                    timeoutMillis = (int)Math.Round(((TimeSpan)m_timeout).TotalMilliseconds);
-                }
                 waiter = new AsynchronousResponseWaiter(this, requestId, callback, clientSinkStack, connection,
-                                                        timeoutMillis);
+                                                        m_timeout);
                 if (m_waitingForResponse[requestId] == null) {
                     m_waitingForResponse[requestId] = waiter;
                 } else {
@@ -940,7 +978,7 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>creates a giop transport message handler, which accept request messages by delegating to receiver</summary>
-        internal GiopClientServerMessageHandler(ITransport transport, TimeSpan timeout, IGiopRequestMessageReceiver receiver) : base(transport, timeout) {
+        internal GiopClientServerMessageHandler(ITransport transport, MessageTimeout timeout, IGiopRequestMessageReceiver receiver) : base(transport, timeout) {
             Initalize(receiver);
         }        
         
