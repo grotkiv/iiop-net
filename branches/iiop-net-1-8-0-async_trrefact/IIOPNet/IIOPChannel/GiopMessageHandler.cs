@@ -200,6 +200,20 @@ namespace Ch.Elca.Iiop.MessageHandling {
             targetStream.Seek(0, SeekOrigin.Begin);
             return targetStream;
         }
+        
+        /// <summary>
+        /// create a close connection message
+        /// </summary>
+        /// <param name="version"></param>
+        /// <returns></returns>
+        internal Stream PrepareMessageCloseMessage(GiopVersion version) {
+            Debug.WriteLine("create a close connection message");
+            Stream targetStream = new MemoryStream();            
+            GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.CloseConnection);
+            header.WriteToStream(targetStream, 0);
+            targetStream.Seek(0, SeekOrigin.Begin);
+            return targetStream;            
+        }
 
         #endregion IMethods
 

@@ -77,7 +77,10 @@ namespace Ch.Elca.Iiop {
         /// <summary><see cref="Ch.Elca.Iiop.ITranport.CloseConnection/></summary>
         public void CloseConnection() {
             try {
-                m_socket.Close(); // closes the stream too
+                m_stream.Close(); // close the stream and the socket.
+            } catch (Exception) { }
+            try {
+                m_socket.Close();
             } catch (Exception) {}
             m_socket = null;
         }
@@ -349,6 +352,8 @@ namespace Ch.Elca.Iiop {
                     } else {
                         Trace.WriteLine("acceptTcpClient hasn't worked");
                     }
+                } catch (ThreadAbortException) {
+                    throw;
                 } catch (Exception e) {
                     Debug.WriteLine("Exception in server listener thread: " + e);
                     if (client != null)  { 

@@ -239,7 +239,7 @@ namespace Ch.Elca.Iiop {
         private int m_bytesRead;
         
         private byte[] m_buffer = new byte[READ_CHUNK_SIZE];
-        private byte[] m_giopHeaderBuffer = new byte[GiopHeader.HEADER_LENGTH];               
+        private byte[] m_giopHeaderBuffer = new byte[GiopHeader.HEADER_LENGTH];
         
         #endregion Fields
         #region IConstructors
@@ -279,14 +279,14 @@ namespace Ch.Elca.Iiop {
             m_header = null;
             m_expectedMessageLength = GiopHeader.HEADER_LENGTH; // giop header-length
             m_bytesRead = 0;
-            
+
             StartReceiveNextMessagePart();
         }
         
-        private void StartReceiveNextMessagePart() {                                    
+        private void StartReceiveNextMessagePart() {
             int toRead = Math.Min(READ_CHUNK_SIZE,
                                        m_expectedMessageLength - m_bytesRead);
-            m_onTransport.BeginRead(m_buffer, 0, toRead, new AsyncCallback(this.HandleReadCompleted), this);            
+            m_onTransport.BeginRead(m_buffer, 0, toRead, new AsyncCallback(this.HandleReadCompleted), this);
         }
         
 
@@ -326,7 +326,7 @@ namespace Ch.Elca.Iiop {
         private bool HasNextMessagePart() {
             return m_bytesRead < m_expectedMessageLength;
         }
-        
+                
         #endregion IMethods                
         
     }
@@ -432,7 +432,7 @@ namespace Ch.Elca.Iiop {
             private GiopClientConnection m_clientConnection;
             private Timer m_timer;
             private MessageTimeout m_timeOut;
-            private bool m_alreadyNotified;
+            private volatile bool m_alreadyNotified;
             private uint m_requestId;
                         
             internal AsynchronousResponseWaiter(GiopTransportMessageHandler transportHandler,
@@ -522,6 +522,7 @@ namespace Ch.Elca.Iiop {
                             m_alreadyNotified = true;                            
                             m_transportHandler.CancelWaitForResponseMessage(m_requestId);
                             Completed();
+                            m_transportHandler.ForceCloseConnection(); // close the connection after a timeout
                             m_callback(m_clientSinkStack, m_clientConnection,
                                        null, new TIMEOUT(32, CompletionStatus.Completed_MayBe));
                         }
@@ -543,6 +544,7 @@ namespace Ch.Elca.Iiop {
         private FragmentedMessageAssembler m_fragmentAssembler =
             new FragmentedMessageAssembler();
 
+        private MessageReceiveTask m_messageReceiveTask;
         
         #endregion IFields
         #region IConstructors
@@ -593,12 +595,31 @@ namespace Ch.Elca.Iiop {
         }
         
         #endregion Synchronization
+        #region ConnectionClose
+        
+        /// <summary>
+        /// close a connection, make sure, that no read task is pending.
+        /// </summary>
+        internal void ForceCloseConnection() {
+            try {
+                m_transport.CloseConnection();                
+            } catch (Exception ex) {
+                Trace.WriteLine("problem to close connection: " + ex);
+            }
+            try {
+                StopMessageReception();
+            } catch (Exception ex) {
+                Trace.WriteLine("problem to stop message reception: " + ex);
+            }
+        }
+        
+        #endregion ConnectionClose
         #region Exception handling
         
         private void CloseConnectionAfterTimeout() {
             try {
                 Trace.WriteLine("closing connection because of timeout");
-                m_transport.CloseConnection();
+                ForceCloseConnection();
             } catch (Exception ex) {
                 Debug.WriteLine("exception while trying to close connection after a timeout: " + ex);
             }
@@ -607,7 +628,7 @@ namespace Ch.Elca.Iiop {
         private void CloseConnectionAfterUnexpectedException(Exception uex) {
             try {
                 Trace.WriteLine("closing connection because of unexpected exception: " + uex);
-                m_transport.CloseConnection();
+                ForceCloseConnection();
             } catch (Exception ex) {
                 Debug.WriteLine("exception while trying to close connection: " + ex);
             }
@@ -629,6 +650,13 @@ namespace Ch.Elca.Iiop {
             MessageSendTask task = new MessageSendTask(stream, bytesToSend, requestId,
                                                        m_transport, this);
             StartSendMessageTask(task);
+        }
+        
+        private void StartWriteMessageWithoutReqId(Stream stream) {
+            long bytesToSend = PrepareStreamToSend(stream);
+            MessageSendTask task = new MessageSendTask(stream, bytesToSend,
+                                                       m_transport, this);
+            StartSendMessageTask(task);            
         }
         
         private void StartWriteResponseMessage(Stream stream) {
@@ -657,13 +685,27 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>
-        /// sends a giop error message
+        /// sends a giop error message as result of a problematic message
         /// </summary>
-        internal void SendErrorMessage() {
+        internal void SendErrorResponseMessage() {
             GiopVersion version = new GiopVersion(1, 2); // use highest number supported
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
             Stream messageErrorStream = handler.PrepareMessageErrorMessage(version);
             SendResponse(messageErrorStream);
+        }
+        
+        /// <summary>
+        /// send a close connection message to the peer.
+        /// </summary>
+        internal void SendConnectionCloseMessage() {
+            GiopVersion version = new GiopVersion(1, 0);
+            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
+            Stream messageCloseStream = handler.PrepareMessageCloseMessage(version);
+            bool gotLock = WaitForWriteLock();
+            while (!gotLock) {
+                gotLock = WaitForWriteLock();
+            }
+            StartWriteMessageWithoutReqId(messageCloseStream);
         }
                 
         /// <summary>
@@ -803,8 +845,21 @@ namespace Ch.Elca.Iiop {
         /// begins receiving messages asynchronously
         /// </summary>
         internal void StartMessageReception() {
-            MessageReceiveTask task = new MessageReceiveTask(m_transport, this);
-            task.StartReceiveMessage();
+            lock(this) {
+                if (m_messageReceiveTask == null) {
+                    m_messageReceiveTask = new MessageReceiveTask(m_transport, this);
+                    m_messageReceiveTask.StartReceiveMessage();
+                } // else ignore, already started
+            }
+        }
+        
+        /// <summary>
+        /// abort receiving messages
+        /// </summary>
+        private void StopMessageReception() {
+            lock(this) {
+                m_messageReceiveTask = null;
+            }
         }
                 
         internal void MsgReceivedCallback(MessageReceiveTask messageReceived) {
@@ -872,7 +927,7 @@ namespace Ch.Elca.Iiop {
                     // because fragment should be handled before this loop                    
                     
                     // send message error
-                    SendErrorMessage();
+                    SendErrorResponseMessage();
                     messageReceived.StartReceiveMessage(); // receive next message
                     break;
             }                                    
@@ -882,7 +937,7 @@ namespace Ch.Elca.Iiop {
             try {
                 if (ex is omg.org.CORBA.MARSHAL) {
                     // send a message error, something wrong with the message format
-                    SendErrorMessage();
+                    SendErrorResponseMessage();
                 }                
                 CloseConnectionAfterUnexpectedException(ex);
             } catch (Exception) {                
@@ -901,11 +956,11 @@ namespace Ch.Elca.Iiop {
         }
         
         protected virtual void HandleRequestMessage(Stream messageStream) {
-            SendErrorMessage(); // not supported by non-bidirectional handler
+            SendErrorResponseMessage(); // not supported by non-bidirectional handler
         }
         
         protected virtual void HandleLocateRequestMessage(Stream messageStream) {
-            SendErrorMessage(); // not supported by non-bidirectional handler
+            SendErrorResponseMessage(); // not supported by non-bidirectional handler
         }
 
         /// <summary>

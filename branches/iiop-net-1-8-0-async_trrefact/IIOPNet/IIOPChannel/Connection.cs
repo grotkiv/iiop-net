@@ -33,6 +33,7 @@ using System.IO;
 using System.Collections;
 using System.Threading;
 using System.Runtime.Remoting.Messaging;
+using System.Diagnostics;
 using Ch.Elca.Iiop.Services;
 
 namespace Ch.Elca.Iiop {
@@ -199,8 +200,12 @@ namespace Ch.Elca.Iiop {
             return m_transportHandler.Transport.IsConnectionOpen();
         }
 
-        internal void CloseConnection() {
-            m_transportHandler.Transport.CloseConnection();
+        internal void CloseConnection() {            
+            try {
+                m_transportHandler.ForceCloseConnection();
+            } catch (Exception ex) {
+                Debug.WriteLine("exception while closing connection: " + ex);
+            }            
         }
 
         #endregion IMethods

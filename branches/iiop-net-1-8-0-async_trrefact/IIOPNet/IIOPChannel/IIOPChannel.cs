@@ -143,6 +143,9 @@ namespace Ch.Elca.Iiop {
                         case IiopClientChannel.CLIENT_REQUEST_TIMEOUT_KEY:
                             clientProp[IiopClientChannel.CLIENT_REQUEST_TIMEOUT_KEY] = Convert.ToInt32(entry.Value);
                             break;
+                        case IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY:   
+                            clientProp[IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY] = Convert.ToInt32(entry.Value);
+                            break;                             
                         case TRANSPORT_FACTORY_KEY:
                             serverProp[TRANSPORT_FACTORY_KEY] =
                                 entry.Value;
@@ -259,6 +262,13 @@ namespace Ch.Elca.Iiop {
         /// the giop request timeout in milliseconds; default is infinite
         /// </summary>
         public const string CLIENT_REQUEST_TIMEOUT_KEY = "clientRequestTimeOut";
+
+        /// <summary>
+        /// the time in milliseconds a unused connection is kept alive on client side; default is 300000ms
+        /// </summary>
+        public const string CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY = "unusedConnectionKeepAlive";   
+    
+        private const int UNUSED_CLIENT_CONNECTION_TIMEOUT = 300000;
         
         #endregion Constants
         #region IFields
@@ -290,7 +300,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         public IiopClientChannel() {
-            InitChannel(new TcpTransportFactory(), new MessageTimeout());
+            InitChannel(new TcpTransportFactory(), new MessageTimeout(), UNUSED_CLIENT_CONNECTION_TIMEOUT);
         }
         
         public IiopClientChannel(IDictionary properties) : 
@@ -309,6 +319,7 @@ namespace Ch.Elca.Iiop {
             int receiveTimeOut = 0;
             int sendTimeOut = 0;
             MessageTimeout requestTimeOut = new MessageTimeout();
+            int unusedClientConnectionTimeout = UNUSED_CLIENT_CONNECTION_TIMEOUT;
             
             if (properties != null) {
                 foreach (DictionaryEntry entry in properties) {
@@ -334,6 +345,9 @@ namespace Ch.Elca.Iiop {
                             int requestTimeOutMilllis = Convert.ToInt32(entry.Value);
                             requestTimeOut = new MessageTimeout(TimeSpan.FromMilliseconds(requestTimeOutMilllis));
                             break;
+                        case IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY:
+                            unusedClientConnectionTimeout = Convert.ToInt32(entry.Value);
+                            break;
                         default: 
                             Debug.WriteLine("non-default property found for IIOPClient channel: " + entry.Key);
                             nonDefaultOptions[entry.Key] = entry.Value;
@@ -345,7 +359,8 @@ namespace Ch.Elca.Iiop {
             // handle the options now by transport factory
             clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
             clientTransportFactory.SetupClientOptions(nonDefaultOptions);
-            InitChannel(clientTransportFactory, requestTimeOut);
+            InitChannel(clientTransportFactory, requestTimeOut, 
+                        unusedClientConnectionTimeout);
         }
 
         #endregion IConstructors
@@ -384,9 +399,11 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>initalize this channel</summary>
-        private void InitChannel(IClientTransportFactory transportFactory, MessageTimeout requestTimeOut) {
+        private void InitChannel(IClientTransportFactory transportFactory, MessageTimeout requestTimeOut,
+                                 int unusedClientConnectionTimeOut) {
             
-            m_conManager = new GiopClientConnectionManager(transportFactory, requestTimeOut);
+            m_conManager = new GiopClientConnectionManager(transportFactory, requestTimeOut,
+                                                           unusedClientConnectionTimeOut);
             IiopClientTransportSinkProvider transportProvider =
                 new IiopClientTransportSinkProvider(m_conManager);
             if (m_providerChain != null) {
@@ -502,6 +519,8 @@ namespace Ch.Elca.Iiop {
         private IiopServerTransportSink m_transportSink;
         
         private IServerConnectionListener m_connectionListener;
+        
+        private IList /* GiopClientServerMessageHandler */ m_transportHandlers = new ArrayList(); // the active transport handlers
 
 
         #endregion IFields
@@ -700,12 +719,32 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         private void ProcessClientMessages(IServerTransport transport) {
             GiopClientServerMessageHandler handler = new GiopClientServerMessageHandler(transport, m_transportSink);
+            m_transportHandlers.Add(handler);
             handler.StartMessageReception();            
         }
             
         public void StopListening(object data) {
-            if (m_connectionListener.IsListening()) {
-                m_connectionListener.StopListening();
+            if (m_connectionListener.IsListening()) {                                
+                try {
+                    m_connectionListener.StopListening();
+                } catch (Exception ex) {
+                    Debug.WriteLine("exception while stopping accept: " + ex);
+                }
+                try {
+                    foreach (GiopClientServerMessageHandler handler in m_transportHandlers) {
+                        try {
+                            try {
+                                handler.SendConnectionCloseMessage();
+                            } finally {
+                                handler.ForceCloseConnection();
+                            }
+                        } catch (Exception ex) {
+                            Debug.WriteLine("exception while trying to close connection: " + ex);
+                        }
+                    }
+                } finally {
+                    m_transportHandlers.Clear();                
+                }
             }
         }
 
