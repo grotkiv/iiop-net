@@ -59,6 +59,8 @@ namespace Ch.Elca.Iiop.Util {
         private static Type s_oneWayAttributeType = typeof(System.Runtime.Remoting.Messaging.OneWayAttribute);
         private static Type s_iOrderedAttributeType = typeof(IOrderedAttribute);
         private static Type s_contextElementAttributeType = typeof(ContextElementAttribute);
+        private static Type s_supportedInterfaceAttributeType = typeof(SupportedInterfaceAttribute);
+        private static Type s_repositoryIdAttributeType = typeof(RepositoryIDAttribute);
 
         private static Type s_voidType = typeof(void);
         private static Type s_stringType = typeof(System.String);
@@ -206,6 +208,24 @@ namespace Ch.Elca.Iiop.Util {
                 return s_contextElementAttributeType;
             }
         }
+        
+        /// <summary>
+        /// caches typeof(Ch.Elca.Iiop.Idl.SupportedInterfaceAttribute)
+        /// </summary>
+        public static Type SupportedInterfaceAttributeType {
+            get {
+                return s_supportedInterfaceAttributeType;
+            }
+        }
+        
+        /// <summary>
+        /// caches typeof(Ch.Elca.Iiop.Idl.RepositoryIDAttribute)
+        /// </summary>        
+        public static Type RepositoryIDAttributeType {
+            get {
+                return s_repositoryIdAttributeType;
+            }
+        }        
 
         /// <summary>caches typeof(void)</summary>
         public static Type VoidType {
