@@ -1,10 +1,30 @@
-/*
- * Created by SharpDevelop.
- * User: Dominic
- * Date: 13.02.2005
- * Time: 13:08
+/* InterceptionFlow.cs
  * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
+ * Project: IIOP.NET
+ * IIOPChannel
+ * 
+ * WHEN      RESPONSIBLE
+ * 13.02.05  Dominic Ullmann (DUL), dominic.ullmann -at- elca.ch
+ * 
+ * Copyright 2005 Dominic Ullmann
+ *
+ * Copyright 2005 ELCA Informatique SA
+ * Av. de la Harpe 22-24, 1000 Lausanne 13, Switzerland
+ * www.elca.ch
+ * 
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 using System;
@@ -107,7 +127,7 @@ namespace Ch.Elca.Iiop.Interception {
 	    	    
 	    #region IFields
 	    
-	    private RequestInfo m_requestInfo;
+	    private RequestInfoImpl m_requestInfo;
 	    
 	    #endregion IFields	    
 	    #region IConstructors
@@ -120,14 +140,14 @@ namespace Ch.Elca.Iiop.Interception {
 	    }
 	    
 	    internal RequestInterceptionFlow(Interceptor[] interceptors,
-	                                     RequestInfo requestInfo) : base(interceptors) {
+	                                     RequestInfoImpl requestInfo) : base(interceptors) {
 	        m_requestInfo = requestInfo;
 	    }	    
 	    
 	    #endregion IConstructors
 	    #region IProperties
 	    
-	    protected RequestInfo RequestInfo {
+	    protected RequestInfoImpl RequestInfo {
 	        get {
 	            return m_requestInfo;
 	        }
@@ -170,7 +190,7 @@ namespace Ch.Elca.Iiop.Interception {
 
 	    
 	    internal ClientRequestInterceptionFlow(ClientRequestInterceptor[] interceptors,
-	                                           ClientRequestInfo requestInfo) : base(interceptors, requestInfo) {	        
+	                                           ClientRequestInfoImpl requestInfo) : base(interceptors, requestInfo) {	        
 	    }
 	    
 	    #endregion IConstructors
@@ -182,6 +202,10 @@ namespace Ch.Elca.Iiop.Interception {
 	    private ClientRequestInterceptor GetCurrentInterceptor() {
 	        return (ClientRequestInterceptor)GetCurrent();
 	    }
+        
+        private ClientRequestInfoImpl GetClientRequestInfoImpl() {
+            return (ClientRequestInfoImpl)RequestInfo;
+        }
 	    
         /// <summary>
         /// calls send request interception point. Throws an exception, if an interception point throws
@@ -189,7 +213,7 @@ namespace Ch.Elca.Iiop.Interception {
         /// </summary>
         internal void SendRequest() {
             while (ProceedToNextInterceptor()) {
-                GetCurrentInterceptor().send_request((ClientRequestInfo)RequestInfo);
+                GetCurrentInterceptor().send_request(GetClientRequestInfoImpl());
             }
         }
         
@@ -200,7 +224,7 @@ namespace Ch.Elca.Iiop.Interception {
         internal void ReceiveReply() {
             while (ProceedToNextInterceptor()) {
                 ClientRequestInterceptor current = GetCurrentInterceptor();
-                current.receive_reply((ClientRequestInfo)RequestInfo);
+                current.receive_reply(GetClientRequestInfoImpl());
             }
         }
         
@@ -211,7 +235,7 @@ namespace Ch.Elca.Iiop.Interception {
         internal void ReceiveOther() {
             while (ProceedToNextInterceptor()) {
                 ClientRequestInterceptor current = GetCurrentInterceptor();
-                current.receive_other((ClientRequestInfo)RequestInfo);
+                current.receive_other(GetClientRequestInfoImpl());
             }
         }        
         
@@ -224,16 +248,19 @@ namespace Ch.Elca.Iiop.Interception {
         /// <returns></returns>
         internal Exception ReceiveException(Exception receivedException) {
             Exception result = receivedException;
-            // update exception in requestInfo
-            // TODO
+            ClientRequestInfoImpl requestInfoImpl = GetClientRequestInfoImpl();            
+            if (requestInfoImpl != null) { // can be null, if no interception chain available -> don't set in this case
+                // update exception in requestInfo
+                requestInfoImpl.SetReceivedException(receivedException);
+            }
             while (ProceedToNextInterceptor()) { // proceed either to the begin element in reply chain, or skip failing element
                 ClientRequestInterceptor current = GetCurrentInterceptor();
                 try {
-                    current.receive_exception((ClientRequestInfo)RequestInfo);
+                    current.receive_exception(requestInfoImpl);
                 } catch (Exception ex) {
                     result = ex;
                     // update exception in requestInfo
-                    // TODO
+                    requestInfoImpl.SetReceivedException(ex);
                 }
             }
             return result;
@@ -260,7 +287,7 @@ namespace Ch.Elca.Iiop.Interception {
 
 	    
 	    internal ServerRequestInterceptionFlow(ServerRequestInterceptor[] interceptors,
-	                                           ServerRequestInfo requestInfo) : base(interceptors, requestInfo) {	        
+	                                           ServerRequestInfoImpl requestInfo) : base(interceptors, requestInfo) {	        
 	    }
 	    
 	    #endregion IConstructors
@@ -271,7 +298,11 @@ namespace Ch.Elca.Iiop.Interception {
         /// </summary>	        	    
 	    private ServerRequestInterceptor GetCurrentInterceptor() {
 	        return (ServerRequestInterceptor)GetCurrent();
-	    }	    
+        }
+        
+        private ServerRequestInfoImpl GetServerRequestInfoImpl() {
+            return (ServerRequestInfoImpl)RequestInfo;
+        }        
 	    
         /// <summary>
         /// calls receive request service contexts interception point. Throws an exception, if an interception point throws
@@ -280,7 +311,7 @@ namespace Ch.Elca.Iiop.Interception {
         internal void ReceiveRequestServiceContexts() {
             while (ProceedToNextInterceptor()) {
                 ServerRequestInterceptor current = GetCurrentInterceptor();
-                current.receive_request_service_contexts((ServerRequestInfo)RequestInfo);
+                current.receive_request_service_contexts(GetServerRequestInfoImpl());
             }
         }    
 
@@ -290,7 +321,7 @@ namespace Ch.Elca.Iiop.Interception {
         internal void ReceiveRequest() {
             while (ProceedToNextInterceptor()) {
                 ServerRequestInterceptor current = GetCurrentInterceptor();
-                current.receive_request((ServerRequestInfo)RequestInfo);
+                current.receive_request(GetServerRequestInfoImpl());
             }            
         }
 	    
@@ -301,7 +332,7 @@ namespace Ch.Elca.Iiop.Interception {
         internal void SendReply() {
             while (ProceedToNextInterceptor()) {
                 ServerRequestInterceptor current = GetCurrentInterceptor();
-                current.send_reply((ServerRequestInfo)RequestInfo);
+                current.send_reply(GetServerRequestInfoImpl());
             }
         }        
 	            
@@ -312,16 +343,19 @@ namespace Ch.Elca.Iiop.Interception {
         /// </summary>
         internal Exception SendException(Exception sentException) {
             Exception result = sentException;
-            // update exception in requestInfo
-            // TODO
+            ServerRequestInfoImpl requestInfoImpl = GetServerRequestInfoImpl();
+            if (requestInfoImpl != null) { // can be null, if no interception chain available -> don't set in this case
+                // update exception in requestInfo            
+                requestInfoImpl.SetSentException(sentException);
+            }
             while (ProceedToNextInterceptor()) { // proceed either to the begin element in reply chain, or skip failing element
                 ServerRequestInterceptor current = GetCurrentInterceptor();
                 try {
-                    current.send_exception((ServerRequestInfo)RequestInfo);
+                    current.send_exception(requestInfoImpl);
                 } catch (Exception ex) {
                     result = ex;
                     // update exception in requestInfo
-                    // TODO
+                    requestInfoImpl.SetSentException(ex);
                 }
             }
             return result;

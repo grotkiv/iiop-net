@@ -203,7 +203,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 if (interceptors.Length == 0) {
                     result = new ClientRequestInterceptionFlow();
                 } else {
-                    ClientRequestInfo info = null; // TODO
+                    ClientRequestInfoImpl info = new ClientRequestInfoImpl(this);
                     result = new ClientRequestInterceptionFlow(interceptors, info);
                 }
                 SimpleGiopMsg.SetInterceptionFlow(m_requestMessage, result);
@@ -702,7 +702,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 if (interceptors.Length == 0) {
                     result = new ServerRequestInterceptionFlow();
                 } else {
-                    ServerRequestInfo info = null; // TODO
+                    ServerRequestInfoImpl info = new ServerRequestInfoImpl(this);
                     result = new ServerRequestInterceptionFlow(interceptors, info);
                 }
                 SimpleGiopMsg.SetInterceptionFlow(m_requestMessage, result);
