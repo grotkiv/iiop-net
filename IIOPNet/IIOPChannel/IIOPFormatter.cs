@@ -353,7 +353,7 @@ namespace Ch.Elca.Iiop {
 
         /// <summary>serialises the .NET msg to a GIOP-message</summary>
         private void SerialiseResponse(IServerResponseChannelSinkStack sinkStack, IMessage requestMsg,
-                                       GiopConnectionDesc conDesc, IMessage msg, 
+                                       GiopConnectionDesc conDesc, IMessage responseMsg, 
                                        ref ITransportHeaders headers, out Stream stream) {            
             GiopVersion version = (GiopVersion)requestMsg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY];
             if (headers == null) {
@@ -362,13 +362,13 @@ namespace Ch.Elca.Iiop {
             headers[GiopConnectionDesc.SERVER_TR_HEADER_KEY] = conDesc;
             // get the stream into which the message should be serialied from a stream handling
             // sink in the stream handling chain
-            stream = sinkStack.GetResponseStream(msg, headers);
+            stream = sinkStack.GetResponseStream(responseMsg, headers);
             if (stream == null) { 
                 // the previous stream-handling sinks delegated the decision to which stream the message should be serialised to this sink
                 stream = new MemoryStream(); // create a new stream
             }
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            handler.SerialiseOutgoingReplyMessage(msg, requestMsg, version, stream, conDesc);
+            handler.SerialiseOutgoingReplyMessage(responseMsg, requestMsg, version, stream, conDesc);
         }
 
         /// <summary>serialises an Exception</summary>
