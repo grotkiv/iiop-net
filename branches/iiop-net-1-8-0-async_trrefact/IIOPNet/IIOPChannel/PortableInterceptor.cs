@@ -197,7 +197,7 @@ namespace omg.org.PortableInterceptor {
         /// <summary>
         /// request id, which identifies the request/reply sequence.
         /// </summary>
-        long request_id {
+        int request_id {
             get;
         }
         
