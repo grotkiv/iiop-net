@@ -1737,14 +1737,34 @@ namespace Ch.Elca.Iiop.Cdr {
         #endregion IFields
         #region IConstructor
         
-        internal CdrEncapsulationInputStream(CdrInputStream stream, 
-                                             IndirectionStoreIndirKey indirStore) : base(indirStore) {
-            Stream baseStream = new MemoryStream();                        
-            // read the encapsulation from the input stream
+        /// <summary>
+        /// constructs an encapsulation from a sequence of byte array following in input stream.
+        /// </summary>
+        /// <remarks>should only be called from inside CdrInputStreamImpl</remarks>
+        internal CdrEncapsulationInputStream(CdrInputStream stream,
+                                             IndirectionStoreIndirKey indirStore) : base(indirStore) {            
             uint encapsLength = stream.ReadULong();
+            // read the encapsulation from the input stream
             StreamPosition streamPos = new StreamPosition(stream); // also include encaps length in global offset, because not in GetPosition() considered
-            m_globalOffset = streamPos.GlobalPosition;  // global position of this stream beginning (GetPosition() on this stream doesn't consider length field read -> global offset is just after lenght)
+            uint globalOffset = streamPos.GlobalPosition;  // global position of this stream beginning (GetPosition() on this stream doesn't consider length field read -> global offset is just after lenght)
             byte[] data = stream.ReadOpaque((int)encapsLength);
+            Initalize(data, globalOffset);
+        }
+        
+        /// <summary>
+        /// constructs an encapsulation input stream from the encapsulation data.
+        /// </summary>
+        /// <param name="encapsulationData"></param>
+        public CdrEncapsulationInputStream(byte[] encapsulationData) : base(new IndirectionStoreIndirKey()) {
+            Initalize(encapsulationData, 0);
+        }
+
+        #endregion IConstructor
+        #region IMethods
+        
+        private void Initalize(byte[] data, uint globalOffset) {
+            m_globalOffset = globalOffset;
+            Stream baseStream = new MemoryStream();
             // copy the data into the underlying stream
             baseStream.Write(data, 0, data.Length);
             baseStream.Seek(0, SeekOrigin.Begin);
@@ -1752,11 +1772,8 @@ namespace Ch.Elca.Iiop.Cdr {
             SetStream(baseStream);
             byte flags = ReadOctet(); // read the flags out of the encapsulation
             ConfigStream(flags, new GiopVersion(1,2)); // for encapsulation, the GIOP-dependant operation must be compatible with GIOP-1.2
-            SetMaxLength(encapsLength-1); // flags are already read --> minus 1                        
+            SetMaxLength(((uint)data.Length)-1); // flags are already read --> minus 1
         }
-
-        #endregion IConstructor
-        #region IMethods
         
         public byte[] ReadRestOpaque() {
             return ReadOpaque((int)GetBytesToFollow());
@@ -1878,6 +1895,16 @@ namespace Ch.Elca.Iiop.Cdr {
         
         public override long CalculateIndirectionOffset(IndirectionInfo indirInfo) {
             return -1 * (long)(GetGlobalOffset() + GetPosition() - indirInfo.StreamPos);
+        }
+        
+        /// <summary>
+        /// returns the encapsulation sequence data of this encapsulation as a byte[].
+        /// </summary>        
+        /// <remarks>not included is the length of the encapsulated data; it starts with the
+        /// endian flag.</remarks>
+        public byte[] GetEncapsulationData() {
+            MemoryStream mem = (MemoryStream) BaseStream;
+            return mem.ToArray();
         }
 
         #endregion IMethods
