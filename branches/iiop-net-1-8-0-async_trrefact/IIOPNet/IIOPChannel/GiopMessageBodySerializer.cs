@@ -610,7 +610,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 return methodCallInfo;
             } catch (Exception e) {
                 // an Exception encountered during deserialisation
-                cdrStream.SkipRest(); // skip rest of the message, to not corrupt the stream
+                try {
+                    cdrStream.SkipRest(); // skip rest of the message, to not corrupt the stream
+                } catch (Exception) {
+                    // ignore exception here, already an other exception leading to problems
+                }
                 throw new RequestDeserializationException(e, msg);
             }
         }
@@ -874,7 +878,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
             } catch (Exception e) {
                 Debug.WriteLine("exception while deserialising reply: " + e);
                 // do not corrupt stream --> skip
-                cdrStream.SkipRest();
+                try {
+                    cdrStream.SkipRest();
+                } catch (Exception) {
+                    // ignore this one, already problems.
+                }
                 throw;
             }
 
