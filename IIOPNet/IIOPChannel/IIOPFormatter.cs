@@ -371,18 +371,14 @@ namespace Ch.Elca.Iiop {
         }
 
         /// <summary>serialises an Exception</summary>
-        private void SerialiseExceptionResponse(Exception e, IMessage requestMsg,
-                                                IMessage responseMsg,
-                                                GiopConnectionDesc conDesc,                                                
-                                                ref ITransportHeaders headers, out Stream stream) {            
-            GiopVersion version = (GiopVersion)requestMsg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY];
+        private void SerialiseExceptionResponse(IServerResponseChannelSinkStack sinkStack,
+                                                IMessage requestMsg,
+                                                GiopConnectionDesc conDesc,
+                                                IMessage responseMsg,                                                                                                
+                                                ref ITransportHeaders headers, out Stream stream) {
             // serialise an exception response
             headers = new TransportHeaders();
-            headers[GiopConnectionDesc.SERVER_TR_HEADER_KEY] = conDesc;
-            stream = new MemoryStream();
-            // serialise a server result
-            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            handler.SerialiseOutgoingReplyMessage(responseMsg, requestMsg, version, stream, conDesc);
+            SerialiseResponse(sinkStack, requestMsg, conDesc, responseMsg, ref headers, out stream);
         }
     
         #region Implementation of IServerChannelSink
@@ -439,8 +435,8 @@ namespace Ch.Elca.Iiop {
                 } catch (Exception) {}
                 responseMsg = deserEx.ResponseMessage;
                 // an exception was thrown during deserialization
-                SerialiseExceptionResponse(deserEx.Reason, deserEx.RequestMessage, responseMsg,
-                                           conDesc,
+                SerialiseExceptionResponse(sinkStack, 
+                                           deserEx.RequestMessage, conDesc, responseMsg,
                                            ref responseHeaders, out responseStream);
                 return ServerProcessing.Complete;
             } catch (Exception e) {
@@ -454,9 +450,9 @@ namespace Ch.Elca.Iiop {
                     } else {
                         responseMsg = new ReturnMessage(e, null); // no useful information present for requestMsg
                     }
-                    SerialiseExceptionResponse(e, deserReqMsg, responseMsg, conDesc,
-                                               ref responseHeaders,
-                                               out responseStream);
+                    SerialiseExceptionResponse(sinkStack, 
+                                               deserReqMsg, conDesc, responseMsg,
+                                               ref responseHeaders, out responseStream);
                 } else {
                     throw e;
                 }
@@ -480,7 +476,7 @@ namespace Ch.Elca.Iiop {
                     msg = new ReturnMessage(e, null); // no useful information present for requestMsg
                 }
                 // serialise the exception
-                SerialiseExceptionResponse(e, (IMessage)state, msg, asyncData.ConDesc,
+                SerialiseExceptionResponse(sinkStack, (IMessage)state, asyncData.ConDesc, msg,
                                            ref headers, out stream);
             }
             sinkStack.AsyncProcessResponse(msg, headers, stream); // pass further on to the stream handling sinks
