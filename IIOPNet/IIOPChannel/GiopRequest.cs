@@ -178,13 +178,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// </summary>
         /// <param name="request">the request message, may be null</param>
         /// <param name="reply">the reply message</param>
-        internal GiopServerRequest(IMethodCallMessage request, ReturnMessage reply) {
-            if (request != null) {
-                m_requestMessage = request;
-                m_requestCallMessage = request;
-            } else {
-                m_requestMessage = new SimpleGiopMsg();
+        internal GiopServerRequest(IMessage request, ReturnMessage reply) {
+            if (request is IMethodCallMessage) {                
+                m_requestCallMessage = (IMethodCallMessage)request;
             }
+            m_requestMessage = request;
             m_replyMessage = reply;
         }
         
@@ -362,7 +360,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal MethodInfo CalledMethod {
             get {                
                 if (m_requestMessage.Properties[SimpleGiopMsg.CALLED_METHOD_KEY] != null) {
-                    return (MethodInfo)m_requestMessage.Properties[SimpleGiopMsg.CALLED_METHOD_KEY];
+                    return GetCalledMethodInternal();
                 } else {
                     throw new BAD_INV_ORDER(208, CompletionStatus.Completed_MayBe);
                 }                
@@ -503,7 +501,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
             get {
                 Exception ex = Exception;
                 if (ex != null) {
-                    return DetermineExceptionToThrow(ex, CalledMethod);
+                    MethodBase calledMethod = GetCalledMethodInternal();
+                    return DetermineExceptionToThrow(ex, calledMethod);
                 } else {
                     return null;
                 }
@@ -526,6 +525,14 @@ namespace Ch.Elca.Iiop.MessageHandling {
         
         #endregion IProperties
         #region IMethods
+        
+        /// <summary>
+        /// extracts the called method from the request message. Returns null, if not yet determined.
+        /// </summary>
+        /// <returns></returns>
+        private MethodInfo GetCalledMethodInternal() {
+            return (MethodInfo)m_requestMessage.Properties[SimpleGiopMsg.CALLED_METHOD_KEY];
+        }
         
         /// <summary>
         /// aquire the information needed to call a standard corba operation, which is possible for every object
