@@ -648,6 +648,22 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
+        public void TestAsyncCallInParallel() {
+            System.Boolean arg = true;
+            TestNegateBooleanDelegate nbd = new TestNegateBooleanDelegate(m_testService.TestNegateBoolean);
+            IAsyncResult[] callResults = new IAsyncResult[50];
+            // async calls
+            for (int i = 0; i < callResults.Length; i++) {
+                callResults[i] = nbd.BeginInvoke(arg, null, null);
+            }
+            // wait for responses
+            for (int i = 0; i < callResults.Length; i++) {
+                System.Boolean result = nbd.EndInvoke(callResults[i]);
+                Assertion.AssertEquals(false, result);
+            }
+        }
+
+        [Test]
         public void TestRefArgs() {
             System.Int32 argInit = 1;
             System.Int32 arg = argInit;
