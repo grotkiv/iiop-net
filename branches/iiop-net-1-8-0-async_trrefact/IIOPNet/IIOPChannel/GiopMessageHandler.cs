@@ -190,7 +190,16 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                      LocateStatus.OBJECT_HERE, null); // for the moment, do not try to find object, because forward is not possibly for IIOP.NET server
             msgOutput.CloseStream(); // write to the stream 
             return targetStream;
-        }                           
+        }            
+        
+        internal Stream PrepareMessageErrorMessage(GiopVersion version) {
+            Debug.WriteLine("create a message error message");
+            Stream targetStream = new MemoryStream();            
+            GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.MessageError);
+            header.WriteToStream(targetStream, 0);
+            targetStream.Seek(0, SeekOrigin.Begin);
+            return targetStream;
+        }
 
         #endregion IMethods
 
