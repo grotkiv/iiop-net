@@ -250,6 +250,11 @@ namespace Ch.Elca.Iiop {
         private void HandleReadCompleted(IAsyncResult ar) {
             try {            
                 int read = m_onTransport.EndRead(ar);
+                if (read <= 0) {
+                    // connection has been closed by the other end
+                    m_messageHandler.MsgReceivedConnectionClosedException(this);
+                    return;
+                }
                 int offset = m_bytesRead;
                 m_bytesRead += read;
                 // copy to message stream
@@ -845,6 +850,17 @@ namespace Ch.Elca.Iiop {
             } catch (Exception) {                
             }                        
         }        
+        
+        /// <summary>
+        /// called, when the connection has been closed while receiving a message
+        /// </summary>        
+        internal void MsgReceivedConnectionClosedException(MessageReceiveTask messageReceived) {
+            Trace.WriteLine("connection closed while trying to read a message");
+            try {
+                m_transport.CloseConnection();
+            } catch (Exception) {                
+            }
+        }
         
         protected virtual void HandleRequestMessage(Stream messageStream) {
             SendErrorMessage(); // not supported by non-bidirectional handler
