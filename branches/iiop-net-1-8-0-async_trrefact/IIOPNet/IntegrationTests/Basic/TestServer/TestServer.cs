@@ -49,6 +49,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             TestExceptionServiceImpl testExService = new TestExceptionServiceImpl();
             RemotingServices.Marshal(testExService, "testExService");
 
+            TestBoxedValuetypeServiceImpl testBoxedService = new TestBoxedValuetypeServiceImpl();
+            RemotingServices.Marshal(testBoxedService, "testBoxedService");
+
             Console.WriteLine("server running");
             Thread.Sleep(Timeout.Infinite);
         }

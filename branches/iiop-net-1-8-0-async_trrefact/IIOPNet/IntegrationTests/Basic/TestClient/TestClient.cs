@@ -50,6 +50,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
         private TestService m_testService;
         private TestExceptionService m_testExService;
+        private TestBoxedValuetypeService m_testBoxedService;
 
 
         #endregion IFields
@@ -71,6 +72,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             // get the reference to the test-service
             m_testService = (TestService)RemotingServices.Connect(typeof(TestService), "corbaloc:iiop:1.2@localhost:8087/test");
             m_testExService = (TestExceptionService)RemotingServices.Connect(typeof(TestExceptionService), "corbaloc:iiop:1.2@localhost:8087/testExService");
+            m_testBoxedService = (TestBoxedValuetypeService)RemotingServices.Connect(typeof(TestBoxedValuetypeService), "corbaloc:iiop:1.2@localhost:8087/testBoxedService");
         }
 
         [TearDown]
@@ -924,6 +926,19 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             } finally {
                 CallContext.FreeNamedDataSlot(entryName);
             }
+        }
+
+        [Test]
+        public void TestBoxedValuetypes() {
+            string arg1 = "test-Arg";
+            string result1 = m_testBoxedService.EchoBoxedString(arg1);
+            Assertion.AssertEquals("wrong boxed string returned", arg1, result1);
+
+            Test arg2 = new Test(); 
+            arg2.a = "a";
+            arg2.b = "b";
+            Test result2 = m_testBoxedService.EchoBoxedStruct(arg2);
+            Assertion.AssertEquals("wrong boxed struct returned", arg2, result2);
         }
 
         #endregion IMethods
