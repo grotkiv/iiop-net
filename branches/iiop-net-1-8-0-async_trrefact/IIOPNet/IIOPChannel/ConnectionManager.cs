@@ -45,68 +45,20 @@ namespace Ch.Elca.Iiop {
     /// <summary>this class manages outgoing client side connections</summary>
     internal class GiopClientConnectionManager : IDisposable {
         
-        #region Types 
-        
-        /// <summary>used for connection management</summary>
-        private class ConnectionUsageDescription {
-            
-            #region IFields
-
-            private GiopClientConnection m_connection;
-            private bool m_accessedSinceCheck;
-
-            #endregion IFields
-            #region IConstructors
-
-            public ConnectionUsageDescription(GiopClientConnection connection) {
-                m_accessedSinceCheck = true;
-                m_connection = connection;
-            }
-
-            #endregion IConstructors
-            #region IProperties
-
-            public GiopClientConnection Connection {
-                get { 
-                    return m_connection; 
-                }
-                set { 
-                    m_connection = value; 
-                }
-            }
-
-            /// <summary>is this session used since last check</summary>
-            public bool Accessed {
-                get { 
-                    return m_accessedSinceCheck; 
-                }
-                set { 
-                    m_accessedSinceCheck = value; 
-                }
-            }
-
-            #endregion IProperties
-
-        }
-        
-        #endregion Types
         #region IFields
         
         private IClientTransportFactory m_transportFactory;
-        private Timer m_destroyTimer;
-        private object m_requestTimeOut;
 
-        /// <summary>contains the available client connections </summary>
-        private Hashtable m_availableclientConnections = new Hashtable();
+        /// <summary>contains all connections opened by the client; key is the target of the connection; value is the connection</summary>
+        private Hashtable m_allClientConnections = new Hashtable();
     	
     	/// <summary>
-    	///  contains the allocated connections
-    	/// </summary>
-    	/// <remarks>
-    	/// key is the message, which will be sent
+    	///  contains the allocated connections. key is the message, which will be sent
     	/// with the connection
-    	/// </remarks>
-    	private Hashtable m_allocatedConnections = new Hashtable();                
+    	/// </summary>
+    	private Hashtable m_allocatedConnections = new Hashtable();
+    	
+    	private object m_requestTimeOut;
         
         #endregion IFields
         #region IConstructors                        
@@ -130,48 +82,36 @@ namespace Ch.Elca.Iiop {
         private void Initalize(IClientTransportFactory transportFactory, object requestTimeOut, int unusedKeepAliveTime) {
             m_transportFactory = transportFactory;
             m_requestTimeOut = requestTimeOut;
-            TimerCallback timerDelegate = new TimerCallback(DestroyUnusedConnections);
-            // Create a timer which invokes the session destroyer every unusedKeepAliveTime
-            m_destroyTimer = new Timer(timerDelegate, null, 2 * unusedKeepAliveTime, unusedKeepAliveTime);            
         }
         
         
         public void Dispose() {
-            CleanUp();    
+            CleanUp();
             GC.SuppressFinalize(this);
         }
         
         private void CleanUp() {
-            if (m_destroyTimer != null) {
-                m_destroyTimer.Dispose(); 
-                m_destroyTimer = null;
-            }            
+            CloseAllConnections();
         }
         
         /// <summary>checks, if availabe connections contain one, which is usable</summary>
         /// <returns>the connection, if found, otherwise null.</returns>
         private GiopClientConnection GetFromAvailable(string connectionKey) {
-            if (connectionKey == null) {
-                return null;
+            GiopClientConnection result = null;
+            GiopClientConnection con = (GiopClientConnection)m_allClientConnections[connectionKey];
+            if (con != null) {
+                if (con.CheckConnected() && (con.Desc.ReqNumberGen.IsAbleToGenerateNext())) {
+                    result = con;
+                } else {
+                    try {
+                        con.CloseConnection();
+                    } catch (Exception) {                            
+                    } finally {
+                        m_allClientConnections.Remove(connectionKey);
+                    }
+                }                
             }
-            
-            lock(this) {
-            
-            ArrayList avConnections = (ArrayList) m_availableclientConnections[connectionKey];
-            while ((avConnections != null) && (avConnections.Count > 0)) { // lock not needed for avConnections, because all using methods exclusive
-                // connection must not be available for other clients if used by this one
-                ConnectionUsageDescription connectionDesc = (ConnectionUsageDescription) avConnections[0];
-                avConnections.Remove(connectionDesc);
-                // connection must be connected to be usable, otherwise do not use it
-                if ((connectionDesc.Connection).CheckConnected()) {
-                    GiopClientConnection result = connectionDesc.Connection;
-                    connectionDesc.Accessed = true;
-                    return result;
-                }
-            }
-            return null;
-            
-            }
+            return result;
         }
         
         /// <summary>
@@ -181,6 +121,17 @@ namespace Ch.Elca.Iiop {
             return m_transportFactory.CanCreateTranporForIor(target);
         }
         
+        private GiopClientConnection CreateAndRegisterNewConnection(Ior target, string targetKey) {
+            GiopClientConnection result;
+            IClientTransport transport =
+                m_transportFactory.CreateTransport(target);
+            // already open connection here, because GetConnectionFor 
+            // should returns an open connection (if not closed meanwhile)
+            transport.OpenConnection();
+            result = new GiopClientConnection(targetKey, transport);
+            m_allClientConnections[targetKey] = result;
+            return result;
+        }        
         
         /// <summary>allocation a connection for the message.</summary>
         internal GiopClientConnectionDesc AllocateConnectionFor(IMessage msg, Ior target) {
@@ -188,28 +139,24 @@ namespace Ch.Elca.Iiop {
             
             if (target != null) {
                 string targetKey = m_transportFactory.GetEndpointKey(target);
+                if (targetKey == null) {
+                    throw new BAD_PARAM(1178, CompletionStatus.Completed_MayBe);
+                }
                 lock(this) {
                     result = GetFromAvailable(targetKey);
 
-                    // if connection not reusable, create new one
+                    // if no usable connection, create new one
                     if (result == null) {
-                        IClientTransport transport =
-                             m_transportFactory.CreateTransport(target);
-                         // already open connection here, because GetConnectionFor 
-                         // should returns an open connection (if not closed meanwhile)
-                         transport.OpenConnection();
-                         result = new GiopClientConnection(targetKey, transport);
+                        result = CreateAndRegisterNewConnection(target, targetKey);
                     }
                     m_allocatedConnections[msg] = result;
                 }
             } else {
-                // should not occur?
-                throw new omg.org.CORBA.INTERNAL(995,
-                                                 omg.org.CORBA.CompletionStatus.Completed_No);
-            }                                        
-            
+                // should not occur
+                throw new BAD_PARAM(995,
+                                    omg.org.CORBA.CompletionStatus.Completed_No);
+            }
             return result.Desc;
-
         }
         
         internal void ReleaseConnectionFor(IMessage msg) {
@@ -223,20 +170,6 @@ namespace Ch.Elca.Iiop {
                 }
                 // remove from allocated connections
                 m_allocatedConnections.Remove(msg);
-
-                // check if reusable
-                if ((connection.ConnectionKey != null) && connection.CheckConnected() && 
-                    connection.Desc.ReqNumberGen.IsAbleToGenerateNext()) {
-                    ArrayList avConnections = (ArrayList) m_availableclientConnections[connection.ConnectionKey];
-                    if (avConnections == null) {
-                        avConnections = new ArrayList();
-                        m_availableclientConnections.Add(connection.ConnectionKey, avConnections);
-                    }
-                    ConnectionUsageDescription desc = new ConnectionUsageDescription(connection);
-                    avConnections.Add(desc);
-                } else {
-                    connection.CloseConnection(); // not usable further, because connection information not gettable
-                }            	            	
             }
         }
         
@@ -253,45 +186,23 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>generates the request id to use for the given message</summary>
         internal uint GenerateRequestId(IMessage msg, GiopClientConnectionDesc allocatedCon) {
-            return allocatedCon.ReqNumberGen.GenerateRequestId();
-        }
-        
-        /// <summary>Mark the connections as non-used since last check</summary>
-        private void MarkNonUsed(ArrayList availableForUri) {
-            lock(this) {                
-                for (int i = 0; i< availableForUri.Count; i++) {
-                    ((ConnectionUsageDescription)availableForUri[i]).Accessed = false;
-                }
-            }
-        }
-        
-        /// <summary>chooses a non-used connection to destroy, if there is at least one</summary>
-        private ConnectionUsageDescription GetConToDestroy(ArrayList availableForUri) {
-            lock(this) {                
-                for (int i = 0; i< availableForUri.Count; i++) {
-                    if (!((ConnectionUsageDescription)availableForUri[i]).Accessed) {
-                        return ((ConnectionUsageDescription)availableForUri[i]);
-                    }
-                }                
-            }        
-            return null;
-        }                        
-        
-        private void DestroyUnusedConnections(Object state) {
             lock(this) {
-                IEnumerator enumerator = m_availableclientConnections.Values.GetEnumerator();
-                while (enumerator.MoveNext()) { // enumerator over all targets
-                    ArrayList list = (ArrayList) enumerator.Current;                    
-                    ConnectionUsageDescription toDestroy = GetConToDestroy(list);
-                    if (toDestroy != null) {
-                        list.Remove(toDestroy);                    
-                        toDestroy.Connection.CloseConnection();
-                    }
-                    MarkNonUsed(list);
-                }
+                return allocatedCon.ReqNumberGen.GenerateRequestId();
             }
         }
         
+        private void CloseAllConnections() {
+            lock(this) {
+                foreach (GiopClientConnection con in m_allClientConnections.Values) {
+                    try {
+                        con.CloseConnection();
+                    } catch (Exception) {                
+                    }
+                }
+            }
+            m_allClientConnections.Clear();
+        }
+                
         #endregion IMethods
         
     }
