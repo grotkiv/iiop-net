@@ -99,6 +99,15 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
         
         /// <summary>
+        /// the target uri for this request
+        /// </summary>
+        internal string Uri {
+            get {
+                return m_requestMessage.Uri;
+            }
+        }
+        
+        /// <summary>
         /// the MethodInfo of the request target method
         /// </summary>
         internal MethodInfo MethodToCall {
