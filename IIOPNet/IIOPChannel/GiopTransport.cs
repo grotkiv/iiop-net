@@ -32,6 +32,10 @@ using System.IO;
 using System.Diagnostics;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Messaging;
+using System.Threading;
+using System.Collections;
+using System.Collections.Specialized;
+using System.Net;
 using Ch.Elca.Iiop.Cdr;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.MessageHandling;
@@ -39,209 +43,818 @@ using omg.org.CORBA;
 
 
 namespace Ch.Elca.Iiop {
-
     
-    /// <summary>This class is responsible for Receiving/Sending Giop
-    /// Messages on a client. Fragmented Messages are Reassembled</summary>
-    internal sealed class GiopTransportClientMsgHandler {
+    
+    /// <summary>
+    /// inteface of a giop request message receiver;    
+    /// </summary>
+    /// <remarks>the methods of this interface are called in a ThreadPool thread</remarks>
+    internal interface IGiopRequestMessageReceiver {
+                
+        void ProcessRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler);
         
+        void ProcessLocateRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler);
         
-        #region IFields
+    }        
+    
+    /// <summary>
+    /// encapsulates a message to send and keeps track of what has already been sent
+    /// </summary>
+    internal class MessageSendTask {
         
-        private Stream m_transportStream;
+        #region Constants
         
-        private FragmentedMsgAssembler m_fragmentAssembler =
-            new FragmentedMsgAssembler();
+        /// <summary>
+        /// specifies, how much should be read in one step from message to send
+        /// </summary>
+        private const int READ_CHUNK_SIZE = 1024;
+
+        #endregion Constants
+        #region Fields
         
-        private GiopConnectionDesc m_conDesc;
+        private long m_bytesAlreadySent;
+        private long m_bytesToSend;        
+        private long m_reqId;
+        private Stream m_messageToSend;
+        private ITransport m_onTransport;
+        private GiopTransportMessageHandler m_messageHandler;
         
-        #endregion IFields
+        private byte[] m_buffer = new byte[READ_CHUNK_SIZE];
+        
+        #endregion Fields
         #region IConstructors
         
-        /// <summary>default constructor</summary>
-        public GiopTransportClientMsgHandler(Stream transportStream,
-                                             GiopConnectionDesc conDesc) {
-            m_transportStream = transportStream;
-            m_conDesc = conDesc;
+        public MessageSendTask(Stream message, long bytesToSend, ITransport onTransport,
+                               GiopTransportMessageHandler messageHandler) {
+            Initalize(message, bytesToSend, -1, onTransport, messageHandler);            
+        }
+
+        
+        public MessageSendTask(Stream message, long bytesToSend, uint reqId, ITransport onTransport,
+                               GiopTransportMessageHandler messageHandler) {
+            Initalize(message, bytesToSend, reqId, onTransport, messageHandler);
         }
         
-        #endregion IConstructor
+        #endregion IConstructors
         #region IProperties
         
-        internal Stream TransportStream {
+        internal uint RequestId {
             get {
-                return m_transportStream;
-            }
-        }        
-        
-        internal GiopConnectionDesc ConDesc {
-            get {
-                return m_conDesc;
+                if (HasRequestId()) {
+                    return (uint)m_reqId;
+                } else {
+                    throw new Exception("no request id present for this message");
+                }
             }
         }
         
         #endregion IProperties
+        
+        private void Initalize(Stream message, long bytesToSend, long reqId, ITransport onTransport,
+                               GiopTransportMessageHandler messageHandler) {
+            m_messageToSend = message;
+            m_bytesToSend = bytesToSend;            
+            m_reqId = reqId;
+            m_onTransport = onTransport;           
+            m_messageHandler = messageHandler;
+        }
+        
+        internal bool HasRequestId() {
+            return m_reqId >= 0;
+        }
+        
+        /// <summary>
+        /// begins the send of the next message part on the transport;
+        /// notifies callback about progress
+        /// </summary>
+        internal void StartSendNextPart() {
+            if (HasNextPartToSend()) {
+            // need more data
+                long nrOfBytesToRead = m_bytesToSend - m_bytesAlreadySent;
+                int toRead = (int)Math.Min(m_buffer.Length,
+                                           nrOfBytesToRead);
+                
+                // read either the whole buffer length or 
+                // the remaining nr of bytes: nrOfBytesToRead - bytesRead
+                int bytesToSendInProgress = m_messageToSend.Read(m_buffer, 0, toRead);
+                if (bytesToSendInProgress <= 0) {
+                    // underlying stream not enough data
+                    throw new omg.org.CORBA.INTERNAL(88, CompletionStatus.Completed_MayBe);
+                }                                                
+                m_bytesAlreadySent += bytesToSendInProgress;
+                m_onTransport.BeginWrite(m_buffer, 0, bytesToSendInProgress, new AsyncCallback(this.HandleSentCompleted), this);
+            } else {
+                throw new INTERNAL(89, CompletionStatus.Completed_MayBe);
+            }
+        }
+
+        private void HandleSentCompleted(IAsyncResult ar) {
+            try {
+                m_onTransport.EndWrite(ar); // complete the write task                            
+                if (HasNextPartToSend()) {
+                    StartSendNextPart();
+                } else {                    
+                    m_messageHandler.MsgSentCallback(this); // doesn't throw exceptions
+                }
+            } catch (Exception ex) {
+                m_messageHandler.MsgSentCallbackException(this, ex);
+            }
+        }
+        
+        /// <summary>
+        /// returns true, if StartSendNextPart should be called to send another part of the message, else 
+        /// returns false to indicate that the message is completely sent
+        /// </summary>
+        /// <returns></returns>
+        internal bool HasNextPartToSend() {
+            return m_bytesAlreadySent < m_bytesToSend;
+        }
+                        
+    }            
+    
+    /// <summary>
+    /// encapsulates a message to receive and keeps track of what has already been received
+    /// </summary>
+    internal class MessageReceiveTask {
+
+        #region Constants
+        
+        /// <summary>
+        /// specifies, how much should be read in one step from message to send
+        /// </summary>
+        private const int READ_CHUNK_SIZE = 1024;
+
+        #endregion Constants
+        #region Fields
+
+        private ITransport m_onTransport;
+        private GiopTransportMessageHandler m_messageHandler;
+        
+        private GiopHeader m_header = null;
+        private Stream m_messageToReceive;        
+        private int m_expectedMessageLength;
+        private int m_bytesRead;
+        
+        private byte[] m_buffer = new byte[READ_CHUNK_SIZE];
+        private byte[] m_giopHeaderBuffer = new byte[12];               
+        
+        #endregion Fields
+        #region IConstructors
+        
+        public MessageReceiveTask(ITransport onTransport,
+                                  GiopTransportMessageHandler messageHandler) {            
+            m_onTransport = onTransport;
+            m_messageHandler = messageHandler;
+        }
+        
+        #endregion IConstructors
+        #region IProperties
+                
+        public Stream MessageStream {
+            get {
+                return m_messageToReceive;
+            }
+        }             
+        
+        public GiopHeader Header {
+            get {
+                if (m_header == null) {
+                    throw new INTERNAL(100, CompletionStatus.Completed_MayBe);
+                }
+                return m_header;
+            }
+        }
+                
+        #endregion IProperties
         #region IMethods
         
-        /// <summary>processes a request synchronous</summary>
-        /// <param name="reqId">the request id of the message</param>
-        /// <returns>the response message stream (already fully assembled message)</returns>
-        public Stream ProcessRequestSynchronous(Stream msgStream, uint reqId,
-                                                out ITransportHeaders responseHeaders) {
-            ProcessRequest(msgStream);            
-            return ProcessResponse(reqId, out responseHeaders);
-                        
-        }
-        
         /// <summary>
-        /// send the formatted request to the target
+        /// begins receiving a new message from transport; can be called again, after message has been completed.
         /// </summary>
-        public void ProcessRequest(Stream requestStream) {                                 
-            requestStream.Seek(0, SeekOrigin.Begin); // go to the beginning of the stream
+        public void StartReceiveMessage() {
+            m_messageToReceive = new MemoryStream();
+            m_header = null;
+            m_expectedMessageLength = 12; // giop header-length
+            m_bytesRead = 0;
             
-            Debug.WriteLine("sending an IIOP message in the Client side Transport sink");
-            SendRequestMessage(requestStream);
-            Debug.WriteLine("message sent");
+            StartReceiveNextMessagePart();
         }
+        
+        private void StartReceiveNextMessagePart() {                                    
+            int toRead = Math.Min(READ_CHUNK_SIZE,
+                                       m_expectedMessageLength - m_bytesRead);
+            m_onTransport.BeginRead(m_buffer, 0, toRead, new AsyncCallback(this.HandleReadCompleted), this);            
+        }
+        
 
+        private void HandleReadCompleted(IAsyncResult ar) {
+            try {            
+                int read = m_onTransport.EndRead(ar);
+                int offset = m_bytesRead;
+                m_bytesRead += read;
+                // copy to message stream
+                m_messageToReceive.Write(m_buffer, 0, read);
+                // handle header
+                if (m_header == null) {
+                    // copy to giop-header buffer
+                    Array.Copy(m_buffer, 0, m_giopHeaderBuffer, offset, read);
+                    if (m_bytesRead == 12) {
+                        m_header = new GiopHeader(m_giopHeaderBuffer);
+                        m_expectedMessageLength = (int)(m_expectedMessageLength + m_header.ContentMsgLength);
+                    }
+                }
+                if (HasNextMessagePart()) {
+                    StartReceiveNextMessagePart();
+                } else {
+                    // completed
+                    m_messageToReceive.Seek(0, SeekOrigin.Begin);
+                    m_messageHandler.MsgReceivedCallback(this);
+                }
+            } catch (Exception ex) {
+                m_messageHandler.MsgReceivedCallbackException(this, ex);
+            }
+        }
+                
+        private bool HasNextMessagePart() {
+            return m_bytesRead < m_expectedMessageLength;
+        }
+        
+        #endregion IMethods                
+        
+    }
+    
+    
+    /// <summary>
+    /// this class is responsible for reading/writing giop messages
+    /// </summary>
+    public class GiopTransportMessageHandler {                
+        
+        #region ResponseWaiter-Types
         
         /// <summary>
-        /// process the response stream, before forwarding it to the formatter
+        /// inteface for a helper class, which waits for a response
         /// </summary>
-        /// <remarks>
-        /// Precondition: in the networkStream, the message following is not a response
-        /// to another request, than the request sent by ProcessMessage
-        /// </remarks>
-        public Stream ProcessResponse(uint forReqId,                                     
-                                      out ITransportHeaders responseHeaders) {
-            responseHeaders = new TransportHeaders();
-            responseHeaders[GiopConnectionDesc.CLIENT_TR_HEADER_KEY]= m_conDesc; // add to response headers
-            Stream responseStream = null;
-                      
-            Debug.WriteLine("receiving an IIOP message in the Client side Transport sink");
-            responseStream = ReceiveResponseMessage(forReqId);
-            Debug.WriteLine("message received");
-            responseStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
-            return responseStream;
+        internal interface IResponseWaiter {
+            Stream Response {
+                get;
+                set;
+            }
+            Exception Problem {
+                get;
+                set;
+            }
+            
+            /// <summary>
+            /// is called by MessageHandler, if the suitable response has been received
+            /// </summary>
+            void Notify();
+            
+            /// <summary>
+            /// prepare for receiving notify; can block the current thread (notify will then unblock)
+            /// </summary>
+            /// <returns>false, if the wait has been interrupted, otherwise true</returns>
+            bool StartWaiting();
+            
+            
+            /// <summary>
+            /// is notified, when the response waiter is no longer needed; after completed,
+            /// the instance must not be used any more
+            /// </summary>
+            void Completed();
         }        
         
-        /// <summary>
-        /// sends the message from messageStream
-        /// to the transport Stream
-        /// </summary>
-        private void SendRequestMessage(Stream msgStream) {            
+        internal class SynchronousResponseWaiter : IResponseWaiter {
             
-#if DEBUG            
-            msgStream.Seek(0, SeekOrigin.Begin); // go to the beginning of the stream
-            byte[] data = new byte[msgStream.Length];
-            msgStream.Read(data, 0, (int)msgStream.Length);
-            OutputHelper.DebugBuffer(data);
-#endif
+            private Stream m_response;
+            private Exception m_problem;
+            private ManualResetEvent m_waiter;            
+            private GiopTransportMessageHandler m_handler;
             
-            msgStream.Seek(0, SeekOrigin.Begin); // go to the beginning of the stream
-                        
-            IoUtil.StreamCopyExactly(msgStream, m_transportStream, 
-                                     (int)msgStream.Length);                        
-        }
-        
-        /// <summary>receives the response for request reqNr,
-        /// which starts at the current position
-        /// of the transport stream.
-        /// </summary>
-        /// <returns>the response message for request reqNr or        
-        /// IOException if something goes wrong while reading or message
-        /// received is not a reply for the request.</returns>
-        private Stream ReceiveResponseMessage(uint reqNr) {
+            public SynchronousResponseWaiter(GiopTransportMessageHandler handler) {   
+                m_waiter = new ManualResetEvent(false);
+                m_handler = handler;
+            }
             
-            bool responseMessageFound = false;
-            Stream responseStream = null;
-            while (!responseMessageFound) {
-                responseStream = ReadResponseMessage();
-
-                // find request_id in message
-                uint msgReqId = FindRequestIdInReply(responseStream);
-                if (msgReqId == reqNr) {
-                    responseMessageFound = true;        
-                } else if (msgReqId > reqNr) {
-                    Trace.WriteLine("reply of sequence: " + msgReqId + "; expected was: " + reqNr);
-                    throw new COMM_FAILURE(154, CompletionStatus.Completed_MayBe);
-                } else if (msgReqId < reqNr) {
-                    Trace.WriteLine("ignoring reply of sequence (older reply again): " + msgReqId + "; expected was: " + reqNr);
-                    // ignore: received an older reply again
+            /// <summary>
+            /// the response if successfully completed, otherwise null.
+            /// </summary>
+            public Stream Response {
+                get {
+                    return m_response;
+                }
+                set {
+                    m_response = value;
                 }
             }
             
-            responseStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
-            return responseStream;            
-        }
-        
-        private Stream ReadResponseMessage() {
-            Stream responseStream = null;
-            bool fullyRead = false;
+            /// <summary>
+            /// the problem, if one has occured
+            /// </summary>
+            public Exception Problem {
+                get {
+                    return m_problem;    
+                }
+                set {
+                    m_problem = value;
+                }
+            }
             
-            while (!fullyRead) {
-                // create a stream for reading a new message
-                CdrInputStreamImpl reader = new CdrInputStreamImpl(m_transportStream);
-                GiopHeader msgHeader = new GiopHeader(reader);
-             
-                switch(msgHeader.GiopType) {
-                    case GiopMsgTypes.Reply:
-                        if ((msgHeader.GiopFlags & GiopHeader.FRAGMENT_MASK) > 0) {
-                            m_fragmentAssembler.StartFragment(reader, msgHeader);
-                        } else {
-                            // no fragmentation
-                            responseStream = new MemoryStream();
-                            msgHeader.WriteToStream(responseStream,
-                                                    msgHeader.ContentMsgLength);
-                            IoUtil.StreamCopyExactly(m_transportStream, 
-                                                     responseStream,
-                                                     (int)msgHeader.ContentMsgLength);
-                            fullyRead = true; // no more fragments
-                        }                    
-                        break;
-                    case GiopMsgTypes.Fragment:
-                        if (!(m_fragmentAssembler.IsLastFragment(msgHeader))) {
-                            m_fragmentAssembler.AddFragment(reader, msgHeader);
-                        } else {
-                            responseStream = m_fragmentAssembler.FinishFragmentedMsg(reader, 
-                                                                                     msgHeader);
-                            fullyRead = true; // no more fragments
+            public void Notify() {
+                m_waiter.Set();
+            }
+            
+            public bool StartWaiting() {
+                return m_handler.WaitForEvent(m_waiter);
+            }
+            
+            public void Completed() {
+                // dispose this handle
+                m_waiter.Close();
+            }
+            
+        }
+    
+        internal class AsynchronousResponseWaiter : IResponseWaiter {
+            
+            private GiopTransportMessageHandler m_transportHandler;
+            private Stream m_response;
+            private Exception m_problem;
+            private AsyncResponseAvailableCallBack m_callback;
+            private IClientChannelSinkStack m_clientSinkStack;
+            private GiopClientConnection m_clientConnection;
+            private Timer m_timer;
+            private int m_timeOut;
+            private bool m_alreadyNotified;
+            private uint m_requestId;
+                        
+            public AsynchronousResponseWaiter(GiopTransportMessageHandler transportHandler,
+                                              uint requestId,
+                                              AsyncResponseAvailableCallBack callback,
+                                              IClientChannelSinkStack clientSinkStack,
+                                              GiopClientConnection connection, 
+                                              int timeOut) {
+                Initalize(transportHandler, requestId, callback, clientSinkStack, connection, timeOut);
+            }            
+                        
+            
+            /// <summary>
+            /// the response if successfully completed, otherwise null.
+            /// </summary>
+            public Stream Response {
+                get {
+                    return m_response;
+                }
+                set {
+                    m_response = value;
+                }
+            }
+            
+            /// <summary>
+            /// the problem, if one has occured
+            /// </summary>
+            public Exception Problem {
+                get {
+                    return m_problem;    
+                }
+                set {
+                    m_problem = value;
+                }
+            }            
+            
+            private void Initalize(GiopTransportMessageHandler transportHandler,
+                                   uint requestId,
+                                   AsyncResponseAvailableCallBack callback,
+                                   IClientChannelSinkStack clientSinkStack,
+                                   GiopClientConnection connection, 
+                                   int timeOutMillis) {
+                m_alreadyNotified = false;                
+                m_transportHandler = transportHandler;
+                m_requestId = requestId;
+                m_callback = callback;
+                m_clientConnection = connection;
+                m_clientSinkStack = clientSinkStack;
+                m_timeOut = timeOutMillis;                
+            }                            
+            
+            public void Notify() {
+                if (!m_alreadyNotified) {
+                    lock(this) {
+                        if (!m_alreadyNotified) {
+                            m_alreadyNotified = true;
+                            Completed();
+                            m_callback(m_clientSinkStack, m_clientConnection,
+                                       Response, Problem);
                         }
-                        break;
-                    default:
-                        Trace.WriteLine("unsupported GIOP-msg received: " + msgHeader.GiopType);
-                        throw new INTERNAL(155, CompletionStatus.Completed_MayBe);
+                    }
                 }
                 
-            } // end while (!fullyRead)
+            }
+            
+            public bool StartWaiting() {
+                if (m_timeOut != Timeout.Infinite) {
+                    m_timer = new Timer(new TimerCallback(this.TimeOutCallback),
+                                        null,
+                                        m_timeOut,
+                                        Timeout.Infinite);                    
+                }
+                return true;
+            }
+            
+            public void Completed() {
+                if (m_timer != null) {                    
+                    m_timer.Dispose();
+                }
+                // nothing special to do
+            }            
+            
+            private void TimeOutCallback(object state) {
+                if (!m_alreadyNotified) {
+                    lock(this) {
+                        if (!m_alreadyNotified) {
+                            m_alreadyNotified = true;                            
+                            m_transportHandler.CancelWaitForResponseMessage(m_requestId);
+                            Completed();
+                            m_callback(m_clientSinkStack, m_clientConnection,
+                                       null, new TIMEOUT(32, CompletionStatus.Completed_MayBe));
+                        }
+                    }
+                }                
+            }
 
-                      
-#if DEBUG            
-            responseStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning
-            byte[] data = new byte[responseStream.Length];
-            responseStream.Read(data, 0, (int)responseStream.Length);
-            OutputHelper.DebugBuffer(data);
-#endif
-            return responseStream;
+            
         }
         
+        #endregion ResponseWaiter-Types
+        #region IFields
+                
+        private ITransport m_transport;
+        private object m_timeout; // a TimeSpan or null if not set
+        private AutoResetEvent m_writeLock;
         
-        /// <summary>extract the requestid from the message</summary>
-        /// <param name="responseStream">Stream, containing a reply message</param>
-        private uint FindRequestIdInReply(Stream responseStream) {
-            responseStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
+        private IDictionary m_waitingForResponse = new ListDictionary();
+        private FragmentedMessageAssembler m_fragmentAssembler =
+            new FragmentedMessageAssembler();
+
+        
+        #endregion IFields
+        #region IConstructors
+        
+        /// <summary>creates a giop transport message handler, which doesn't accept request messages</summary>
+        internal GiopTransportMessageHandler(ITransport transport) {
+            Initalize(transport, null);
+        }
+        
+        /// <summary>creates a giop transport message handler, which doesn't accept request messages</summary>
+        internal GiopTransportMessageHandler(ITransport transport, TimeSpan timeout) {            
+            Initalize(transport, timeout);
+        }
+        
+        #endregion IConstructors
+        #region IProperties
+        
+        internal ITransport Transport {
+            get {
+                return m_transport;
+            }
+        }
+        
+        #endregion IProperties
+        #region IMethods        
+        
+        private void Initalize(ITransport transport, object timeout) {
+            m_transport = transport;            
+            m_timeout = timeout;            
+            m_writeLock = new AutoResetEvent(true);
+        }    
+                
+        #region Synchronization
+        
+        /// <summary>
+        /// wait for an event, considering timeout.
+        /// </summary>
+        /// <returns>true, if ok, false if timeout occured</returns>
+        private bool WaitForEvent(WaitHandle waiter) {
+            if (m_timeout != null) {
+                return waiter.WaitOne((TimeSpan)m_timeout, false);                
+            } else {
+                return waiter.WaitOne();
+            }
+        }
+        
+        private bool WaitForWriteLock() {
+            return WaitForEvent(m_writeLock); // wait for the right to write to the stream
+        }
+        
+        #endregion Synchronization
+        #region Exception handling
+        
+        private void CloseConnectionAfterTimeout() {
+            try {
+                Trace.WriteLine("closing connection because of timeout");
+                m_transport.CloseConnection();
+            } catch (Exception ex) {
+                Debug.WriteLine("exception while trying to close connection after a timeout: " + ex);
+            }
+        }
+        
+        private void CloseConnectionAfterUnexpectedException(Exception uex) {
+            try {
+                Trace.WriteLine("closing connection because of unexpected exception: " + uex);
+                m_transport.CloseConnection();
+            } catch (Exception ex) {
+                Debug.WriteLine("exception while trying to close connection: " + ex);
+            }
+        }
+        
+        #endregion Exception handling
+        #region Sending messages
+
+        /// <summary>
+        /// sets the stream to offset 0. Returns the length of the stream.
+        /// </summary>                
+        private long PrepareStreamToSend(Stream stream) {
+            stream.Seek(0, SeekOrigin.Begin);
+            return stream.Length;
+        }
+        
+        private void StartWriteRequestMessage(Stream stream, uint requestId) {
+            long bytesToSend = PrepareStreamToSend(stream);
+            MessageSendTask task = new MessageSendTask(stream, bytesToSend, requestId,
+                                                       m_transport, this);
+            StartSendMessageTask(task);
+        }
+        
+        private void StartWriteResponseMessage(Stream stream) {
+            long bytesToSend = PrepareStreamToSend(stream);
+            MessageSendTask task = new MessageSendTask(stream, bytesToSend,
+                                                       m_transport, this);
+            StartSendMessageTask(task);
+        }   
+        
+        private void StartSendMessageTask(MessageSendTask task) {            
+            if (task.HasNextPartToSend()) {
+                task.StartSendNextPart();
+            }            
+        }
+        
+        /// <summary>
+        /// send a message as a result to an incoming message
+        /// </summary>
+        internal void SendResponse(Stream responseStream) {
+            bool gotLock = WaitForWriteLock();
+            if (!gotLock) {
+                CloseConnectionAfterTimeout();
+                throw new omg.org.CORBA.TIMEOUT(30, CompletionStatus.Completed_No);
+            }
+            StartWriteResponseMessage(responseStream);
+        }
+                
+        /// <summary>
+        /// sends the request and blocks the thread until the response message
+        /// has arravied or a timeout has occured.
+        /// </summary>
+        /// <returns>the response stream</returns>
+        internal Stream SendRequestSynchronous(Stream requestStream, uint requestId) {
+            bool gotLock = WaitForWriteLock();
+            if (!gotLock) {
+                CloseConnectionAfterTimeout();
+                throw new omg.org.CORBA.TIMEOUT(30, CompletionStatus.Completed_No);
+            }
+            IResponseWaiter waiter;
+            lock (m_waitingForResponse.SyncRoot) {
+                // create and register wait handle
+                waiter = new SynchronousResponseWaiter(this);
+                if (m_waitingForResponse[requestId] == null) {
+                    m_waitingForResponse[requestId] = waiter;
+                } else {
+                    throw new omg.org.CORBA.INTERNAL(40, CompletionStatus.Completed_No);
+                }
+            }                
+            // begin sending of message
+            StartWriteRequestMessage(requestStream, requestId);
+            // wait for completion or timeout                
+            bool received = waiter.StartWaiting();
+            waiter.Completed();
+            if (received) {
+                // get and return the message
+                if (waiter.Problem != null) {
+                    throw waiter.Problem;
+                } else if (waiter.Response != null) {
+                    return waiter.Response;
+                } else {
+                    throw new INTERNAL(41, CompletionStatus.Completed_MayBe);
+                }
+            } else {
+                lock (m_waitingForResponse.SyncRoot) {
+                    m_waitingForResponse[requestId] = null;
+                }                
+                CloseConnectionAfterTimeout();
+                throw new omg.org.CORBA.TIMEOUT(31, CompletionStatus.Completed_MayBe);
+            }            
+        }
+        
+        internal void SendRequestMessageOneWay(Stream requestStream, uint requestId) {
+            bool gotLock = WaitForWriteLock();
+            if (!gotLock) {
+                CloseConnectionAfterTimeout();
+                // don't throw an exception, silently stop try sending
+                Debug.WriteLine("failed to send oneway request message due to timeout while trying to start writing");
+                return;
+            }
+            // begin sending of message
+            StartWriteRequestMessage(requestStream, requestId);
+        }
+        
+        internal void SendRequestMessageAsync(Stream requestStream, uint requestId,
+                                              AsyncResponseAvailableCallBack callback,
+                                              IClientChannelSinkStack clientSinkStack,
+                                              GiopClientConnection connection) {
+            bool gotLock = WaitForWriteLock();
+            if (!gotLock) {
+                CloseConnectionAfterTimeout();
+                Debug.WriteLine("failed to send async request message due to timeout while trying to start writing");
+                throw new TIMEOUT(32, CompletionStatus.Completed_No);
+            }
+            IResponseWaiter waiter;
+            lock (m_waitingForResponse.SyncRoot) {
+                // create and register wait handle                
+                int timeoutMillis = Timeout.Infinite;
+                if (m_timeout != null) {
+                    timeoutMillis = (int)Math.Round(((TimeSpan)m_timeout).TotalMilliseconds);
+                }
+                waiter = new AsynchronousResponseWaiter(this, requestId, callback, clientSinkStack, connection,
+                                                        timeoutMillis);
+                if (m_waitingForResponse[requestId] == null) {
+                    m_waitingForResponse[requestId] = waiter;
+                } else {
+                    throw new omg.org.CORBA.INTERNAL(40, CompletionStatus.Completed_No);
+                }
+            }                
+            // wait for completion or timeout
+            waiter.StartWaiting(); // notify the waiter, that the time for the request starts; is non-blocking
+            // begin sending of message
+            StartWriteRequestMessage(requestStream, requestId);
+        }
+        
+        /// <summary>
+        /// deregister the waiter for the given requestId
+        /// </summary>        
+        internal void CancelWaitForResponseMessage(uint requestId) {
+            lock (m_waitingForResponse.SyncRoot) {
+                // deregister waiter
+                m_waitingForResponse[requestId] = null;
+            }
+        }
+        
+        /// <summary>
+        /// is notified, if a complete giop message has been sent.
+        /// </summary>
+        /// <remarks>doesn't throw exceptiosn</remarks>
+        internal void MsgSentCallback(MessageSendTask completedTask) {
+            try {
+                // message send completed, signal availability of write lock
+                m_writeLock.Set();
+            } catch (Exception ex) {
+                CloseConnectionAfterUnexpectedException(ex);
+            }
+        }
+        
+        /// <summary>handles an exception while sending a message</summary>
+        internal void MsgSentCallbackException(MessageSendTask problemTask, Exception ex) {            
+            try {
+                if (problemTask.HasRequestId()) {
+                    // check if somebody is waiting for an answer to the message sent
+                    lock (m_waitingForResponse.SyncRoot) {
+                        IResponseWaiter waiter = (IResponseWaiter)m_waitingForResponse[problemTask.RequestId];
+                        if (waiter != null) {
+                            m_waitingForResponse[problemTask.RequestId] = null;
+                            waiter.Problem = ex;
+                            waiter.Notify();
+                        }
+                    }
+                }
+            } catch (Exception) {
+            } finally {
+                try {
+                    // close connection
+                    CloseConnectionAfterUnexpectedException(ex);                        
+                } catch (Exception) {                
+                }
+            }
+        }
+        
+        #endregion Sending messages
+        #region Receiving messages          
+                
+        /// <summary>
+        /// begins receiving messages asynchronously
+        /// </summary>
+        internal void StartMessageReception() {
+            MessageReceiveTask task = new MessageReceiveTask(m_transport, this);
+            task.StartReceiveMessage();
+        }
+                
+        internal void MsgReceivedCallback(MessageReceiveTask messageReceived) {
+            Stream messageStream = messageReceived.MessageStream;
+            GiopHeader header = messageReceived.Header;
+            if (FragmentedMessageAssembler.IsFragmentedMessage(header)) {
+                // defragment
+                if (FragmentedMessageAssembler.IsStartFragment(header)) {
+                    m_fragmentAssembler.StartFragment(messageStream);
+                    messageReceived.StartReceiveMessage(); // receive next message
+                    return; // wait for next callback
+                } else if (!FragmentedMessageAssembler.IsLastFragment(header)) {
+                    m_fragmentAssembler.AddFragment(messageStream);
+                    messageReceived.StartReceiveMessage(); // receive next message
+                    return; // wait for next callback                    
+                } else {
+                    messageStream = m_fragmentAssembler.FinishFragmentedMsg(messageStream, out header);
+                }                
+            }
             
-            CdrInputStreamImpl reader = new CdrInputStreamImpl(responseStream);
+            // here, the message is no longer fragmented, don't check for fragment here
+            switch (header.GiopType) {
+                case GiopMsgTypes.Request:
+                    HandleRequestMessage(messageStream);
+                    messageReceived.StartReceiveMessage(); // receive next message
+                    break;
+                case GiopMsgTypes.LocateRequest:
+                    HandleLocateRequestMessage(messageStream);
+                    messageReceived.StartReceiveMessage(); // receive next message
+                    break;
+                case GiopMsgTypes.Reply:
+                    // see, if somebody is interested in the response
+                    lock (m_waitingForResponse.SyncRoot) {
+                        uint replyForRequestId = ExtractRequestIdFromReplyMessage(messageStream);
+                        IResponseWaiter waiter = (IResponseWaiter)m_waitingForResponse[replyForRequestId];
+                        if (waiter != null) {
+                            m_waitingForResponse[replyForRequestId] = null;
+                            waiter.Response = messageStream;
+                            waiter.Notify();
+                        }
+                    }
+                    
+                    messageReceived.StartReceiveMessage(); // receive next message
+                    break;
+                case GiopMsgTypes.LocateReply:
+                    // ignore, not interesting
+                    messageReceived.StartReceiveMessage(); // receive next message
+                    break;
+                case GiopMsgTypes.CloseConnection:
+                    m_transport.CloseConnection();
+                    break;
+                case GiopMsgTypes.CancelRequest:
+                    CdrInputStreamImpl input = new CdrInputStreamImpl(messageStream);
+                    GiopHeader cancelHeader = new GiopHeader(input);
+                    uint requestIdToCancel = input.ReadULong();
+                    m_fragmentAssembler.CancelFragmentsIfInProgress(requestIdToCancel);
+                    messageReceived.StartReceiveMessage(); // receive next message
+                    break;                
+                case GiopMsgTypes.MessageError:
+                    CloseConnectionAfterUnexpectedException(new MARSHAL(16, CompletionStatus.Completed_MayBe));
+                    break;
+                default:
+                    // should not occur; 
+                    // hint: fragment is also considered as error here,
+                    // because fragment should be handled before this loop                    
+                    
+                    // send message error
+                    // TODO();
+                    messageReceived.StartReceiveMessage(); // receive next message
+                    break;
+            }                                    
+        }        
+        
+        internal void MsgReceivedCallbackException(MessageReceiveTask messageReceived, Exception ex) {          
+            try {
+                // TODO: should send a message error?
+                CloseConnectionAfterUnexpectedException(ex);
+            } catch (Exception) {                
+            }                        
+        }        
+        
+        protected virtual void HandleRequestMessage(Stream messageStream) {
+            // TODO: error, only client part
+        }
+        
+        protected virtual void HandleLocateRequestMessage(Stream messageStream) {
+            // TODO: error, only client part
+        }
+
+        /// <summary>
+        /// extracts the request id from a non-fragmented reply message
+        /// </summary>
+        /// <param name="replyMessage"></param>
+        private uint ExtractRequestIdFromReplyMessage(Stream replyMessage) {
+            replyMessage.Seek(0, SeekOrigin.Begin);
+            CdrInputStreamImpl reader = new CdrInputStreamImpl(replyMessage);
             GiopHeader msgHeader = new GiopHeader(reader);
-            Debug.Assert(msgHeader.GiopType == GiopMsgTypes.Reply);
             
-            if ((msgHeader.Version.Major == 1) && (msgHeader.Version.Minor <= 1)) {
+            if (msgHeader.Version.IsBeforeGiop1_2()) {
                 // GIOP 1.0 / 1.1, the service context collection preceeds the id
                 SkipServiceContexts(reader);
-                return reader.ReadULong();
-            } else {
-                return reader.ReadULong();                
             }
+            return reader.ReadULong();
         }
         
         /// <summary>
@@ -255,232 +868,88 @@ namespace Ch.Elca.Iiop {
                 uint lengthOfContext = cdrIn.ReadULong();
                 cdrIn.ReadPadding(lengthOfContext);
             }
-        }
-
+        }        
+        
+        #endregion Receiving messages        
+        
+        internal IPAddress GetPeerAddress() {
+            return m_transport.GetPeerAddress();
+        }        
+        
         #endregion IMethods
-                
     }
     
+    
+    
+    /// <summary>
+    /// a message handler, which can handle client and server messages
+    /// </summary>
+    public class GiopClientServerMessageHandler : GiopTransportMessageHandler {
         
-    /// <summary>This class is responsible for Receiving/Sending Giop
-    /// Messages on a server. Fragmented Messages are Reassembled</summary>
-    internal sealed class GiopTransportServerMsgHandler {
-        
-        #region Types
-        
-        internal enum HandlingResult {
-            ConnectionClose, ReplyOk, AsyncReply
-        }
-        
-        #endregion Types
         #region IFields
-
-        // create a connection desc for the server connection                    
+        
+        private IGiopRequestMessageReceiver m_receiver;
+        // the connection desc for the handled connection.
         private GiopConnectionDesc m_conDesc = new GiopConnectionDesc();
-        
-        private FragmentedMsgAssembler m_fragmentAssembler =
-            new FragmentedMsgAssembler();
-        
-        private Stream m_transportStream;
-        private IServerChannelSink m_transportSink;
-        private IServerTransport m_transport;
+
         
         #endregion IFields
+        #region IProperties
+        
+        internal GiopConnectionDesc ConnectionDesc {
+            get {
+                return m_conDesc;
+            }
+        }
+        
+        #endregion IProperties
         #region IConstructors
         
-        /// <summary>default constructor</summary>
-        public GiopTransportServerMsgHandler(IServerTransport transport, 
-                                             IServerChannelSink transportSink) {
-            m_transport = transport;
-            m_transportStream = transport.TransportStream;
-            m_transportSink = transportSink;
-        }                       
-
+        /// <summary>creates a giop transport message handler, which accept request messages by delegating to receiver</summary>
+        internal GiopClientServerMessageHandler(ITransport transport, IGiopRequestMessageReceiver receiver) : base(transport) {
+            Initalize(receiver);
+        }
+        
+        /// <summary>creates a giop transport message handler, which accept request messages by delegating to receiver</summary>
+        internal GiopClientServerMessageHandler(ITransport transport, TimeSpan timeout, IGiopRequestMessageReceiver receiver) : base(transport, timeout) {
+            Initalize(receiver);
+        }        
+        
         #endregion IConstructors
         #region IMethods
         
-        /// <summary>
-        /// sends the message from messageStream
-        /// to the transport Stream
-        /// </summary>
-        public void SendResponseMessage(Stream msgStream) {            
-            
-            Debug.WriteLine("Send response message at server side");
-            
-#if DEBUG            
-            msgStream.Seek(0, SeekOrigin.Begin); // go to the beginning of the stream
-            byte[] data = new byte[msgStream.Length];
-            msgStream.Read(data, 0, (int)msgStream.Length);
-            OutputHelper.DebugBuffer(data);
-#endif
-            
-            msgStream.Seek(0, SeekOrigin.Begin); // go to the beginning of the stream
-                        
-            IoUtil.StreamCopyExactly(msgStream, m_transportStream, 
-                                     (int)msgStream.Length);                        
-            
-            m_conDesc.MessagesAlreadyExchanged |= true;
-            
-            Debug.WriteLine("Send response message complete");
+        private void Initalize(IGiopRequestMessageReceiver receiver) {
+            if (receiver == null) {
+                throw new BAD_PARAM(167, CompletionStatus.Completed_No);
+            }
+            m_receiver = receiver;
+        }
+        
+
+        protected override void HandleRequestMessage(Stream messageStream) {            
+            ThreadPool.QueueUserWorkItem(new WaitCallback(this.ProcessRequst), messageStream);
+        }
+        
+        protected override void HandleLocateRequestMessage(Stream messageStream) {
+            ThreadPool.QueueUserWorkItem(new WaitCallback(this.ProcessLocateRequst), messageStream);
         }
         
         /// <summary>
-        /// handles a Locate request msg: sends a LocateReply message as a result.
+        /// called by the thread-pool
         /// </summary>
-        private HandlingResult ProcessLocateRequest(Stream msgStream) {                        
-            
-            Trace.WriteLine("Process Locate request");
-#if DEBUG
-            msgStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
-            byte[] data = new byte[msgStream.Length];
-            msgStream.Read(data, 0, (int)msgStream.Length);
-            OutputHelper.DebugBuffer(data);            
-#endif                        
-
-            msgStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in GiopMessageHandler
-
-            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            Stream resultMsgStream = handler.HandleIncomingLocateRequestMessage(msgStream);
-            SendResponseMessage(resultMsgStream);
-            
-            Trace.WriteLine("Locate request processed");
-            return HandlingResult.ReplyOk;
+        private void ProcessRequst(object state) {
+            m_receiver.ProcessRequest((Stream)state, this);
         }
         
         /// <summary>
-        /// handles a request msg: sends a Reply message as a result.
+        /// called by the thread-pool
         /// </summary>
-        /// <param name="msgStream">the request msg</param>        
-        private HandlingResult ProcessRequest(Stream msgStream) {
-
-#if DEBUG
-            msgStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
-            byte[] data = new byte[msgStream.Length];
-            msgStream.Read(data, 0, (int)msgStream.Length);
-            OutputHelper.DebugBuffer(data);
-#endif
-
-            msgStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
-            
-            // the out params returned form later sinks
-            IMessage responseMsg;
-            ITransportHeaders responseHeaders;
-            Stream responseStream;
-            
-            // create the sink stack for async processing of message
-            ServerChannelSinkStack sinkStack = new ServerChannelSinkStack();
-            sinkStack.Push(m_transportSink, m_transportStream);
-            // empty transport headers for this protocol
-            ITransportHeaders requestHeaders = new TransportHeaders();
-            requestHeaders[GiopConnectionDesc.SERVER_TR_HEADER_KEY] = m_conDesc;
-            requestHeaders[CommonTransportKeys.IPAddress] = m_transport.GetClientAddress();
-            
-            // next sink will process the request-message
-            ServerProcessing result = 
-                m_transportSink.NextChannelSink.ProcessMessage(sinkStack, null, /* no RequestMessage in transport handler */
-                                                             requestHeaders, msgStream, 
-                                                             out responseMsg, out responseHeaders,
-                                                             out responseStream);
-            switch (result) {
-                case ServerProcessing.Complete :
-                    try { 
-                        sinkStack.Pop(m_transportSink); 
-                    } catch (Exception) { }
-                    SendResponseMessage(responseStream);
-                    return HandlingResult.ReplyOk;
-                case ServerProcessing.Async : 
-                    sinkStack.StoreAndDispatch(m_transportSink, this); // this sink wants to handle response
-                    return HandlingResult.AsyncReply;
-                case ServerProcessing.OneWay :
-                    try { 
-                        sinkStack.Pop(m_transportSink); 
-                    } catch (Exception) { }
-                    // no message to send
-                    return HandlingResult.ReplyOk;
-                default:
-                    // should not arrive here
-                    throw new Exception("invalid processing state: " + result);
-            }
-
-        }
-
-        /// <summary>processes an incoming message at the server side.</summary>
-        /// <returns>
-        /// Returns HandlingResult expressing result of processing.
-        /// Throws an IOException, if something goes wrong at the server side
-        /// </returns>
-        public HandlingResult ProcessIncomingMsg() {
-                              
-            while (true) {
-                
-                CdrInputStreamImpl reader = new CdrInputStreamImpl(m_transportStream);
-                GiopHeader msgHeader = new GiopHeader(reader);
-            
-                switch(msgHeader.GiopType) {
-                    case GiopMsgTypes.Request:
-                        if ((msgHeader.GiopFlags & GiopHeader.FRAGMENT_MASK) > 0) {
-                            m_fragmentAssembler.StartFragment(reader, msgHeader);
-                            // more fragments
-                            break; // wait for next fragment
-                        } else {
-                            // no fragmentation
-                            Stream msgStream = new MemoryStream();
-                            msgHeader.WriteToStream(msgStream,
-                                                    msgHeader.ContentMsgLength);
-                            IoUtil.StreamCopyExactly(m_transportStream, 
-                                                     msgStream,
-                                                     (int)msgHeader.ContentMsgLength);                            
-
-                            return ProcessRequest(msgStream); // create and send the response
-                        }
-                    case GiopMsgTypes.Fragment:
-                        if (!(m_fragmentAssembler.IsLastFragment(msgHeader))) {
-                            m_fragmentAssembler.AddFragment(reader, msgHeader);
-                            // more fragments to follow
-                            break; // wait for next fragment
-                        } else {
-                            Stream msgStream = m_fragmentAssembler.FinishFragmentedMsg(reader, 
-                                                                                       ref msgHeader);
-                            if (msgHeader.GiopType.Equals(GiopMsgTypes.Request)) {
-                                return ProcessRequest(msgStream); // create and send the response
-                            } else if (msgHeader.GiopType.Equals(GiopMsgTypes.LocateRequest)) {
-                                return ProcessLocateRequest(msgStream); // create and send the response
-                            } else {
-                                throw new IOException("unsupported Giop message : " +
-                                                      msgHeader.GiopType);
-                            }
-                        }                        
-                    case GiopMsgTypes.CloseConnection:
-                        return HandlingResult.ConnectionClose;
-                    case GiopMsgTypes.LocateRequest:
-                        // read the message, may be fragmented in GIOP 1.2
-                        if ((msgHeader.GiopFlags & GiopHeader.FRAGMENT_MASK) > 0) {
-                            m_fragmentAssembler.StartFragment(reader, msgHeader);
-                            // more fragments
-                            break; // wait for next fragment
-                        } else {
-                            Stream msgStream = new MemoryStream();
-                            msgHeader.WriteToStream(msgStream,
-                                                    msgHeader.ContentMsgLength);
-                            IoUtil.StreamCopyExactly(m_transportStream, 
-                                                     msgStream,
-                                                     (int)msgHeader.ContentMsgLength);
-
-                            return ProcessLocateRequest(msgStream);
-                        }                        
-                    default:
-                        throw new IOException("unsupported Giop message : " +
-                                             msgHeader.GiopType);
-                }
-                
-            }
-            // can not reach here            
-        }
+        private void ProcessLocateRequst(object state) {
+            m_receiver.ProcessLocateRequest((Stream)state, this);
+        }        
         
         #endregion IMethods
-      
-    }
-
-
-
+        
+    }    
+    
 }

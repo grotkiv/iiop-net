@@ -93,8 +93,8 @@ namespace Ch.Elca.Iiop {
         #region IFields
         
         private IClientTransportFactory m_transportFactory;
-
         private Timer m_destroyTimer;
+        private object m_requestTimeOut;
 
         /// <summary>contains the available client connections </summary>
         private Hashtable m_availableclientConnections = new Hashtable();
@@ -109,17 +109,14 @@ namespace Ch.Elca.Iiop {
     	private Hashtable m_allocatedConnections = new Hashtable();                
         
         #endregion IFields
-        #region IConstructors
+        #region IConstructors                        
         
-        internal GiopClientConnectionManager(IClientTransportFactory transportFactory) : this(transportFactory, 30000) {
+        internal GiopClientConnectionManager(IClientTransportFactory transportFactory, TimeSpan requestTimeOut, int unusedKeepAliveTime) {
+            Initalize(transportFactory, requestTimeOut, unusedKeepAliveTime);
         }
         
         internal GiopClientConnectionManager(IClientTransportFactory transportFactory, int unusedKeepAliveTime) {
-            m_transportFactory = transportFactory;
-            
-            TimerCallback timerDelegate = new TimerCallback(DestroyUnusedConnections);
-            // Create a timer which invokes the session destroyer every unusedKeepAliveTime
-            m_destroyTimer = new Timer(timerDelegate, null, 2 * unusedKeepAliveTime, unusedKeepAliveTime);
+            Initalize(transportFactory, null, unusedKeepAliveTime);
         }
         
         #endregion IConstructors
@@ -129,6 +126,15 @@ namespace Ch.Elca.Iiop {
         }
         
         #region IMethods
+        
+        private void Initalize(IClientTransportFactory transportFactory, object requestTimeOut, int unusedKeepAliveTime) {
+            m_transportFactory = transportFactory;
+            m_requestTimeOut = requestTimeOut;
+            TimerCallback timerDelegate = new TimerCallback(DestroyUnusedConnections);
+            // Create a timer which invokes the session destroyer every unusedKeepAliveTime
+            m_destroyTimer = new Timer(timerDelegate, null, 2 * unusedKeepAliveTime, unusedKeepAliveTime);            
+        }
+        
         
         public void Dispose() {
             CleanUp();    

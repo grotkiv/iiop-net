@@ -42,8 +42,15 @@ namespace Ch.Elca.Iiop {
 
 
     /// <summary>Base class for tcp transports</summary>
-    internal class TcpTransportBase : ITransport {
-                        
+    internal abstract class TcpTransportBase : ITransport {
+
+        #region SFields
+        
+        private static System.Reflection.PropertyInfo s_tcpClientClientPropertyInfo =
+            typeof(TcpClient).GetProperty("Client",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        
+        #endregion SFields
         #region IFields
         
         protected NetworkStream m_stream;
@@ -73,6 +80,47 @@ namespace Ch.Elca.Iiop {
                 m_socket.Close(); // closes the stream too
             } catch (Exception) {}
             m_socket = null;
+        }
+        
+        public IAsyncResult BeginRead(byte[] buffer, int offset, int size, AsyncCallback callback, object state) {
+            return m_stream.BeginRead(buffer, offset, size, callback, state);
+        }
+
+        public IAsyncResult BeginWrite(byte[] buffer, int offset, int size, AsyncCallback callback, object state) {
+            return m_stream.BeginWrite(buffer, offset, size, callback, state);
+        }
+        
+        public int EndRead(IAsyncResult asyncResult) {
+            return m_stream.EndRead(asyncResult);
+        }
+        
+        public void EndWrite(IAsyncResult asyncResult) {
+            m_stream.EndWrite(asyncResult);
+        }
+        
+        /// <summary><see cref="Ch.Elca.Iiop.ITransport.GetPeerAddress"/></summary>
+        public IPAddress GetPeerAddress() {
+            if (m_socket != null) {
+                Socket socket = (Socket)s_tcpClientClientPropertyInfo.GetValue(m_socket, null);
+                return ((IPEndPoint)socket.RemoteEndPoint).Address;
+            } else {
+                // not ok to call if no connection available
+                throw new omg.org.CORBA.BAD_OPERATION(87, CompletionStatus.Completed_MayBe);
+            }
+        }
+        
+        /// <summary><see cref="Ch.Elca.Iiop.IClientTranport.IsConnectionOpen/></summary>
+        public bool IsConnectionOpen() {
+            if (m_socket == null) {
+                return false;
+            } else {
+                try {
+                    m_socket.GetStream(); // TODO, search a better way to do this
+                } catch (Exception) {
+                    return false;
+                }                                
+                return true; 
+            }
         }
         
         #endregion IMethods
@@ -154,21 +202,7 @@ namespace Ch.Elca.Iiop {
             m_socket.SendTimeout = m_sendTimeOut;
             m_stream = m_socket.GetStream();
         }
-                
-        /// <summary><see cref="Ch.Elca.Iiop.IClientTranport.IsConnectionOpen/></summary>
-        public bool IsConnectionOpen() {
-            if (m_socket == null) {
-                return false;
-            } else {
-                try {
-                    m_socket.GetStream(); // TODO, search a better way to do this
-                } catch (Exception) {
-                    return false;
-                }                                
-                return true; 
-            }
-        }                
-        
+                        
         #endregion IMethods
         
     }
@@ -179,11 +213,7 @@ namespace Ch.Elca.Iiop {
         #region SFields
         
         private static Type s_socketExType = typeof(SocketException);
-        
-        private static System.Reflection.PropertyInfo s_tcpClientClientPropertyInfo =
-            typeof(TcpClient).GetProperty("Client",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
+                
         #endregion SFields
         #region IConstructors
         
@@ -199,13 +229,7 @@ namespace Ch.Elca.Iiop {
         public bool IsConnectionCloseException(Exception e) {
             return s_socketExType.IsInstanceOfType(e.InnerException);            
         }
-        
-        /// <summary><see cref="Ch.Elca.Iiop.IServerTransport.GetClientAddress"/></summary>
-        public IPAddress GetClientAddress() {
-            Socket socket = (Socket)s_tcpClientClientPropertyInfo.GetValue(m_socket, null);
-            return ((IPEndPoint)socket.RemoteEndPoint).Address;
-        }
-                
+                        
         #endregion IMethods
         
     }        

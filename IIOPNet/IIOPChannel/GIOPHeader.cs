@@ -69,6 +69,13 @@ namespace Ch.Elca.Iiop {
         public override string ToString() {
             return "GIOP-version: " + m_major + "." + m_minor; 
         }
+        
+        /// <summary>
+        /// returns true, if the protocl version is 1.0 or 1.1, otherwise false
+        /// </summary>        
+        public bool IsBeforeGiop1_2() {
+            return ((Major == 1) && (Minor <= 1));
+        }
 
         #endregion IMethods
     }
@@ -84,8 +91,14 @@ namespace Ch.Elca.Iiop {
         internal const int HEADER_LENGTH = 12;
     	
     	internal const byte FRAGMENT_MASK = 0x02;
+    	private const byte ENDIAN_MASK = 0x01;
         
         #endregion Constants
+        #region SFields
+        
+        private static Type s_giopMsgTypes = typeof(GiopMsgTypes);
+        
+        #endregion SFields
         #region IFields
 
         private GiopVersion m_version;
@@ -103,26 +116,34 @@ namespace Ch.Elca.Iiop {
             m_type = type;
         }
 
-        internal GiopHeader(CdrInputStreamImpl stream) {
-            byte[] readBuffer = stream.ReadOpaque(4);
+        internal GiopHeader(CdrInputStreamImpl stream) : this(stream.ReadOpaque(12)) {            
+            stream.ConfigStream(m_flags, m_version);
+            stream.SetMaxLength(m_msgLength);
+        }
+        
+        /// <summary>
+        /// creates a giop header from buffer
+        /// </summary>
+        /// <param name="buffer">first 12 byte of array are used to parse a giop-header from</param>
+        internal GiopHeader(byte[] readBuffer) {
+            if ((readBuffer == null) || (readBuffer.Length < 12)) {
+                throw new ArgumentException("can't create giop header from buffer");
+            }
             if (!((readBuffer[0] == m_giop_magic[0]) && (readBuffer[1] == m_giop_magic[1]) && 
                 (readBuffer[2] == m_giop_magic[2]) && (readBuffer[3] == m_giop_magic[3]))) {
                 // no GIOP
                 throw new IOException("no GIOP-Message");
-            } else {
-                Trace.WriteLine("GIOP-message starting");
-                m_version = new GiopVersion(stream.ReadOctet(), stream.ReadOctet());
-                Debug.WriteLine("Version: " + m_version);
-                if (m_version.Major != 1) {
-                    throw new IOException("unknown GIOP Verision: " + m_version);
-                }
             }
-
-            m_flags = stream.ReadOctet();
-            m_type = ConvertType((byte) stream.ReadOctet());
-            stream.ConfigStream(m_flags, m_version);
-            m_msgLength = stream.ReadULong();
-            stream.SetMaxLength(m_msgLength);
+            m_version = new GiopVersion(readBuffer[4], readBuffer[5]);
+            if (m_version.Major != 1) {
+                throw new IOException("unknown GIOP Verision: " + m_version);
+            }
+            m_flags = readBuffer[6];
+            m_type = ConvertType(readBuffer[7]);
+            if (!IsLittleEndian()) { // big endian
+                Array.Reverse(readBuffer, 8, 4);
+            }
+            m_msgLength = BitConverter.ToUInt32(readBuffer, 8);
         }
 
         #endregion IConstructors
@@ -180,40 +201,41 @@ namespace Ch.Elca.Iiop {
             Debug.Write("\nMessage-length: " + msgLength + "\n");
             stream.WriteULong(msgLength);
         }
-        
+                
         /// <summary>
         /// writes this message header to a stream, using msgLength as 
         /// message Length
         /// </summary>
-        internal void WriteToStream(Stream stream, uint msgLength) {
+        /// <returns>the outputstream used, positioned just after the header</returns>
+        internal CdrOutputStream WriteToStream(Stream stream, uint msgLength) {
         	CdrOutputStream target = new CdrOutputStreamImpl(stream, GiopFlags,
         	                                                 Version);
         	WriteToStream(target, msgLength);
-        }
+        	return target;
+        }        
 
-        private GiopMsgTypes ConvertType(byte type) {
-            switch (type) {
-                case 0: 
-                    return GiopMsgTypes.Request;
-                case 1: 
-                    return GiopMsgTypes.Reply;
-                case 2: 
-                    return GiopMsgTypes.CancelRequest;
-                case 3: 
-                    return GiopMsgTypes.LocateRequest;
-                case 4: 
-                    return GiopMsgTypes.LocateReply;
-                case 5: 
-                    return GiopMsgTypes.CloseConnection;
-                case 6: 
-                    return GiopMsgTypes.MessageError;
-                case 7: 
-                    return GiopMsgTypes.Fragment;
-                default:
-                    throw new Exception("unknown Giop_msg_type: " + type);
+        private GiopMsgTypes ConvertType(int type) {            
+            if (!Enum.IsDefined(s_giopMsgTypes, type)) {
+                throw new omg.org.CORBA.MARSHAL(15, omg.org.CORBA.CompletionStatus.Completed_No);
             }
+            return (GiopMsgTypes)Enum.ToObject(s_giopMsgTypes, type);
         }
 
+        /// <summary>
+        /// returns true, if the fragmented bit in the flags is set; otherwise false.
+        /// </summary>        
+        internal bool IsFragmentedBitSet() {
+            return (GiopFlags & GiopHeader.FRAGMENT_MASK) > 0;
+        }
+        
+        /// <summary>
+        /// returns true, if the endian bit in the flags is set (=1 -> little endian); otherwise false.
+        /// </summary>        
+        private bool IsLittleEndian() {
+            return (GiopFlags & GiopHeader.ENDIAN_MASK) > 0;
+        }
+
+        
         #endregion IMethods
         
     }

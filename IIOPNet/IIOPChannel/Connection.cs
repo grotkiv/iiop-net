@@ -141,17 +141,19 @@ namespace Ch.Elca.Iiop {
 
         private string m_connectionKey;
                 
-        private IClientTransport m_clientTransport;
+        private GiopTransportMessageHandler m_transportHandler;
+        
+        private bool m_isBidir;
 
         #endregion IFields
         #region IConstructors
 
+        /// <param name="connectionKey">the key describing the connection</param>
+        /// <param name="transport">an already connected client transport</param>
         internal GiopClientConnection(string connectionKey, IClientTransport transport) {
-            m_connectionKey = connectionKey;
-            m_assocDesc = new GiopClientConnectionDesc();
-            m_clientTransport = transport;
+            Initalize(connectionKey, new GiopTransportMessageHandler(transport), false);
         }
-
+        
         #endregion IConstructors
         #region IProperties
 
@@ -167,26 +169,29 @@ namespace Ch.Elca.Iiop {
             }
         }
 
-        internal IClientTransport ClientTransport {
+        internal GiopTransportMessageHandler TransportHandler {
             get {
-                return m_clientTransport;
+                return m_transportHandler;
             }
         }
 
         #endregion IProperties
         #region IMethods
 
-
-        internal void Connect() {
-            m_clientTransport.OpenConnection();
+        private void Initalize(string connectionKey, GiopTransportMessageHandler transportHandler, bool isBidir) {
+            m_connectionKey = connectionKey;
+            m_assocDesc = new GiopClientConnectionDesc();            
+            m_transportHandler = transportHandler;
+            m_transportHandler.StartMessageReception(); // begin listening for messages
+            m_isBidir = isBidir;
         }
 
-        internal bool CheckConnected() {
-            return m_clientTransport.IsConnectionOpen();
+        internal bool CheckConnected() {            
+            return m_transportHandler.Transport.IsConnectionOpen();
         }
 
         internal void CloseConnection() {
-            m_clientTransport.CloseConnection();
+            m_transportHandler.Transport.CloseConnection();
         }
 
         #endregion IMethods
