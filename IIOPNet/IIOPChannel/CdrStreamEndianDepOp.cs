@@ -68,7 +68,9 @@ namespace Ch.Elca.Iiop.Cdr {
         private void Read(int size, Aligns align) {
             m_stream.ForceReadAlign(align);
             m_stream.ReadBytes(m_buf, 0, size);
-            Array.Reverse(m_buf, 0, size);
+            if (BitConverter.IsLittleEndian) { // need to reverse, because BitConverter uses other endian
+                Array.Reverse(m_buf, 0, size);
+            }
         }
 
         public short ReadShort() {
@@ -195,8 +197,10 @@ namespace Ch.Elca.Iiop.Cdr {
         #region write methods dependant on byte ordering
 
     	private void Write(byte[] data, int count, Aligns align) {
-	    	m_stream.ForceWriteAlign(align);
-            Array.Reverse(data, 0, count);
+	        m_stream.ForceWriteAlign(align);
+            if (BitConverter.IsLittleEndian) { // need to reverse, because BitConverter uses other endian
+    	        Array.Reverse(data, 0, count);
+	        }
 		    m_stream.WriteBytes(data, 0, count);
 	    }
         
@@ -302,6 +306,9 @@ namespace Ch.Elca.Iiop.Cdr {
         private void Read(int size, Aligns align) {
             m_stream.ForceReadAlign(align);
             m_stream.ReadBytes(m_buf, 0, size);
+            if (!BitConverter.IsLittleEndian) { // need to reverse, because BitConverter uses other endian
+                Array.Reverse(m_buf, 0, size);
+            }            
         }
 
         public short ReadShort() {
@@ -427,6 +434,9 @@ namespace Ch.Elca.Iiop.Cdr {
 
        	private void Write(byte[] data, int count, Aligns align) {
 		    m_stream.ForceWriteAlign(align);
+            if (!BitConverter.IsLittleEndian) { // need to reverse, because BitConverter uses other endian
+    	        Array.Reverse(data, 0, count);
+	        }
 		    m_stream.WriteBytes(data, 0, count);
 	    }
         
