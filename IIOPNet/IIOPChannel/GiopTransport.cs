@@ -608,6 +608,16 @@ namespace Ch.Elca.Iiop {
             }
             StartWriteResponseMessage(responseStream);
         }
+        
+        /// <summary>
+        /// sends a giop error message
+        /// </summary>
+        internal void SendErrorMessage() {
+            GiopVersion version = new GiopVersion(1, 2); // use highest number supported
+            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
+            Stream messageErrorStream = handler.PrepareMessageErrorMessage(version);
+            SendResponse(messageErrorStream);
+        }
                 
         /// <summary>
         /// sends the request and blocks the thread until the response message
@@ -819,26 +829,29 @@ namespace Ch.Elca.Iiop {
                     // because fragment should be handled before this loop                    
                     
                     // send message error
-                    // TODO();
+                    SendErrorMessage();
                     messageReceived.StartReceiveMessage(); // receive next message
                     break;
             }                                    
-        }        
+        }                
         
-        internal void MsgReceivedCallbackException(MessageReceiveTask messageReceived, Exception ex) {          
+        internal void MsgReceivedCallbackException(MessageReceiveTask messageReceived, Exception ex) {
             try {
-                // TODO: should send a message error?
+                if (ex is omg.org.CORBA.MARSHAL) {
+                    // send a message error, something wrong with the message format
+                    SendErrorMessage();
+                }                
                 CloseConnectionAfterUnexpectedException(ex);
             } catch (Exception) {                
             }                        
         }        
         
         protected virtual void HandleRequestMessage(Stream messageStream) {
-            // TODO: error, only client part
+            SendErrorMessage(); // not supported by non-bidirectional handler
         }
         
         protected virtual void HandleLocateRequestMessage(Stream messageStream) {
-            // TODO: error, only client part
+            SendErrorMessage(); // not supported by non-bidirectional handler
         }
 
         /// <summary>
@@ -926,7 +939,7 @@ namespace Ch.Elca.Iiop {
         }
         
 
-        protected override void HandleRequestMessage(Stream messageStream) {            
+        protected override void HandleRequestMessage(Stream messageStream) {
             ThreadPool.QueueUserWorkItem(new WaitCallback(this.ProcessRequst), messageStream);
         }
         

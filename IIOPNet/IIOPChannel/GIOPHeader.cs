@@ -132,11 +132,13 @@ namespace Ch.Elca.Iiop {
             if (!((readBuffer[0] == m_giop_magic[0]) && (readBuffer[1] == m_giop_magic[1]) && 
                 (readBuffer[2] == m_giop_magic[2]) && (readBuffer[3] == m_giop_magic[3]))) {
                 // no GIOP
-                throw new IOException("no GIOP-Message");
+                Trace.WriteLine("received non GIOP-Message");
+                throw new omg.org.CORBA.MARSHAL(19, omg.org.CORBA.CompletionStatus.Completed_No);
             }
             m_version = new GiopVersion(readBuffer[4], readBuffer[5]);
             if (m_version.Major != 1) {
-                throw new IOException("unknown GIOP Verision: " + m_version);
+                Trace.WriteLine("unknown GIOP Verision: " + m_version);
+                throw new omg.org.CORBA.MARSHAL(20, omg.org.CORBA.CompletionStatus.Completed_No);
             }
             m_flags = readBuffer[6];
             m_type = ConvertType(readBuffer[7]);
