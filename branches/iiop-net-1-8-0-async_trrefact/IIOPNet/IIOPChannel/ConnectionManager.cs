@@ -58,17 +58,17 @@ namespace Ch.Elca.Iiop {
     	/// </summary>
     	private Hashtable m_allocatedConnections = new Hashtable();
     	
-    	private object m_requestTimeOut;
+    	private MessageTimeout m_requestTimeOut;
         
         #endregion IFields
         #region IConstructors                        
         
-        internal GiopClientConnectionManager(IClientTransportFactory transportFactory, TimeSpan requestTimeOut, int unusedKeepAliveTime) {
-            Initalize(transportFactory, requestTimeOut, unusedKeepAliveTime);
+        internal GiopClientConnectionManager(IClientTransportFactory transportFactory, MessageTimeout requestTimeOut) {
+            Initalize(transportFactory, requestTimeOut);
         }
         
-        internal GiopClientConnectionManager(IClientTransportFactory transportFactory, int unusedKeepAliveTime) {
-            Initalize(transportFactory, null, unusedKeepAliveTime);
+        internal GiopClientConnectionManager(IClientTransportFactory transportFactory) :
+            this(transportFactory, new MessageTimeout()) {
         }
         
         #endregion IConstructors
@@ -79,7 +79,7 @@ namespace Ch.Elca.Iiop {
         
         #region IMethods
         
-        private void Initalize(IClientTransportFactory transportFactory, object requestTimeOut, int unusedKeepAliveTime) {
+        private void Initalize(IClientTransportFactory transportFactory, MessageTimeout requestTimeOut) {
             m_transportFactory = transportFactory;
             m_requestTimeOut = requestTimeOut;
         }
@@ -128,7 +128,7 @@ namespace Ch.Elca.Iiop {
             // already open connection here, because GetConnectionFor 
             // should returns an open connection (if not closed meanwhile)
             transport.OpenConnection();
-            result = new GiopClientConnection(targetKey, transport);
+            result = new GiopClientConnection(targetKey, transport, m_requestTimeOut);
             m_allClientConnections[targetKey] = result;
             return result;
         }        
