@@ -258,7 +258,14 @@ namespace Ch.Elca.Iiop.Util {
         }
 
         #endregion Implementation of IEnumerable
-        
+
+        /// <summary>
+        /// get attribute at position index
+        /// </summary>
+        public Attribute GetAttributeAt(int index) {
+            return (Attribute)m_attributes[index];
+        }
+
         #endregion IMethods
         
     }

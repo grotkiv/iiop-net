@@ -30,13 +30,16 @@ using System;
 using System.Reflection;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
+using System.Runtime.Remoting.Messaging;
 using NUnit.Framework;
 using Ch.Elca.Iiop;
+using Ch.Elca.Iiop.Idl;
 using Ch.Elca.Iiop.Services;
 using omg.org.CosNaming;
 using omg.org.CORBA;
 
 namespace Ch.Elca.Iiop.IntegrationTests {
+
 
     [TestFixture]
     public class TestClient {
@@ -891,6 +894,20 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Type result4 = orb.get_type_for_tc(result4TC);
             Assertion.AssertEquals("wrong type for null type echo", arg4, result4);
 
+        }
+
+        [Test]
+        public void TestContextElements() {
+            string arg = "test-Arg";
+            string entryName = "element1";
+            CorbaContextElement entry = new CorbaContextElement(arg);              
+            CallContext.SetData(entryName, entry);
+            try {
+                string extractedElem = m_testService.TestContextElementPassing();
+                Assertion.AssertEquals("wrong entry extracted from callcontext", arg, extractedElem);
+            } finally {
+                CallContext.FreeNamedDataSlot(entryName);
+            }
         }
 
         #endregion IMethods
