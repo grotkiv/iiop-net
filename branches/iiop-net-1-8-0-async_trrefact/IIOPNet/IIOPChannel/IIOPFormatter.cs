@@ -341,11 +341,14 @@ namespace Ch.Elca.Iiop {
         private IMessage DeserialiseRequest(Stream requestStream, 
                                             ITransportHeaders headers,
                                             GiopConnectionDesc conDesc) {
-            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();            
-            IMessage result = handler.ParseIncomingRequestMessage(requestStream, 
-                                                                  conDesc);
-            requestStream.Close(); // not needed any more
-            return result;
+            try {
+                GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
+                IMessage result = handler.ParseIncomingRequestMessage(requestStream, 
+                                                                      conDesc);
+                return result;
+            } finally {
+                requestStream.Close(); // not needed any more
+            }            
         }
 
         /// <summary>serialises the .NET msg to a GIOP-message</summary>
