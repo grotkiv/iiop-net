@@ -194,42 +194,42 @@ namespace Ch.Elca.Iiop.Cdr {
         
         #region write methods dependant on byte ordering
 
-	private void Write(byte[] data, int count, Aligns align) {
-		m_stream.ForceWriteAlign(align);
-                Array.Reverse(data, 0, count);
-		m_stream.WriteBytes(data, 0, count);
-	}
+    	private void Write(byte[] data, int count, Aligns align) {
+	    	m_stream.ForceWriteAlign(align);
+            Array.Reverse(data, 0, count);
+		    m_stream.WriteBytes(data, 0, count);
+	    }
         
         public void WriteShort(short data) {
-		Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
+		    Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
         }
 
         public void WriteUShort(ushort data) {
-		Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
+		    Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
         }
 
         public void WriteLong(int data) {
-		Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
         }
 
         public void WriteULong(uint data) {
-		Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
         }
 
         public void WriteLongLong(long data) {
-		Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
         }
 
         public void WriteULongLong(ulong data) {
-		Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
         }
 
         public void WriteFloat(float data) {
-		Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
         }
 
         public void WriteDouble(double data) {
-		Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
         }
 
         public void WriteWChar(char data) {
@@ -426,40 +426,40 @@ namespace Ch.Elca.Iiop.Cdr {
         #region write methods dependant on byte ordering
 
        	private void Write(byte[] data, int count, Aligns align) {
-		m_stream.ForceWriteAlign(align);
-		m_stream.WriteBytes(data, 0, count);
-	}
+		    m_stream.ForceWriteAlign(align);
+		    m_stream.WriteBytes(data, 0, count);
+	    }
         
         public void WriteShort(short data) {
-		Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
+		    Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
         }
 
         public void WriteUShort(ushort data) {
-		Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
+		    Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
         }
 
         public void WriteLong(int data) {
-		Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
         }
 
         public void WriteULong(uint data) {
-		Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
         }
 
         public void WriteLongLong(long data) {
-		Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
         }
 
         public void WriteULongLong(ulong data) {
-		Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
         }
 
         public void WriteFloat(float data) {
-		Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
         }
 
         public void WriteDouble(double data) {
-		Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
         }
 
         public void WriteWChar(char data) {
