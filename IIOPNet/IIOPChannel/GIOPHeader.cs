@@ -77,6 +77,14 @@ namespace Ch.Elca.Iiop {
             return ((Major == 1) && (Minor <= 1));
         }
 
+        /// <summary>
+        /// returns true, if the protocl version is bigger than 1.0, otherwise false
+        /// </summary>                
+        public bool IsAfterGiop1_0() {
+            return ((Major == 1) && (Minor > 0)) ||
+                    Major > 1;
+        }
+
         #endregion IMethods
     }
     
