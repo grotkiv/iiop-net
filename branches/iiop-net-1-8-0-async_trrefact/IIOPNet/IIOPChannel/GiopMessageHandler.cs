@@ -87,6 +87,16 @@ namespace Ch.Elca.Iiop.MessageHandling {
             CdrMessageInputStream msgInput = new CdrMessageInputStream(sourceStream);
             CdrInputStream msgBody = msgInput.GetMessageContentReadingStream();
             GiopClientRequest request = new GiopClientRequest(requestMessage);
+            if (request.IsAsyncRequest) {
+                try {
+                    // with respec to interception, this is a new request -> call again send_request interception before reply
+                    request.InterceptSendRequest();
+                } catch (Exception ex) {
+                    request.Reply = new ReturnMessage(ex, requestMessage);
+                    request.InterceptReceiveException(ex);
+                    throw;
+                }
+            }
             // deserialize message body
             GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
             IMessage result = ser.DeserialiseReply(msgBody, msgInput.Header.Version, request,
@@ -172,6 +182,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                      msgOutput.GetMessageContentWritingStream(),
                                      target, conDesc);
                 msgOutput.CloseStream();
+                if ((request.IsAsyncRequest) || (request.IsOneWayCall)) {
+                    // after successful serialisation, call for oneway and async requests receive other, 
+                    // see corba 2.6, page 21-12.
+                    request.InterceptReceiveOther();
+                }
             } else {
                 throw new NotImplementedException("handling for this type of .NET message is not implemented at the moment, type: " +
                                                   msg.GetType());

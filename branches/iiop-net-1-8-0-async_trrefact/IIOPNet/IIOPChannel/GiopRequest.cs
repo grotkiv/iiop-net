@@ -35,6 +35,7 @@ using System.Diagnostics;
 using Ch.Elca.Iiop.Idl;
 using Ch.Elca.Iiop.Util;
 using omg.org.CORBA;
+using omg.org.IOP;
 
 namespace Ch.Elca.Iiop.MessageHandling {
           
@@ -67,6 +68,15 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 return RemotingServices.IsOneWay(m_requestMessage.MethodBase);
             }
         }        
+        
+        /// <summary>
+        /// is this request sent asynchornously
+        /// </summary>
+        internal bool IsAsyncRequest {
+            get {
+                return SimpleGiopMsg.IsMessageAsyncRequest(m_requestMessage);
+            }
+        }
 
         /// <summary>
         /// the request id
@@ -126,6 +136,41 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
         }
         
+        /// <summary>
+        /// the service context of the request.
+        /// </summary>
+        /// <remarks>if not yet available, creates one.</remarks>
+        internal ServiceContextList RequestServiceContext {
+            get {
+                ServiceContextList list = SimpleGiopMsg.GetServiceContextFromMessage(m_requestMessage);
+                if (list == null) {
+                    list = new ServiceContextList();
+                    SimpleGiopMsg.SetServiceContextInMessage(m_requestMessage, list);
+                }
+                return list;
+            }
+        }
+
+        /// <summary>
+        /// the service context of the reply.
+        /// </summary>        
+        /// <remarks>if not yet available, creates one.</remarks>
+        internal ServiceContextList ResponseServiceContext {
+            get {
+                ServiceContextList list = null;
+                if (m_replyMessage != null) {
+                    list = SimpleGiopMsg.GetServiceContextFromMessage(m_replyMessage);
+                } else {
+                    throw new BAD_INV_ORDER(301, CompletionStatus.Completed_MayBe);
+                }
+                if (list == null) {
+                    list = new ServiceContextList();
+                    SimpleGiopMsg.SetServiceContextInMessage(m_replyMessage, list);                    
+                }
+                return list;
+            }            
+        }
+        
         /// <summary>the .NET remoting request</summary>
         internal IMethodCallMessage Request {
             get {
@@ -138,7 +183,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// </summary>
         internal IMessage Reply {
             get {
-                return m_replyMessage;
+                return m_replyMessage;                
             }
             set {
                 m_replyMessage = value;
@@ -146,6 +191,37 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }                        
                 
         #endregion IProperties
+        #region IMethods
+                
+        /// <summary>
+        /// portable interception point: send request
+        /// </summary>
+        internal void InterceptSendRequest() {
+                
+        }
+        
+        /// <summary>
+        /// portable interception point: receive reply
+        /// </summary>
+        internal void InterceptReceiveReply() {
+            
+        }
+
+        /// <summary>
+        /// portable interception point: receive exception
+        /// </summary>        
+        internal void InterceptReceiveException(Exception receivedException) {
+            
+        }
+
+        /// <summary>
+        /// portable interception point: receive other
+        /// </summary>
+        internal void InterceptReceiveOther() {
+            
+        }
+        
+        #endregion IMethods
          
     }
     
@@ -255,7 +331,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal string RequestMethodName {
             get {
                 if (m_requestMessage.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY] != null) {
-                    return (string)m_requestMessage.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY];
+                    return GetRequestedMethodNameInternal();
                 } else {
                     throw new BAD_INV_ORDER(203, CompletionStatus.Completed_MayBe);
                 }                                                
@@ -509,6 +585,45 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
         }
         
+        /// <summary>
+        /// the service context of the request.
+        /// </summary>
+        /// <remarks>if not yet available, creates one.</remarks>
+        internal ServiceContextList RequestServiceContext {
+            get {
+                ServiceContextList list = SimpleGiopMsg.GetServiceContextFromMessage(m_requestMessage);
+                if (list == null) {
+                    list = new ServiceContextList();
+                    SimpleGiopMsg.SetServiceContextInMessage(m_requestMessage, list);
+                }
+                return list;
+            }
+            set {
+                SimpleGiopMsg.SetServiceContextInMessage(m_requestMessage, value);
+            }
+        }
+
+        /// <summary>
+        /// the service context of the reply.
+        /// </summary>        
+        /// <remarks>if not yet available, creates one.</remarks>
+        internal ServiceContextList ResponseServiceContext {
+            get {
+                ServiceContextList list = null;
+                if (m_replyMessage != null) {
+                    list = SimpleGiopMsg.GetServiceContextFromMessage(m_replyMessage);
+                } else {
+                    throw new BAD_INV_ORDER(301, CompletionStatus.Completed_MayBe);
+                }
+                if (list == null) {
+                    list = new ServiceContextList();
+                    SimpleGiopMsg.SetServiceContextInMessage(m_replyMessage, list);                    
+                }
+                return list;
+            }
+            
+        }        
+        
         /// <summary>the .NET remoting request</summary>
         internal IMessage Request {
             get {
@@ -525,6 +640,15 @@ namespace Ch.Elca.Iiop.MessageHandling {
         
         #endregion IProperties
         #region IMethods
+        
+        
+        /// <summary>
+        /// returns the idl method name if available or null, if not yet available.
+        /// </summary>
+        /// <returns>the requested method name</returns>
+        internal string GetRequestedMethodNameInternal() {
+            return (string)m_requestMessage.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY];
+        }
         
         /// <summary>
         /// extracts the called method from the request message. Returns null, if not yet determined.
@@ -648,7 +772,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             CalledMethodName = internalMethodName;            
             IsStandardCorbaOperation = !regularOp;
             CalledMethod = callForMethod;
-        }
+        }                
                 
         /// <summary>
         /// for methods mapped from idl, check if exception is allowed to throw
@@ -700,6 +824,51 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
             return exceptionToThrow;
         }        
+        
+        /// <summary>
+        /// set the final .net request compiled at the end of deserialisation.
+        /// </summary>
+        /// <param name="requestCallMessage"></param>
+        internal void UpdateWithFinalRequest(IMethodCallMessage requestCallMessage) {
+            m_requestCallMessage = requestCallMessage;            
+            m_requestMessage = requestCallMessage;               
+        }
+        
+        /// <summary>
+        /// set the response message, if a problem occured during request deserialisation.
+        /// </summary>
+        /// <param name="requestCallMessage"></param>
+        internal void UpdateWithProcessingExceptionReply(ReturnMessage response) {
+            m_replyMessage = response;
+        }        
+        
+        /// <summary>
+        /// portable interception point: receive request service contexts
+        /// </summary>
+        internal void InterceptReceiveRequestServiceContexts() {
+            
+        }
+
+        /// <summary>
+        /// portable interception point: receive request
+        /// </summary>
+        internal void InterceptReceiveRequest() {
+            
+        }
+        
+        /// <summary>
+        /// portable interception point: send exception
+        /// </summary>
+        internal void InterceptSendException(Exception ex) {
+            
+        }        
+        
+        /// <summary>
+        /// portable interception point: send reply
+        /// </summary>
+        internal void InterceptSendReply() {
+            
+        }                
         
         #endregion IMethods
         
