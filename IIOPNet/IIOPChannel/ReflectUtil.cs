@@ -590,6 +590,16 @@ namespace Ch.Elca.Iiop.Util {
         		}
         	}
         	return false;
+        }    
+        
+        /// <summary>generate the signature info for the method</summary>
+        public static Type[] GenerateSigForMethod(MethodBase method) {
+            ParameterInfo[] parameters = method.GetParameters();
+            Type[] result = new Type[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++) {                             
+                result[i] = parameters[i].ParameterType;
+            }
+            return result;
         }        
         
         #endregion SMethods

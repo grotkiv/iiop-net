@@ -596,17 +596,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
             return calledMethodInfo;
         }                
-                
-        /// <summary>generate the signature info for the method</summary>
-        private Type[] GenerateSigForMethod(MethodInfo method) {
-            ParameterInfo[] parameters = method.GetParameters();
-            Type[] result = new Type[parameters.Length];
-            for (int i = 0; i < parameters.Length; i++) {                             
-                result[i] = parameters[i].ParameterType;
-            }
-            return result;
-        }        
-        
+                        
         /// <summary>
         /// resolve the call to a .net method according to the properties already set.
         /// As a result, update the request message.
@@ -632,7 +622,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 callForMethod = DecodeObjectOperation(RequestMethodName, serverType);
                 internalMethodName = callForMethod.Name;
                 // to handle overloads correctly, add signature info:
-                CalledMethodSignature = GenerateSigForMethod(callForMethod);                
+                CalledMethodSignature = ReflectionHelper.GenerateSigForMethod(callForMethod);                
             } else {
                 regularOp = false; // pseude-object op
                 // handle standard corba-ops like _is_a
