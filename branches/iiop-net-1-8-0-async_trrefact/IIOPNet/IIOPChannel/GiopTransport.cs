@@ -67,7 +67,7 @@ namespace Ch.Elca.Iiop {
         /// <summary>
         /// specifies, how much should be read in one step from message to send
         /// </summary>
-        private const int READ_CHUNK_SIZE = 1024;
+        private const int READ_CHUNK_SIZE = 8192;
 
         #endregion Constants
         #region Fields
@@ -182,7 +182,7 @@ namespace Ch.Elca.Iiop {
         /// <summary>
         /// specifies, how much should be read in one step from message to send
         /// </summary>
-        private const int READ_CHUNK_SIZE = 1024;
+        private const int READ_CHUNK_SIZE = 8192;
 
         #endregion Constants
         #region Fields
@@ -196,7 +196,7 @@ namespace Ch.Elca.Iiop {
         private int m_bytesRead;
         
         private byte[] m_buffer = new byte[READ_CHUNK_SIZE];
-        private byte[] m_giopHeaderBuffer = new byte[12];               
+        private byte[] m_giopHeaderBuffer = new byte[GiopHeader.HEADER_LENGTH];               
         
         #endregion Fields
         #region IConstructors
@@ -234,7 +234,7 @@ namespace Ch.Elca.Iiop {
         public void StartReceiveMessage() {
             m_messageToReceive = new MemoryStream();
             m_header = null;
-            m_expectedMessageLength = 12; // giop header-length
+            m_expectedMessageLength = GiopHeader.HEADER_LENGTH; // giop header-length
             m_bytesRead = 0;
             
             StartReceiveNextMessagePart();
