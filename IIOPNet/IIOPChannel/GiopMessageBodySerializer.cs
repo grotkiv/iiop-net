@@ -784,36 +784,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
             return new LocationForwardMessage(newProxy);            
         }
-        
-        /// <summary>
-        /// creates a return message for a return value and possible out/ref args among the sent arguments
-        /// </summary>
-        internal ReturnMessage CreateReturnMsgForValues(object retVal, object[] reqArgs,
-                                                        IMethodCallMessage request) {
-            // find out args
-            MethodInfo targetMethod = (MethodInfo)request.MethodBase;
-            ParameterInfo[] parameters = targetMethod.GetParameters();
-
-            bool outArgFound = false;
-            ArrayList outArgsList = new ArrayList();
-            for (int i = 0; i < parameters.Length; i++) {
-                if (ParameterMarshaller.IsOutParam(parameters[i]) || 
-                    ParameterMarshaller.IsRefParam(parameters[i])) {
-                    outArgsList.Add(reqArgs[i]); // i-th argument is an out/ref param
-                    outArgFound = true;
-                } else {
-                    outArgsList.Add(null); // for an in param null must be added to out-args
-                }
-            }
-            
-            object[] outArgs = outArgsList.ToArray();
-            if ((!outArgFound) || (outArgs == null)) { 
-                outArgs = new object[0]; 
-            }
-            // create the return message
-            return new ReturnMessage(retVal, outArgs, outArgs.Length, null, request); 
-        }        
-            
+                    
         #endregion Replys
         #region Locate
 
