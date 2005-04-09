@@ -32,6 +32,7 @@ using System;
 using omg.org.CORBA;
 using omg.org.PortableInterceptor;
 using Ch.Elca.Iiop.MessageHandling;
+using Ch.Elca.Iiop.CorbaObjRef;
 
 namespace Ch.Elca.Iiop.Interception {
     
@@ -182,6 +183,34 @@ namespace Ch.Elca.Iiop.Interception {
         internal void SetSentException(Exception ex) {
             m_sentException = ex;
         }
+        
+        #endregion IMethods
+        
+    }
+    
+    
+    /// <summary>
+    /// implementation of IORInfo interface used for ior interception.
+    /// </summary>
+    internal class IORInfoImpl : IORInfo {
+    
+        #region IFields
+        
+        private InternetIiopProfile[] m_profiles;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        public IORInfoImpl(InternetIiopProfile[] profiles) {
+            m_profiles = profiles;
+        }
+        
+        public IORInfoImpl(InternetIiopProfile profile) : this(new InternetIiopProfile[] { profile }) {            
+        }
+        
+        #endregion IConstructors
+        #region IMethods
+                
         
         #endregion IMethods
         
