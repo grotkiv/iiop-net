@@ -199,7 +199,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
             ClientRequestInterceptionFlow result = 
                 (ClientRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
             if (result ==  null) {
-                ClientRequestInterceptor[] interceptors = new ClientRequestInterceptor[0]; // TODO
+                ClientRequestInterceptor[] interceptors = 
+                    OrbServices.GetSingleton().InterceptorManager.ClientRequestInterceptors;
                 if (interceptors.Length == 0) {
                     result = new ClientRequestInterceptionFlow();
                 } else {
@@ -698,7 +699,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
             ServerRequestInterceptionFlow result = 
                 (ServerRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
             if (result ==  null) {
-                ServerRequestInterceptor[] interceptors = new ServerRequestInterceptor[0]; // TODO
+                ServerRequestInterceptor[] interceptors = 
+                    OrbServices.GetSingleton().InterceptorManager.ServerRequestInterceptors;
                 if (interceptors.Length == 0) {
                     result = new ServerRequestInterceptionFlow();
                 } else {

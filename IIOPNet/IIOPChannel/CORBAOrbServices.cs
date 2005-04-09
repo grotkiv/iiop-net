@@ -36,7 +36,8 @@ using Ch.Elca.Iiop.Idl;
 using Ch.Elca.Iiop;
 using Ch.Elca.Iiop.CorbaObjRef;
 using Ch.Elca.Iiop.Util;
-
+using Ch.Elca.Iiop.Interception;
+using omg.org.PortableInterceptor;
 
 namespace omg.org.CORBA {
 	
@@ -92,6 +93,22 @@ namespace omg.org.CORBA {
 		
 		#endregion Pseude object operation helpers
 
+	
+	    #region Portable Interceptors
+	    
+	    /// <summary>registers an initalizer for portable interceptors. The interceptors are
+	    /// enabled by calling CompleteInterceptorRegistration.</summary>
+	    void RegisterPortableInterceptorInitalizer(ORBInitalizer initalizer);
+	    
+	    /// <summary>
+	    /// completes registration of interceptors. 
+	    /// Afterwards, the interceptors are enabled and are called during processing.
+	    /// </summary>
+	    void CompleteInterceptorRegistration();
+	    
+	    #endregion Protable Interceptors
+	
+	
 	}
 	
 	
@@ -102,10 +119,18 @@ namespace omg.org.CORBA {
 		
 		private static OrbServices s_singleton = new OrbServices();		
 		
-		#endregion SFields
+		#endregion SFields		
+		#region IFields
+		
+		private IList m_orbInitalizers; 
+		private InterceptorManager m_interceptorManager;
+		
+		#endregion IFields
 		#region IConstructors
 		
 		private OrbServices() {			
+		    m_orbInitalizers = new ArrayList();
+		    m_interceptorManager = new InterceptorManager();
 		}
 		
 		#endregion IConstructors
@@ -116,6 +141,18 @@ namespace omg.org.CORBA {
 		}
 		
 		#endregion SMethods
+		#region IProperties
+		
+		/// <summary>
+		/// the manager responsible for managing the interceptors.
+		/// </summary>
+		internal InterceptorManager InterceptorManager {
+		    get {
+		        return m_interceptorManager;
+		    }
+		}
+		
+		#endregion IProperties
 		#region IMethods
 		
 		
@@ -251,6 +288,31 @@ namespace omg.org.CORBA {
         }
 		
 		#endregion Pseude object operation helpers
+		
+		
+	    #region Portable Interceptors
+	    
+	    /// <summary>see <see cref="omg.org.CORBA.IOrbServices.RegisterPortableInterceptorInitalizer"</summary>
+	    public void RegisterPortableInterceptorInitalizer(ORBInitalizer initalizer) {
+	        lock(m_orbInitalizers.SyncRoot) {
+	            m_orbInitalizers.Add(initalizer);
+	        }
+	    }
+	    
+        /// <summary>see <see cref="omg.org.CORBA.IOrbServices.CompleteInterceptorRegistration"</summary>
+        public void CompleteInterceptorRegistration() {
+            lock(m_orbInitalizers.SyncRoot) {
+                try {
+                    m_interceptorManager.CompleteInterceptorRegistration(m_orbInitalizers);
+                } finally {
+                    // not needed any more
+                    m_orbInitalizers.Clear();
+                }
+            }
+	        
+	    }
+	    
+	    #endregion Protable Interceptors		
 		
 		#endregion IMethods
 	

@@ -28,7 +28,9 @@
  */
 
 using System;
+using Ch.Elca.Iiop;
 using Ch.Elca.Iiop.Idl;
+using omg.org.CORBA;
 
 
 namespace omg.org.PortableInterceptor {
@@ -311,5 +313,56 @@ namespace omg.org.PortableInterceptor {
         
     }
     
+    
+    /// <summary>
+    /// Interface implemented by an orb initalizer, which is used to register portable interceptors.
+    /// </summary>
+    [RepositoryID("IDL:omg.org/PortableInterceptor/OrbInitalizer:1.0")]
+    [InterfaceType(IdlTypeInterface.LocalInterface)]    
+    public interface ORBInitalizer {
+        
+        void pre_init(ORBInitInfo info);
+        
+        void post_init(ORBInitInfo info);        
+        
+    }
+    
+    
+    [RepositoryIDAttribute("IDL:omg.org/PortableInterceptor/DuplicateName:1.0")]
+    [Serializable]
+    public class DuplicateName : AbstractUserException {
+        
+        #region IFields
+        
+        private string m_name;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        /// <summary>constructor needed for deserialisation</summary>
+        public DuplicateName(string name) : base("duplicate name : " + name) {
+            m_name = name;
+        }
+
+        #endregion IConstructors
+    }    
+    
+    /// <summary>
+    /// Interface usable to register interceptors.
+    /// </summary>
+    [RepositoryID("IDL:omg.org/PortableInterceptor/OrbInitalizer:1.0")]
+    [InterfaceType(IdlTypeInterface.LocalInterface)]        
+    public interface ORBInitInfo {
+            
+        [ThrowsIdlException(typeof(omg.org.PortableInterceptor.DuplicateName))]
+        void add_client_request_interceptor(ClientRequestInterceptor interceptor);
+        
+        [ThrowsIdlException(typeof(omg.org.PortableInterceptor.DuplicateName))]
+        void add_server_request_interceptor(ServerRequestInterceptor interceptor);
+        
+        [ThrowsIdlException(typeof(omg.org.PortableInterceptor.DuplicateName))]
+        void add_ior_interceptor(IORInterceptor interceptor);
+        
+    }
       
 }
