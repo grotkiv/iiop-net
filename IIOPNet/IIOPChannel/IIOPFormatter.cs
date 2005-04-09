@@ -406,10 +406,16 @@ namespace Ch.Elca.Iiop {
                     new AsyncProcessingData(deserReqMsg, conDesc);
                 sinkStack.Push(this, asyncData);
                 
-                // forward the call to the next message handling sink
-                ServerProcessing processingResult = m_nextSink.ProcessMessage(sinkStack, deserReqMsg,
-                                                                              requestHeaders, null, out responseMsg,
-                                                                              out responseHeaders, out responseStream);
+                ServerProcessing processingResult;
+                try {
+                    // forward the call to the next message handling sink
+                    processingResult = m_nextSink.ProcessMessage(sinkStack, deserReqMsg,
+                                                                 requestHeaders, null, out responseMsg,
+                                                                 out responseHeaders, out responseStream);
+                } catch (Exception) {
+                    sinkStack.Pop(this);
+                    throw;
+                }
                 switch (processingResult) {
                     case ServerProcessing.Complete:
                         sinkStack.Pop(this); // not async
@@ -426,13 +432,9 @@ namespace Ch.Elca.Iiop {
                         break;
                 }
                 return processingResult;
-
-            } catch (IOException ioEx) {
-                throw ioEx;
+            
             } catch (MessageHandling.RequestDeserializationException deserEx) {
-                try { 
-                    sinkStack.Pop(this); // prevent an async response handling
-                } catch (Exception) {}
+                // exception from DeserialisRequest
                 responseMsg = deserEx.ResponseMessage;
                 // an exception was thrown during deserialization
                 SerialiseExceptionResponse(sinkStack, 
@@ -440,15 +442,12 @@ namespace Ch.Elca.Iiop {
                                            ref responseHeaders, out responseStream);
                 return ServerProcessing.Complete;
             } catch (Exception e) {
-                try { 
-                    sinkStack.Pop(this); // prevent an async response handling
-                } catch (Exception) {}
                 // serialise an exception response
                 if (deserReqMsg != null) {
                     if (deserReqMsg is IMethodCallMessage) {
                         responseMsg = new ReturnMessage(e, (IMethodCallMessage) deserReqMsg);
                     } else {
-                        responseMsg = new ReturnMessage(e, null); // no useful information present for requestMsg
+                        responseMsg = new ReturnMessage(e, null); // no usable information present
                     }
                     SerialiseExceptionResponse(sinkStack, 
                                                deserReqMsg, conDesc, responseMsg,
