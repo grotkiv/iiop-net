@@ -33,9 +33,12 @@ using System.Text;
 using System.Runtime.Remoting;
 using System.Diagnostics;
 using System.Globalization;
+using System.Threading;
 using omg.org.CORBA;
+using omg.org.PortableInterceptor;
 using Ch.Elca.Iiop.CorbaObjRef;
 using Ch.Elca.Iiop.Idl;
+using Ch.Elca.Iiop.Interception;
 
 namespace Ch.Elca.Iiop.Util {
 
@@ -318,6 +321,8 @@ namespace Ch.Elca.Iiop.Util {
                                                                       (short)port, objectKey);
                 // add additional tagged components according to the channel options, e.g. for SSL
                 profile.AddTaggedComponents(serverData.AdditionalTaggedComponents);
+                // add additional tagged components according to registered interceptors:
+                AddProfileComponentsFromIorInterceptors(profile);
                 
                 Ior ior = new Ior(repositoryID, new IorProfile[] { profile });
                 return ior;                
@@ -344,6 +349,23 @@ namespace Ch.Elca.Iiop.Util {
             }
             // no IIOPChannelData found
             return null; 
+        }
+        
+        private static void AddProfileComponentsFromIorInterceptors(InternetIiopProfile profile) {
+            IORInterceptor[] interceptors = OrbServices.GetSingleton().InterceptorManager.IorInterceptors;
+            if (interceptors.Length > 0) {
+                IORInfo info = new IORInfoImpl(profile);
+                for (int i = 0; i < interceptors.Length; i++) {
+                    try {                    
+                        interceptors[i].establish_components(info);
+                    } catch (ThreadAbortException) {
+                        throw;
+                    } catch (Exception e) {
+                        // ignore exceptions
+                        Trace.WriteLine("warning: ior interceptor thrown exception: " + e);
+                    }
+                }
+            }
         }
         
         #endregion ServerSide
