@@ -50,6 +50,11 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
             orb.CompleteInterceptorRegistration();
 
+            TestInterceptorControlService controlService = 
+                new TestInterceptorControlService(testInterceptorInit);
+            string objectURIControlService = "interceptorControl";
+            RemotingServices.Marshal(controlService, objectURIControlService);
+
             TestService test = new TestService();
             string objectURI = "test";
             RemotingServices.Marshal(test, objectURI);

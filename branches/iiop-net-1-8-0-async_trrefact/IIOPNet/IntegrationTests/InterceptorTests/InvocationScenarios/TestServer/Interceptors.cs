@@ -109,35 +109,45 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         public void receive_request_service_contexts(ServerRequestInfo ri) {
             m_invokedOnInPathReceiveSvcContext = true;
             if (m_throwExceptionInPathReceiveSvcContext != null) {
-                throw m_throwExceptionInPathReceiveSvcContext;
+                Exception toThrow = m_throwExceptionInPathReceiveSvcContext;
+                m_throwExceptionInPathReceiveSvcContext = null; // clear, to allow next call
+                throw toThrow;
             }
         }
                 
         public void receive_request(ServerRequestInfo ri) {
             m_invokedOnInPathReceive = true;
             if (m_throwExceptionInPathReceive != null) {
-                throw m_throwExceptionInPathReceive;
+                Exception toThrow = m_throwExceptionInPathReceive;
+                m_throwExceptionInPathReceive = null; // clear, to allow next call
+                throw toThrow;
             }            
         }
         
         public void send_reply(ServerRequestInfo ri) {
             m_outPathResult = OutPathResult.Reply;
             if (m_throwExceptionOutPath != null) {
-                throw m_throwExceptionOutPath;
+                Exception toThrow = m_throwExceptionOutPath;
+                m_throwExceptionOutPath = null; // clear, for next call
+                throw toThrow;
             }
         }
         
         public void send_exception(ServerRequestInfo ri) {
             m_outPathResult = OutPathResult.Exception;
             if (m_throwExceptionOutPath != null) {
-                throw m_throwExceptionOutPath;
+                Exception toThrow = m_throwExceptionOutPath;
+                m_throwExceptionOutPath = null; // clear, for next call
+                throw toThrow;
             }
         }
         
         public void send_other(ServerRequestInfo ri) {
             m_outPathResult = OutPathResult.Other;
             if (m_throwExceptionOutPath != null) {
-                throw m_throwExceptionOutPath;
+                Exception toThrow = m_throwExceptionOutPath;
+                m_throwExceptionOutPath = null; // clear, for next call
+                throw toThrow;
             }
         }
 
