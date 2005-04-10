@@ -33,10 +33,19 @@ using Ch.Elca.Iiop.Idl;
 
 namespace Ch.Elca.Iiop.IntegrationTests {
 
+    public class TestServerSideException : AbstractUserException {
+
+    }
+
     public class TestService : MarshalByRefObject {
 
         public System.Byte TestIncByte(System.Byte arg) {
             return (System.Byte)(arg + 1);
+        }
+
+        [ThrowsIdlException(typeof(Ch.Elca.Iiop.IntegrationTests.TestServerSideException))]
+        public System.Boolean TestThrowException() {
+            throw new TestServerSideException();
         }
 
         public override object InitializeLifetimeService() {
