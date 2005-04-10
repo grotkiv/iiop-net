@@ -426,6 +426,93 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             }
         }
 
+        [Test]
+        public void TestCheckServerInterceptorsReceiveRequestException() {
+            try {
+                // non-intercepted
+                m_interceptorControl.SetThrowException(ServerInterceptor.ServerInterceptor_InterceptorB, 
+                                                       ServerInterceptionPoint.ServerInterceptionPoint_ReceiveRequest);
+                try {
+                    System.Byte arg = 1;
+                    // intercepted
+                    System.Byte result = m_testService.TestIncByte(arg);
+                    Assertion.Fail("no exception");
+                } catch (BAD_PARAM) {
+                    // ok, expected
+                }
+
+                // the following calls are non-intercepted; special handling in interceptors
+                Assertion.Assert("expected: a rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.Assert("expected: b rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.Assert("expected: c rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorC));
+
+                Assertion.Assert("expected: a rec. on in path called", 
+                                 m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.Assert("expected: b rec. on in path called", 
+                                 m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.Assert("expected: c rec. on in path not called", 
+                                 !m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorC));
+
+                Assertion.AssertEquals("a on out path called (exception)", 
+                                       OutPathResult.OutPathResult_Exception, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.AssertEquals("b on out path called (excpetion)", 
+                                       OutPathResult.OutPathResult_Exception, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.AssertEquals("c on out path called (excpetion)", 
+                                       OutPathResult.OutPathResult_Exception, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorC));               
+            } finally {
+                // call is not intercepted on server side
+                m_interceptorControl.ClearInterceptorHistory();
+            }
+
+            try {
+                // non-intercepted
+                m_interceptorControl.SetThrowException(ServerInterceptor.ServerInterceptor_InterceptorA, 
+                                                       ServerInterceptionPoint.ServerInterceptionPoint_ReceiveRequest);
+                try {
+                    System.Byte arg = 1;
+                    // intercepted
+                    System.Byte result = m_testService.TestIncByte(arg);
+                    Assertion.Fail("no exception");
+                } catch (BAD_PARAM) {
+                    // ok, expected
+                }
+
+                // the following calls are non-intercepted; special handling in interceptors
+                Assertion.Assert("expected: a rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.Assert("expected: b rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.Assert("expected: c rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorC));
+
+                Assertion.Assert("expected: a rec. on in path called", 
+                                 m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.Assert("expected: b rec. on in path not called", 
+                                 !m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.Assert("expected: c rec. on in path not called", 
+                                 !m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorC));
+
+                Assertion.AssertEquals("a on out path called (exception)", 
+                                       OutPathResult.OutPathResult_Exception, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.AssertEquals("b on out path called (excpetion)", 
+                                       OutPathResult.OutPathResult_Exception, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.AssertEquals("c on out path called (excpetion)", 
+                                       OutPathResult.OutPathResult_Exception, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorC));               
+            } finally {
+                // call is not intercepted on server side
+                m_interceptorControl.ClearInterceptorHistory();
+            }
+        }
+
         #endregion IMethods
 
 
