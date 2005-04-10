@@ -194,6 +194,34 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             }            
         }
 
+        [Test]
+        public void TestExceptionClientInPathAfterServerExceptionReply() {
+            try {
+                m_testInterceptorInit.B.SetExceptionOnInPath(new BAD_OPERATION(1000, CompletionStatus.Completed_No));
+                try {
+                    m_testService.TestThrowException();
+                    Assertion.Fail("no exception");
+                } catch (BAD_OPERATION) {
+                    // ok, expected
+                }
+
+                Assertion.Assert("expected: a on out path called", m_testInterceptorInit.A.InvokedOnOutPath);
+                Assertion.Assert("expected: b on out path called", m_testInterceptorInit.B.InvokedOnOutPath);
+                Assertion.Assert("expected: c on out path called", m_testInterceptorInit.C.InvokedOnOutPath);
+
+                Assertion.AssertEquals("a on in path called (exception)", 
+                                       InPathResult.Exception, m_testInterceptorInit.A.InPathResult);
+                Assertion.AssertEquals("b on in path called (exception)",
+                                       InPathResult.Exception, m_testInterceptorInit.B.InPathResult);
+                Assertion.AssertEquals("c on in path called (exception)", 
+                                       InPathResult.Exception, m_testInterceptorInit.C.InPathResult);
+            } finally {
+                m_testInterceptorInit.A.ClearInvocationHistory();
+                m_testInterceptorInit.B.ClearInvocationHistory();
+                m_testInterceptorInit.C.ClearInvocationHistory();
+            }            
+        }
+
         #endregion IMethods
 
 
