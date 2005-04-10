@@ -84,7 +84,7 @@ namespace Ch.Elca.Iiop.Interception {
 	    internal bool HasNextInterceptor() {
 	        return ((m_currentInterceptor + m_increment >= 0) &&
 	                (m_currentInterceptor + m_increment < m_interceptors.Length));
-	    }
+	    }	    	    
 	    
 	    /// <summary>
 	    /// sets the flow to the next interceptor in the flow; at the beginning; positioned before the
@@ -96,6 +96,11 @@ namespace Ch.Elca.Iiop.Interception {
 	            m_currentInterceptor +=  m_increment;
 	            return true;
 	        } else {
+	            if (m_increment > 0) {
+	                m_currentInterceptor = m_interceptors.Length; // position on element after last
+	            } else {
+	                m_currentInterceptor = -1; // position on element after last
+	            }
 	            return false;
 	        }
 	    }
