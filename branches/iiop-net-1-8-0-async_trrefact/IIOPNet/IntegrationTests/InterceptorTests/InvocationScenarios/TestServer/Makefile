@@ -24,6 +24,7 @@ $(bin)TestServer.exe: $(bin)IIOPChannel.dll *.cs
    
 IDL\Ch\Elca\Iiop\IntegrationTests\TestService.idl: $(bin)TestServer.exe
     ..\..\..\..\CLSToIDLGenerator\bin\CLSIDLGenerator.exe -o IDL Ch.Elca.Iiop.IntegrationTests.TestService $(bin)TestServer.exe
+    ..\..\..\..\CLSToIDLGenerator\bin\CLSIDLGenerator.exe -o IDL Ch.Elca.Iiop.IntegrationTests.TestInterceptorControlService $(bin)TestServer.exe
 
 
 start-server:

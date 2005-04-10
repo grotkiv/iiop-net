@@ -40,6 +40,7 @@ using omg.org.PortableInterceptor;
 namespace Ch.Elca.Iiop.IntegrationTests {
 
 
+    [Serializable]
     public enum OutPathResult {
         NotCalled, Reply, Exception, Other
     }

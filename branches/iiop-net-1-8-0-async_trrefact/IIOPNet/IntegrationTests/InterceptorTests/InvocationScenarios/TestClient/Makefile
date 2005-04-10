@@ -19,7 +19,7 @@ IDL\Ch\Elca\Iiop\IntegrationTests\TestService.idl: ..\TestServer\IDL\Ch\Elca\Iio
 
 $(bin)Client.dll: IDL\Ch\Elca\Iiop\IntegrationTests\TestService.idl
     cd IDL 
-    ..\..\..\..\..\IDLToCLSCompiler\IDLCompiler\bin\IDLToCLSCompiler.exe -o ..\bin client Ch\Elca\Iiop\IntegrationTests\TestService.idl
+    ..\..\..\..\..\IDLToCLSCompiler\IDLCompiler\bin\IDLToCLSCompiler.exe -o ..\bin client Ch\Elca\Iiop\IntegrationTests\TestService.idl  Ch\Elca\Iiop\IntegrationTests\TestInterceptorControlService.idl
     cd ..
 
 
