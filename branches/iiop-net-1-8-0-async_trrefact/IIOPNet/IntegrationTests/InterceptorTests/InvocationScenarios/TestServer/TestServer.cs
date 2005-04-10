@@ -30,6 +30,7 @@ using System;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Threading;
+using omg.org.CORBA;
 
 namespace Ch.Elca.Iiop.IntegrationTests {
 
@@ -37,10 +38,17 @@ namespace Ch.Elca.Iiop.IntegrationTests {
     public class TestServer {
 
         public static void Main(String[] args) {
+
+            IOrbServices orb = OrbServices.GetSingleton();
+            TestInterceptorInit testInterceptorInit = new TestInterceptorInit();
+            orb.RegisterPortableInterceptorInitalizer(testInterceptorInit);
+
             // register the channel
             int port = 8087;
             IiopChannel chan = new IiopChannel(port);
             ChannelServices.RegisterChannel(chan);
+
+            orb.CompleteInterceptorRegistration();
 
             TestService test = new TestService();
             string objectURI = "test";
