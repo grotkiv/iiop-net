@@ -399,6 +399,26 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
         }
         
+        /// <summary>
+        /// the key of the target object
+        /// </summary>
+        internal byte[] ObjectKey {
+            get {
+                if (m_requestMessage.Properties[SimpleGiopMsg.REQUESTED_OBJECT_KEY] != null) {
+                    return (byte[])m_requestMessage.Properties[SimpleGiopMsg.REQUESTED_OBJECT_KEY];
+                } else {
+                    throw new BAD_INV_ORDER(10, CompletionStatus.Completed_MayBe);
+                }                                                
+            }
+            set {
+                if (m_requestCallMessage == null) {
+                    m_requestMessage.Properties[SimpleGiopMsg.REQUESTED_OBJECT_KEY] = value;
+                } else {
+                    throw new BAD_OPERATION(216, CompletionStatus.Completed_MayBe);
+                }
+            }
+        }        
+        
         internal string RequestUri {
             get {
                 if (m_requestMessage.Properties[SimpleGiopMsg.REQUESTED_URI_KEY] != null) {
@@ -921,6 +941,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal void InterceptReceiveRequest() {
             ServerRequestInterceptionFlow flow = GetOrCreateServerInterceptionFlow();
             try {
+                flow.ResetToStart(); // reset to the first element, because positioned at the end after receive request service contexts.
                 flow.ReceiveRequest();
             } catch (Exception) {
                 // swith to reply direction and reset to first, because all Receive service contexts 
