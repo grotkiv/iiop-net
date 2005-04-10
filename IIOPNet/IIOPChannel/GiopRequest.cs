@@ -948,6 +948,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 // interception points completed -> exception reply must pass all interception points.
                 flow.SwitchToReplyDirection();
                 flow.ResetToStart();
+                throw; // exception response
             }
             
         }
