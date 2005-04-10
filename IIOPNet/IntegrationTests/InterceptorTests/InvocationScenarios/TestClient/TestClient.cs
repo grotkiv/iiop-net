@@ -226,6 +226,80 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             }            
         }
 
+        [Test]
+        public void TestBypassServerInterceptors() {
+            try {
+                // call should be non-intercepted on server side
+                m_interceptorControl.ClearInterceptorHistory();
+
+                // the following calls should be non-intercepted; special handling in interceptors
+                Assertion.Assert("not expected: a rec. svc. context on in path called", 
+                                 !m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.Assert("not expected: b rec. svc. context on in path called", 
+                                 !m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.Assert("not expected: c rec. svc. context on in path called", 
+                                 !m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorC));
+
+                Assertion.Assert("not expected: a rec. on in path called", 
+                                 !m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.Assert("not expected: b rec. on in path called", 
+                                 !m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.Assert("not expected: c rec. on in path called", 
+                                 !m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorC));
+
+                Assertion.AssertEquals("a on out path shouldn't be called", 
+                                       OutPathResult.OutPathResult_NotCalled, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.AssertEquals("b on out path shouldn't be called", 
+                                       OutPathResult.OutPathResult_NotCalled, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.AssertEquals("c on out path shouldn't be called", 
+                                       OutPathResult.OutPathResult_NotCalled, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorC));                
+
+            } finally {
+                // call is not intercepted on server side
+                m_interceptorControl.ClearInterceptorHistory();                
+            }
+        }
+
+        [Test]
+        public void TestCheckServerInterceptorsNormalReply() {
+            try {
+                System.Byte arg = 1;
+                System.Byte result = m_testService.TestIncByte(arg);
+                Assertion.AssertEquals((System.Byte)(arg + 1), result);
+
+                // the following calls are non-intercepted; special handling in interceptors
+                Assertion.Assert("expected: a rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.Assert("expected: b rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.Assert("expected: c rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled(ServerInterceptor.ServerInterceptor_InterceptorC));
+
+                Assertion.Assert("expected: a rec. on in path called", 
+                                 m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.Assert("expected: b rec. on in path called", 
+                                 m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.Assert("expected: c rec. on in path called", 
+                                 m_interceptorControl.IsReceiveRequestCalled(ServerInterceptor.ServerInterceptor_InterceptorC));
+
+                Assertion.AssertEquals("a on out path called (reply)", 
+                                       OutPathResult.OutPathResult_Reply, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorA));
+                Assertion.AssertEquals("b on out path called (reply)", 
+                                       OutPathResult.OutPathResult_Reply, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorB));
+                Assertion.AssertEquals("c on out path called (reply)", 
+                                       OutPathResult.OutPathResult_Reply, 
+                                       m_interceptorControl.GetOutPathResult(ServerInterceptor.ServerInterceptor_InterceptorC));               
+            } finally {
+                // call is not intercepted on server side
+                m_interceptorControl.ClearInterceptorHistory();
+            }
+        }        
+
         #endregion IMethods
 
 

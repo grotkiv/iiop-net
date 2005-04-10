@@ -93,21 +93,33 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         public OutPathResult OutPathResult {
-            get {
+            get {                
                 return m_outPathResult;
             }
         }
 
+        /// <summary>don't intercept calls for interception control service</summary>
+        private bool MustNonInterceptCall(ServerRequestInfo ri) {
+           return ri.operation.Equals("IsReceiveSvcContextCalled") ||
+                  ri.operation.Equals("IsReceiveRequestCalled") ||
+                  ri.operation.Equals("GetOutPathResult") ||
+                  ri.operation.Equals("SetThrowException") ||
+                  ri.operation.Equals("ClearInterceptorHistory");
+        }
+
         public void ClearInvocationHistory() {
-            m_invokedOnInPathReceiveSvcContext = false;
-            m_invokedOnInPathReceive = false;
-            m_outPathResult = OutPathResult.NotCalled;
-            m_throwExceptionOutPath = null;
-            m_throwExceptionInPathReceive = null;
-            m_throwExceptionInPathReceiveSvcContext = null;
+              m_invokedOnInPathReceiveSvcContext = false;
+              m_invokedOnInPathReceive = false;
+              m_outPathResult = OutPathResult.NotCalled;
+              m_throwExceptionOutPath = null;
+              m_throwExceptionInPathReceive = null;
+              m_throwExceptionInPathReceiveSvcContext = null;
         }
 
         public void receive_request_service_contexts(ServerRequestInfo ri) {
+            if (MustNonInterceptCall(ri)) {
+                return;
+            }
             m_invokedOnInPathReceiveSvcContext = true;
             if (m_throwExceptionInPathReceiveSvcContext != null) {
                 Exception toThrow = m_throwExceptionInPathReceiveSvcContext;
@@ -117,6 +129,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
                 
         public void receive_request(ServerRequestInfo ri) {
+            if (MustNonInterceptCall(ri)) {
+                return;
+            }
             m_invokedOnInPathReceive = true;
             if (m_throwExceptionInPathReceive != null) {
                 Exception toThrow = m_throwExceptionInPathReceive;
@@ -126,6 +141,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
         
         public void send_reply(ServerRequestInfo ri) {
+            if (MustNonInterceptCall(ri)) {
+                return;
+            }
             m_outPathResult = OutPathResult.Reply;
             if (m_throwExceptionOutPath != null) {
                 Exception toThrow = m_throwExceptionOutPath;
@@ -135,6 +153,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
         
         public void send_exception(ServerRequestInfo ri) {
+            if (MustNonInterceptCall(ri)) {
+                return;
+            }
             m_outPathResult = OutPathResult.Exception;
             if (m_throwExceptionOutPath != null) {
                 Exception toThrow = m_throwExceptionOutPath;
@@ -144,6 +165,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
         
         public void send_other(ServerRequestInfo ri) {
+            if (MustNonInterceptCall(ri)) {
+                return;
+            }
             m_outPathResult = OutPathResult.Other;
             if (m_throwExceptionOutPath != null) {
                 Exception toThrow = m_throwExceptionOutPath;
