@@ -30,8 +30,20 @@ using System;
 using System.Runtime.Remoting.Messaging;
 using System.Threading;
 using Ch.Elca.Iiop.Idl;
+using omg.org.CORBA;
+using omg.org.PortableInterceptor;
 
 namespace Ch.Elca.Iiop.IntegrationTests {
+
+    [Serializable]
+    public enum ServerInterceptor {
+        InterceptorA, InterceptorB, InterceptorC
+    }
+
+    [Serializable]
+    public enum ServerInterceptionPoint {
+        ReceiveSvcContext, ReceiveRequest, SendResponse
+    }
 
 
     public class TestInterceptorControlService : MarshalByRefObject {
@@ -40,6 +52,52 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
         public TestInterceptorControlService(TestInterceptorInit interceptorInit) {
             m_interceptorInit = interceptorInit;
+        }
+
+
+        private TestInterceptor GetInterceptor(ServerInterceptor interceptor) {
+            TestInterceptor result;
+            switch (interceptor) {
+                case ServerInterceptor.InterceptorA:
+                    result = m_interceptorInit.A;
+                    break;
+                case ServerInterceptor.InterceptorB:
+                    result = m_interceptorInit.B;
+                    break;
+                case ServerInterceptor.InterceptorC:
+                    result = m_interceptorInit.C;
+                    break;
+                default:
+                    throw new BAD_PARAM(3000, CompletionStatus.Completed_Yes);
+            }
+            return result;
+        }
+
+        public bool IsReceiveSvcContextCalled(ServerInterceptor interceptor) {
+            return GetInterceptor(interceptor).InvokedOnInPathReceiveSvcContext;
+        }
+
+        public bool IsReceiveRequestCalled(ServerInterceptor interceptor) {
+            return GetInterceptor(interceptor).InvokedOnInPathReceive;
+        }
+
+        public OutPathResult GetOutPathResult(ServerInterceptor interceptor) {
+            return GetInterceptor(interceptor).OutPathResult;
+        }
+
+        public void SetThrowException(ServerInterceptor interceptor, ServerInterceptionPoint point) {
+            TestInterceptor toModify = GetInterceptor(interceptor);
+            switch (point) {
+                case ServerInterceptionPoint.ReceiveSvcContext:
+                    toModify.SetExceptionOnInPathSvcContext(new BAD_PARAM(2000, CompletionStatus.Completed_No));
+                    break;
+                case ServerInterceptionPoint.ReceiveRequest:
+                    toModify.SetExceptionOnInPathRequest(new BAD_PARAM(2000, CompletionStatus.Completed_No));
+                    break;
+                case ServerInterceptionPoint.SendResponse:
+                    toModify.SetExceptionOnOutPath(new BAD_PARAM(2000, CompletionStatus.Completed_Yes));
+                    break;
+            }
         }
 
         public override object InitializeLifetimeService() {

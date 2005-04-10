@@ -52,8 +52,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         private IiopClientChannel m_channel;
 
         private TestService m_testService;
+        private TestInterceptorControlService m_interceptorControl;
 
-        private TestInterceptorInit m_testInterceptorInit;
+        private TestInterceptorInit m_testInterceptorInit;        
 
         #endregion IFields
         #region IMethods
@@ -78,6 +79,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
                 // get the reference to the test-service
         	m_testService = (TestService)RemotingServices.Connect(typeof(TestService), "corbaloc:iiop:1.2@localhost:8087/test");
+
+                m_interceptorControl = (TestInterceptorControlService)RemotingServices.Connect(typeof(TestInterceptorControlService),
+                                                                                               "corbaloc:iiop:1.2@localhost:8087/interceptorControl");
             }
         }
 
@@ -168,7 +172,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         [Test]
         public void TestExceptionClientInPathAfterNormalReply() {
             try {
-                m_testInterceptorInit.B.SetExceptionOnInPath(new BAD_OPERATION(1000, CompletionStatus.Completed_No));
+                m_testInterceptorInit.B.SetExceptionOnInPath(new BAD_OPERATION(1000, CompletionStatus.Completed_Yes));
                 try {
                     System.Byte arg = 1;
                     System.Byte result = m_testService.TestIncByte(arg);
@@ -197,7 +201,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         [Test]
         public void TestExceptionClientInPathAfterServerExceptionReply() {
             try {
-                m_testInterceptorInit.B.SetExceptionOnInPath(new BAD_OPERATION(1000, CompletionStatus.Completed_No));
+                m_testInterceptorInit.B.SetExceptionOnInPath(new BAD_OPERATION(1000, CompletionStatus.Completed_Yes));
                 try {
                     m_testService.TestThrowException();
                     Assertion.Fail("no exception");
