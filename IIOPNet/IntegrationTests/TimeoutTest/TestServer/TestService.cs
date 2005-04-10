@@ -44,7 +44,10 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             return (System.Byte)(arg + 1);
         }
 
-
+        public override object InitializeLifetimeService() {
+            // live forever
+            return null;
+        }
         
     }
 
