@@ -9,6 +9,9 @@ build: nunit-var junit-var
     cd TimeoutTest
     $(MAKE) build
     cd ..
+    cd InterceptorTests
+    $(MAKE) build
+    cd ..
     cd Direct
     $(MAKE) build
     cd ..
@@ -76,6 +79,9 @@ test: nunit-var junit-var
     cd TimeoutTest
     $(MAKE) test
     cd ..
+    cd InterceptorTests
+    $(MAKE) test
+    cd ..
     cd Direct
     $(MAKE) test
     cd ..
@@ -128,6 +134,9 @@ clean:
     $(MAKE) clean
     cd ..
     cd Basic
+    $(MAKE) clean
+    cd ..
+    cd InterceptorTests
     $(MAKE) clean
     cd ..
         cd Direct
