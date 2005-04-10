@@ -44,6 +44,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         NotCalled, Reply, Exception, Other
     }
 
+
     /// <summary>
     /// adds the test interceptors.
     /// </summary>
@@ -54,6 +55,8 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         private string m_testId;
         private bool m_invokedOnOutPath = false;
         private InPathResult m_inPathResult = InPathResult.NotCalled;
+        private Exception m_throwExceptionOutPath = null;
+        private Exception m_throwExceptionInPath = null;
 
 
         public TestInterceptor(string name, string testId) {
@@ -89,22 +92,44 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         public void ClearInvocationHistory() {
             m_invokedOnOutPath = false;
             m_inPathResult = InPathResult.NotCalled;
+            m_throwExceptionOutPath = null;
+            m_throwExceptionInPath = null;
         }
 
         public void send_request(ClientRequestInfo ri) {
             m_invokedOnOutPath = true;
+            if (m_throwExceptionOutPath != null) {
+                throw m_throwExceptionOutPath;
+            }
         }
 
         public void receive_reply(ClientRequestInfo ri) {
             m_inPathResult = InPathResult.Reply;
+            if (m_throwExceptionInPath != null) {
+                throw m_throwExceptionInPath;
+            }
         }
 
         public void receive_exception(ClientRequestInfo ri) {
             m_inPathResult = InPathResult.Exception;
+            if (m_throwExceptionInPath != null) {
+                throw m_throwExceptionInPath;
+            }
         }
 
         public void receive_other(ClientRequestInfo ri) {
-            m_inPathResult = InPathResult.Other;            
+            m_inPathResult = InPathResult.Other;
+            if (m_throwExceptionInPath != null) {
+                throw m_throwExceptionInPath;
+            }
+        }
+
+        public void SetExceptionOnOutPath(Exception ex) {
+            m_throwExceptionOutPath = ex;
+        }
+
+        public void SetExceptionOnInPath(Exception ex) {
+            m_throwExceptionInPath = ex;
         }
 
     }
