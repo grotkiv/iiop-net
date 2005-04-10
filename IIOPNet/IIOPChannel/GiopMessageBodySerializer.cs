@@ -86,6 +86,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         public const string INTERCEPTION_FLOW = "_interception_flow";
         /// <summary>the key to access the isAsyncMessage property in the message properties.</summary>
         public const string IS_ASYNC_REQUEST = "_is_async_request";
+        /// <summary>the key used to access the object key in the message properties (only server side)</summary>
+        public const string REQUESTED_OBJECT_KEY = "__ObjectKey";        
         /// <summary>the key used to access the uri-property in messages</summary>         
         public const string URI_KEY = "__Uri";
         /// <summary>the key used to access the typename-property in messages</summary>
@@ -389,29 +391,32 @@ namespace Ch.Elca.Iiop.MessageHandling {
 
         /// <summary>read the target for the request</summary>
         /// <returns>the objectURI extracted from this msg</returns>
-        private string ReadTarget(CdrInputStream cdrStream, GiopVersion version) {
+        private string ReadTarget(CdrInputStream cdrStream, GiopVersion version,
+                                  out byte[] objectKey) {            
             if (version.IsBeforeGiop1_2()) {
                 // for GIOP 1.0 / 1.1 only object key is possible
-                return ReadTargetKey(cdrStream);
+                objectKey = ReadTargetKey(cdrStream);
+            } else {            
+                // for GIOP >= 1.2, a union is used for target information
+                ushort targetAdrType = cdrStream.ReadUShort();
+                switch (targetAdrType) {
+                    case 0:
+                        objectKey = ReadTargetKey(cdrStream);
+                        break;
+                    default:
+                        Trace.WriteLine("received not yet supported target address type: " + targetAdrType);
+                        throw new BAD_PARAM(650, CompletionStatus.Completed_No);
+                }
             }
-            
-            // for GIOP >= 1.2, a union is used for target information
-            ushort targetAdrType = cdrStream.ReadUShort();
-            switch (targetAdrType) {
-                case 0:
-                    return ReadTargetKey(cdrStream);
-                default:
-                    throw new NotSupportedException("target address type not supported: " + targetAdrType);
-            }
+            // get the object-URI of the responsible object
+            return IiopUrlUtil.GetObjectUriForObjectKey(objectKey);
         }
 
-        private string ReadTargetKey(CdrInputStream cdrStream) {
+        private byte[] ReadTargetKey(CdrInputStream cdrStream) {
             uint length = cdrStream.ReadULong();
             Debug.WriteLine("object key follows:");
             byte[] objectKey = cdrStream.ReadOpaque((int)length);
-                    
-            // get the object-URI of the responsible object
-            return IiopUrlUtil.GetObjectUriForObjectKey(objectKey);
+            return objectKey;            
         }
 
         #endregion Common
@@ -559,7 +564,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 serverRequest.ResponseFlags = respFlags;
                 
                 // decode the target of this request
-                serverRequest.RequestUri = ReadTarget(cdrStream, version);
+                byte[] objectKey;
+                serverRequest.RequestUri = ReadTarget(cdrStream, version, out objectKey);
+                serverRequest.ObjectKey = objectKey;
                 serverRequest.RequestMethodName = cdrStream.ReadString();
                 Trace.WriteLine("call for .NET object: " + serverRequest.RequestUri + 
                                 ", methodName: " + serverRequest.RequestMethodName);
@@ -947,8 +954,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <param name="forRequestId">returns the request id as out param</param>
         /// <returns>the uri of the object requested to find</returns>
         public string DeserialiseLocateRequest(CdrInputStream cdrStream, GiopVersion version, out uint forRequestId) {
-            forRequestId = cdrStream.ReadULong(); 
-            return ReadTarget(cdrStream, version);
+            forRequestId = cdrStream.ReadULong();
+            byte[] objectKey;
+            return ReadTarget(cdrStream, version, out objectKey);
         }
 
         /// <summary>

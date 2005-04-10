@@ -56,7 +56,7 @@ namespace Ch.Elca.Iiop.Interception {
             }
         }
         
-        public string operation {
+        public virtual string operation {
             get {
                 throw new NotImplementedException();
             }
@@ -172,9 +172,15 @@ namespace Ch.Elca.Iiop.Interception {
         /// <summary>the opaque id, describing the target of the operation invocation.</summary>
         public byte[] object_id {
             get {
-                throw new NotImplementedException();
+                return m_serverRequest.ObjectKey;
             }
-        }                
+        }        
+        
+        public override string operation {
+            get {
+                return m_serverRequest.RequestMethodName;
+            }
+        }
         
         #endregion IProperties
         #region IMethods
