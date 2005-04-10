@@ -100,6 +100,12 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             }
         }
 
+        public void ClearInterceptorHistory() {
+            m_interceptorInit.A.ClearInvocationHistory();
+            m_interceptorInit.B.ClearInvocationHistory();
+            m_interceptorInit.C.ClearInvocationHistory();
+        }
+
         public override object InitializeLifetimeService() {
             // live forever
             return null;
