@@ -78,7 +78,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
                 RegisterInterceptors();
 
                 // get the reference to the test-service
-        	m_testService = (TestService)RemotingServices.Connect(typeof(TestService), "corbaloc:iiop:1.2@localhost:8087/test");
+            m_testService = (TestService)RemotingServices.Connect(typeof(TestService), "corbaloc:iiop:1.2@localhost:8087/test");
 
                 m_interceptorControl = (TestInterceptorControlService)RemotingServices.Connect(typeof(TestInterceptorControlService),
                                                                                                "corbaloc:iiop:1.2@localhost:8087/interceptorControl");
@@ -602,6 +602,75 @@ namespace Ch.Elca.Iiop.IntegrationTests {
                 m_interceptorControl.ClearInterceptorHistory();
             }
 
+        }
+
+
+        [Test]
+        public void TestOneWayCallNoException() {
+            try {
+                m_testService.OneWayCall();
+
+                Assertion.Assert("expected: a on out path called", m_testInterceptorInit.A.InvokedOnOutPath);
+                Assertion.Assert("expected: b on out path called", m_testInterceptorInit.B.InvokedOnOutPath);
+                Assertion.Assert("expected: c on out path called", m_testInterceptorInit.C.InvokedOnOutPath);
+
+                Assertion.AssertEquals("a on in path called (other)", 
+                                       InPathResult.Other, m_testInterceptorInit.A.InPathResult);
+                Assertion.AssertEquals("b on in path called (other)",
+                                       InPathResult.Other, m_testInterceptorInit.B.InPathResult);
+                Assertion.AssertEquals("c on in path called (other)", 
+                                       InPathResult.Other, m_testInterceptorInit.C.InPathResult);
+            } finally {
+                m_testInterceptorInit.A.ClearInvocationHistory();
+                m_testInterceptorInit.B.ClearInvocationHistory();
+                m_testInterceptorInit.C.ClearInvocationHistory();
+            }            
+        }
+        
+        [Test]
+        public void TestOneWayCallExceptionClientOutPath() {
+            try {
+                m_testInterceptorInit.B.SetExceptionOnOutPath(new BAD_OPERATION(1000, CompletionStatus.Completed_No));
+                m_testService.OneWayCall(); // one way call, no result
+ 
+                Assertion.Assert("expected: a on out path called", m_testInterceptorInit.A.InvokedOnOutPath);
+                Assertion.Assert("expected: b on out path called", m_testInterceptorInit.B.InvokedOnOutPath);
+                Assertion.Assert("expected: c on out path not called", !m_testInterceptorInit.C.InvokedOnOutPath);
+
+                Assertion.AssertEquals("a on in path called (exception)", 
+                                       InPathResult.Exception, m_testInterceptorInit.A.InPathResult);
+                Assertion.AssertEquals("b on in path called",
+                                       InPathResult.NotCalled, m_testInterceptorInit.B.InPathResult);
+                Assertion.AssertEquals("c on in path called", 
+                                       InPathResult.NotCalled, m_testInterceptorInit.C.InPathResult);
+            } finally {
+                m_testInterceptorInit.A.ClearInvocationHistory();
+                m_testInterceptorInit.B.ClearInvocationHistory();
+                m_testInterceptorInit.C.ClearInvocationHistory();
+            }            
+        }
+
+        [Test]
+        public void TestOneWayCallExceptionClientInPath() {
+            try {
+                m_testInterceptorInit.B.SetExceptionOnInPath(new BAD_OPERATION(1000, CompletionStatus.Completed_Yes));
+                m_testService.OneWayCall(); // one way call, no result
+
+                Assertion.Assert("expected: a on out path called", m_testInterceptorInit.A.InvokedOnOutPath);
+                Assertion.Assert("expected: b on out path called", m_testInterceptorInit.B.InvokedOnOutPath);
+                Assertion.Assert("expected: c on out path called", m_testInterceptorInit.C.InvokedOnOutPath);
+
+                Assertion.AssertEquals("a on in path called (exception)", 
+                                       InPathResult.Exception, m_testInterceptorInit.A.InPathResult);
+                Assertion.AssertEquals("b on in path called (other)",
+                                       InPathResult.Other, m_testInterceptorInit.B.InPathResult);
+                Assertion.AssertEquals("c on in path called (other)", 
+                                       InPathResult.Other, m_testInterceptorInit.C.InPathResult);
+            } finally {
+                m_testInterceptorInit.A.ClearInvocationHistory();
+                m_testInterceptorInit.B.ClearInvocationHistory();
+                m_testInterceptorInit.C.ClearInvocationHistory();
+            }            
         }
 
         #endregion IMethods
