@@ -41,11 +41,61 @@ using omg.org.PortableInterceptor;
 
 namespace Ch.Elca.Iiop.MessageHandling {
           
-     
+
+    /// <summary>
+    /// base class for GiopClientRequest and GiopServerRequest.
+    /// </summary>
+    internal abstract class AbstractGiopRequest {
+    
+        
+        /// <summary>
+        /// the request id
+        /// </summary>
+        internal abstract uint RequestId {
+            get;
+            set;
+        }
+        
+        /// <summary>
+        /// the name of the target method for this request
+        /// </summary>
+        internal abstract string RequestMethodName {
+            get;
+            set;
+        }
+        
+        /// <summary>
+        /// the .net uri, describing the target object.
+        /// </summary>
+        internal abstract string CalledUri {
+            get;
+            set;
+        }
+        
+        
+        /// <summary>
+        /// the service context of the request.
+        /// </summary>                
+        internal abstract ServiceContextList RequestServiceContext {
+            get;
+            set;
+        }
+        
+        /// <summary>
+        /// the service context of the reply.
+        /// </summary>        
+        internal abstract ServiceContextList ResponseServiceContext {
+            get;
+            set;
+        }
+        
+    }
+    
+    
     /// <summary>
     /// gives access to corba relevant parts of a .NET message for the client side request processing
     /// </summary>
-    internal class GiopClientRequest {
+    internal class GiopClientRequest : AbstractGiopRequest {
         
         #region IFields
         
@@ -81,9 +131,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
 
         /// <summary>
-        /// the request id
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.RequestId"/>.
         /// </summary>
-        internal uint RequestId {
+        internal override uint RequestId {
             get {
                 return (uint)m_requestMessage.Properties[SimpleGiopMsg.REQUEST_ID_KEY];
             }
@@ -93,14 +143,24 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }    
         
         /// <summary>
-        /// the name of the target method for this request
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.RequestMethodName"/>.
         /// </summary>
-        internal string RequestMethodName {
+        internal override string RequestMethodName {
             get {
-                return IdlNaming.GetRequestMethodName((MethodInfo)m_requestMessage.MethodBase,
-                                                      RemotingServices.IsMethodOverloaded(m_requestMessage));
+                string result = (string)
+                    m_requestMessage.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY];
+                if (result == null) {
+                    result = IdlNaming.GetRequestMethodName((MethodInfo)m_requestMessage.MethodBase,
+                                                            RemotingServices.IsMethodOverloaded(m_requestMessage));
+                    m_requestMessage.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY] = result;
+                }
+                return result;
             }
-        }
+            set {
+                // not changable (?), but needed to implement interface
+                throw new BAD_OPERATION(200, CompletionStatus.Completed_MayBe);
+            }            
+        }        
         
         /// <summary>
         /// the request arguments
@@ -112,11 +172,16 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
         
         /// <summary>
-        /// the target uri for this request
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.CalledUri"/>.
         /// </summary>
-        internal string Uri {
+        internal override string CalledUri {
             get {
                 return m_requestMessage.Uri;
+            }
+            set {
+                // not changable, but needed to implement interface
+                throw new BAD_OPERATION(200, CompletionStatus.Completed_MayBe);
+
             }
         }
         
@@ -139,10 +204,10 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
         
         /// <summary>
-        /// the service context of the request.
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.RequestServiceContext"/>.
         /// </summary>
         /// <remarks>if not yet available, creates one.</remarks>
-        internal ServiceContextList RequestServiceContext {
+        internal override ServiceContextList RequestServiceContext {
             get {
                 ServiceContextList list = SimpleGiopMsg.GetServiceContextFromMessage(m_requestMessage);
                 if (list == null) {
@@ -151,13 +216,22 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 }
                 return list;
             }
+            set {
+                ServiceContextList list = SimpleGiopMsg.GetServiceContextFromMessage(m_requestMessage);
+                if (list == null) {
+                    SimpleGiopMsg.SetServiceContextInMessage(m_requestMessage, value);                    
+                } else {
+                    // at most settable once
+                    throw new BAD_OPERATION(200, CompletionStatus.Completed_MayBe);
+                }
+            }
         }
 
         /// <summary>
-        /// the service context of the reply.
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.ResponseServiceContext"/>.
         /// </summary>        
-        /// <remarks>if not yet available, creates one.</remarks>
-        internal ServiceContextList ResponseServiceContext {
+        /// <remarks>must be set after deserialisation.</remarks>
+        internal override ServiceContextList ResponseServiceContext {
             get {
                 ServiceContextList list = null;
                 if (m_replyMessage != null) {
@@ -165,12 +239,21 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 } else {
                     throw new BAD_INV_ORDER(301, CompletionStatus.Completed_MayBe);
                 }
+                if (list != null) {
+                    return list;
+                } else {
+                    throw new BAD_INV_ORDER(10, CompletionStatus.Completed_MayBe);
+                }                
+            }
+            set {
+                ServiceContextList list = SimpleGiopMsg.GetServiceContextFromMessage(m_replyMessage);
                 if (list == null) {
-                    list = new ServiceContextList();
-                    SimpleGiopMsg.SetServiceContextInMessage(m_replyMessage, list);                    
-                }
-                return list;
-            }            
+                    SimpleGiopMsg.SetServiceContextInMessage(m_replyMessage, value);
+                } else {
+                    // at most settable once
+                    throw new BAD_OPERATION(200, CompletionStatus.Completed_MayBe);
+                }                
+            }
         }
         
         /// <summary>the .NET remoting request</summary>
@@ -283,7 +366,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
     /// <summary>
     /// gives access to corba relevant parts of a .NET message for the sever side request processing
     /// </summary>    
-    internal class GiopServerRequest {
+    internal class GiopServerRequest : AbstractGiopRequest {
         
         #region IFields
         
@@ -297,6 +380,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion IFields
         #region IConstructors
     
+        /// <summary>
+        /// constructor for the in direction.
+        /// </summary>
         internal GiopServerRequest() {
             m_requestMessage = new SimpleGiopMsg();
             m_requestCallMessage = null; // not yet created; will be created from requestMessage later.
@@ -320,9 +406,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #region IProperties
         
         /// <summary>
-        /// the request id
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.RequestId"/>.
         /// </summary>
-        internal uint RequestId {
+        internal override uint RequestId {
             get {
                 if (m_requestMessage.Properties[SimpleGiopMsg.REQUEST_ID_KEY] != null) {
                     return (uint)m_requestMessage.Properties[SimpleGiopMsg.REQUEST_ID_KEY];
@@ -380,9 +466,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
         
         /// <summary>
-        /// the idl name of the reqeusted method
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.RequestMethodName"/>.
         /// </summary>
-        internal string RequestMethodName {
+        internal override string RequestMethodName {
             get {
                 if (m_requestMessage.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY] != null) {
                     return GetRequestedMethodNameInternal();
@@ -419,6 +505,10 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
         }        
         
+        /// <summary>
+        /// the uri requested by the client; may be or may not be the uri, which is called at the end 
+        /// (because of redirections of some request to other objects).
+        /// </summary>
         internal string RequestUri {
             get {
                 if (m_requestMessage.Properties[SimpleGiopMsg.REQUESTED_URI_KEY] != null) {
@@ -437,9 +527,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
         
         /// <summary>
-        /// the object uri of the published .net object, which should handle this request.
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.CalledUri"/>.
         /// </summary>
-        internal string CalledUri {
+        internal override string CalledUri {
             get {
                 if (m_requestCallMessage == null) {
                     if (m_requestMessage.Properties[SimpleGiopMsg.URI_KEY] != null) {
@@ -657,31 +747,37 @@ namespace Ch.Elca.Iiop.MessageHandling {
                     return null;
                 }
             }
-        }
-        
+        }                
+
         /// <summary>
-        /// the service context of the request.
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.RequestServiceContext"/>.
         /// </summary>
-        /// <remarks>if not yet available, creates one.</remarks>
-        internal ServiceContextList RequestServiceContext {
+        /// <remarks>must be set after deserialisation using the setter method</remarks>        
+        internal override ServiceContextList RequestServiceContext {
             get {
                 ServiceContextList list = SimpleGiopMsg.GetServiceContextFromMessage(m_requestMessage);
-                if (list == null) {
-                    list = new ServiceContextList();
-                    SimpleGiopMsg.SetServiceContextInMessage(m_requestMessage, list);
-                }
-                return list;
+                if (list != null) {
+                    return list;
+                } else {
+                    throw new BAD_INV_ORDER(10, CompletionStatus.Completed_MayBe);
+                }                
             }
             set {
-                SimpleGiopMsg.SetServiceContextInMessage(m_requestMessage, value);
+                ServiceContextList list = SimpleGiopMsg.GetServiceContextFromMessage(m_requestMessage);
+                if (list == null) {
+                    SimpleGiopMsg.SetServiceContextInMessage(m_requestMessage, value);
+                } else {
+                    // at most settable once
+                    throw new BAD_OPERATION(200, CompletionStatus.Completed_MayBe);
+                }                
             }
         }
 
         /// <summary>
-        /// the service context of the reply.
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.ResponseServiceContext"/>.
         /// </summary>        
         /// <remarks>if not yet available, creates one.</remarks>
-        internal ServiceContextList ResponseServiceContext {
+        internal override ServiceContextList ResponseServiceContext {
             get {
                 ServiceContextList list = null;
                 if (m_replyMessage != null) {
@@ -694,8 +790,21 @@ namespace Ch.Elca.Iiop.MessageHandling {
                     SimpleGiopMsg.SetServiceContextInMessage(m_replyMessage, list);                    
                 }
                 return list;
+            }            
+            set {
+                ServiceContextList list = null;
+                if (m_replyMessage != null) {
+                    list = SimpleGiopMsg.GetServiceContextFromMessage(m_replyMessage);
+                } else {
+                    throw new BAD_INV_ORDER(301, CompletionStatus.Completed_MayBe);
+                }
+                if (list == null) {
+                    SimpleGiopMsg.SetServiceContextInMessage(m_requestMessage, value);
+                } else {
+                    // at most settable once
+                    throw new BAD_OPERATION(200, CompletionStatus.Completed_MayBe);
+                }                
             }
-            
         }        
         
         /// <summary>the .NET remoting request</summary>
