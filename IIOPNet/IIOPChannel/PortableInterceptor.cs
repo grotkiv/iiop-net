@@ -31,14 +31,215 @@ using System;
 using Ch.Elca.Iiop;
 using Ch.Elca.Iiop.Idl;
 using omg.org.CORBA;
+using omg.org.IOP;
 
 
+namespace omg.org.Dynamic {
+            
+    [IdlStruct]
+    [RepositoryID("IDL:omg.org/Dynamic/Parameter:1.0")]
+    public struct Parameter {
+                        
+        [ObjectIdlTypeAttribute(IdlTypeObject.Any)]
+        public object argument;
+        // TODO:
+        // ParameterMode mode;
+    }
+    
+}
+
+namespace omg.org.Messaging {
+
+    /// <summary>
+    /// control returns to the client, before message has been delivered to the client side transport.
+    /// </summary>
+    public sealed class SYNC_NONE {
+        
+        #region Constants
+        
+        public const short ConstVal = 0;
+        
+        #endregion Constants
+        #region IConstructors
+        
+        private SYNC_NONE() {
+        }
+        
+        #endregion IConstructors        
+        
+    }
+    
+    public sealed class SYNC_WITH_TRANSPORT {
+        
+        #region Constants
+        
+        public const short ConstVal = 1;
+        
+        #endregion Constants
+        #region IConstructors
+        
+        private SYNC_WITH_TRANSPORT() {        
+        }
+        
+        #endregion IConstructors
+        
+    }    
+    
+    public sealed class SYNC_WITH_SERVER {
+        
+        #region Constants
+        
+        public const short ConstVal = 2;
+
+        #endregion Constants
+        #region IConstructors
+        
+        private SYNC_WITH_SERVER() {
+        }
+        
+        #endregion IConstructors
+        
+    }    
+
+    public sealed class SYNC_WITH_TARGET {
+        
+        #region Constants
+        
+        public const short ConstVal = 3;
+        
+        #endregion Constants
+        #region IConstructors
+
+        private SYNC_WITH_TARGET() {
+        }        
+        
+        #endregion IConstructors
+        
+    }    
+
+}
+
+    
 namespace omg.org.PortableInterceptor {
 
     /// <summary>the reply status in request-info</summary>
-    public enum ReplyStatus : short {
-        SUCCESSFUL = 0, SYSTEM_EXCEPTION = 1, USER_EXCEPTION = 2, LOCATION_FORWARD = 3,
-        TRANSPORT_RETRY = 4
+    public sealed class SUCCESSFUL {
+        
+        #region Constants
+        
+        public const short ConstVal = 0;
+        
+        #endregion Constants
+        #region IConstructors
+
+        private SUCCESSFUL() {
+        }        
+        
+        #endregion IConstructors
+        
+    }    
+    
+    /// <summary>the reply status in request-info</summary>
+    public sealed class SYSTEM_EXCEPTION {
+        
+        #region Constants
+        
+        public const short ConstVal = 1;
+        
+        #endregion Constants
+        #region IConstructors
+
+        private SYSTEM_EXCEPTION() {
+        }        
+        
+        #endregion IConstructors
+        
+    }        
+
+    /// <summary>the reply status in request-info</summary>
+    public sealed class USER_EXCEPTION {
+        
+        #region Constants
+        
+        public const short ConstVal = 2;
+        
+        #endregion Constants
+        #region IConstructors
+
+        private USER_EXCEPTION() {
+        }        
+        
+        #endregion IConstructors
+        
+    }    
+    
+    /// <summary>the reply status in request-info</summary>
+    public sealed class LOCATION_FORWARD {
+        
+        #region Constants
+        
+        public const short ConstVal = 3;
+        
+        #endregion Constants
+        #region IConstructors
+
+        private LOCATION_FORWARD() {
+        }        
+        
+        #endregion IConstructors
+        
+    }    
+
+    /// <summary>the reply status in request-info</summary>
+    public sealed class TRANSPORT_RETRY {
+        
+        #region Constants
+        
+        public const short ConstVal = 4;
+        
+        #endregion Constants
+        #region IConstructors
+
+        private TRANSPORT_RETRY() {
+        }        
+        
+        #endregion IConstructors
+        
+    }        
+        
+    
+    [RepositoryID("IDL:omg.org/PortableInterceptor/InvalidSlot:1.0")]
+    [Serializable]
+    public class InvalidSlot : AbstractUserException {
+
+        #region IConstructors
+        
+        public InvalidSlot() {
+        }
+        
+        #endregion IConstructors
+    }
+
+    
+    [RepositoryID("IDL:omg.org/PortableInterceptor/ForwardRequest:1.0")]
+    [Serializable]
+    public class ForwardRequest : AbstractUserException {
+
+        #region IFields
+        
+        private MarshalByRefObject m_forward;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        public ForwardRequest() {            
+        }
+        
+        public ForwardRequest(MarshalByRefObject forward) {
+            m_forward = forward;
+        }
+        
+        #endregion IConstructors
     }
     
     
@@ -196,6 +397,8 @@ namespace omg.org.PortableInterceptor {
     [InterfaceType(IdlTypeInterface.LocalInterface)]
     public interface RequestInfo {
 
+        #region IProperties
+        
         /// <summary>
         /// request id, which identifies the request/reply sequence.
         /// </summary>
@@ -212,6 +415,37 @@ namespace omg.org.PortableInterceptor {
             get;
         }
         
+        /// <summary>the paramter list of the operation.</summary>
+        /// <remarks>if the operation has no arguments, this returns a zero length sequence.</remarks>
+        [IdlSequence(0L)]
+        omg.org.Dynamic.Parameter[] arguments {
+            get;
+        }
+        
+        /// <summary>the list of user exceptions, this operation may raise.</summary>
+        /// <remarks>if the operation raises no user exceptions, this returns a zero length sequence.</remarks>
+        [IdlSequence(0L)]
+        omg.org.CORBA.TypeCode[] exceptions {
+            get;
+        }
+        
+        /// <summary>the list of contexts that may be passed on invocation.</summary>
+        /// <remarks>if the operation supports no context information, this returns a zero length sequence.</remarks>
+        [StringValue()]
+        [WideChar(false)]
+        [IdlSequence(0L)]
+        string[] contexts {
+            get;
+        }
+
+        /// <summary>the contexts being sent for this invocation.</summary>
+        /// <remarks>if no context information is sent, this returns a zero length sequence.</remarks>
+        [StringValue()]
+        [WideChar(false)]
+        [IdlSequence(0L)]        
+        string[] operation_context {
+            get;
+        }
         
         /// <summary>
         /// contains the result of the invocation.
@@ -228,11 +462,18 @@ namespace omg.org.PortableInterceptor {
         }
         
         /// <summary>
-        /// indicates the state of the result of the invocation.
+        /// returns for non-synchronous request, the level of syncronisation with the target.        
         /// </summary>
-        ReplyStatus reply_status {
+        short sync_scope {
             get;
         }
+        
+        /// <summary>
+        /// indicates the state of the result of the invocation.
+        /// </summary>
+        short reply_status {
+            get;
+        }        
         
         /// <summary>
         /// if reply status is location_forward, this property will contain
@@ -243,6 +484,31 @@ namespace omg.org.PortableInterceptor {
         }
         
         // TODO: missing properties
+        
+        #endregion IProperties
+        #region IMethods
+        
+        /// <summary>
+        /// This operation returns the data from the given slot of the PortableInterceptor::Current, 
+        /// that is in the scope of the request.
+        /// </summary>
+        [ThrowsIdlException(typeof(InvalidSlot))]
+        object get_slot(int id);
+        
+        /// <summary>
+        /// This operation returns a copy of the service context with the given ID that is associated
+        /// with the request.
+        /// </summary>
+        ServiceContext get_request_service_context(int id);
+        
+        /// <summary>
+        /// This operation returns a copy of the service context with the given ID that is associated
+        /// with the reply.
+        /// </summary>
+        ServiceContext get_reply_service_context(int id);
+        
+        
+        #endregion IMethods
     }
     
     

@@ -449,7 +449,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                        CdrOutputStream targetStream, 
                                        Ior targetIor, GiopConnectionDesc conDesc) {
             Trace.WriteLine(String.Format("serializing request for method {0}; uri {1}; id {2}", 
-                                          clientRequest.MethodToCall, clientRequest.Uri, 
+                                          clientRequest.MethodToCall, clientRequest.CalledUri, 
                                           clientRequest.RequestId));
             try {
                 clientRequest.InterceptSendRequest();
