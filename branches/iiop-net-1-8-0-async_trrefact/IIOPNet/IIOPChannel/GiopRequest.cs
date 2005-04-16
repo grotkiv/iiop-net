@@ -819,7 +819,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                     throw new BAD_INV_ORDER(301, CompletionStatus.Completed_MayBe);
                 }
                 if (list == null) {
-                    SimpleGiopMsg.SetServiceContextInMessage(m_requestMessage, value);
+                    SimpleGiopMsg.SetServiceContextInMessage(m_replyMessage, value);
                 } else {
                     // at most settable once
                     throw new BAD_OPERATION(200, CompletionStatus.Completed_MayBe);
