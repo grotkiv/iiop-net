@@ -90,6 +90,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             if (request.IsAsyncRequest) {
                 try {
                     // with respec to interception, this is a new request -> call again send_request interception before reply
+                    request.PrepareSecondAscyncInterception();
                     request.InterceptSendRequest();
                 } catch (Exception ex) {
                     request.Reply = new ReturnMessage(ex, requestMessage);

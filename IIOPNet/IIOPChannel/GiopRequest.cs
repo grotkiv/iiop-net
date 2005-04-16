@@ -47,6 +47,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
     /// </summary>
     internal abstract class AbstractGiopRequest {
     
+        #region IProperties
         
         /// <summary>
         /// the request id
@@ -89,6 +90,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
             set;
         }
         
+        #endregion IProperties
+        
     }
     
     
@@ -102,11 +105,15 @@ namespace Ch.Elca.Iiop.MessageHandling {
         private IMethodCallMessage m_requestMessage;
         private IMessage m_replyMessage;
         
+        private ClientRequestInterceptionFlow m_interceptionFlow;
+        private ClientRequestInfoImpl m_clientRequestInfo;
+        
         #endregion IFields
         #region IConstructors
          
         internal GiopClientRequest(IMethodCallMessage requestMsg) {
             m_requestMessage = requestMsg;
+            IntializeForInterception();
         }
         
         #endregion IConstructors
@@ -278,32 +285,35 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion IProperties
         #region IMethods
         
-        private ClientRequestInterceptionFlow GetOrCreateClientInterceptionFlow() {
-            ClientRequestInterceptionFlow result = 
+        private void IntializeForInterception() {
+            // flow lifetime is bound to message lifetime, GiopClientRequest is only a wrapper around message and
+            // can be recreated during message lifetime.
+            m_interceptionFlow =
                 (ClientRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
-            if (result ==  null) {
+            if (m_interceptionFlow ==  null) {
                 ClientRequestInterceptor[] interceptors = 
                     OrbServices.GetSingleton().InterceptorManager.ClientRequestInterceptors;
                 if (interceptors.Length == 0) {
-                    result = new ClientRequestInterceptionFlow();
+                    m_interceptionFlow = new ClientRequestInterceptionFlow();
                 } else {
-                    ClientRequestInfoImpl info = new ClientRequestInfoImpl(this);
-                    result = new ClientRequestInterceptionFlow(interceptors, info);
+                    m_interceptionFlow = new ClientRequestInterceptionFlow(interceptors);
                 }
-                SimpleGiopMsg.SetInterceptionFlow(m_requestMessage, result);
+                SimpleGiopMsg.SetInterceptionFlow(m_requestMessage, m_interceptionFlow);
             }
-            return result;
+            if (m_interceptionFlow.NeedsRequestInfo()) {
+                // optimization: needs not be created, if non-intercepted.
+                m_clientRequestInfo = new ClientRequestInfoImpl(this);
+            }
         }
-                
+                        
         /// <summary>
         /// portable interception point: send request
         /// </summary>
         /// <remarks>throws exception, if a problem occurs during call of send request interception points.
         /// Client need to handle exception by calling InterceptReceiveException at the appropriate time and
         /// pass the exception on to the client.</remarks>
-        internal void InterceptSendRequest() {
-            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
-            flow.SendRequest();            
+        internal void InterceptSendRequest() {            
+            m_interceptionFlow.SendRequest(m_clientRequestInfo);            
         }
         
         /// <summary>
@@ -312,13 +322,12 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <remarks>in case of interception point throwing an excpetion: pass the exception through
         /// the remaining interception points by calling receive exception. The exception is at the
         /// end thrown to the caller for further handling.</remarks>
-        internal void InterceptReceiveReply() {
-            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
-            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+        internal void InterceptReceiveReply() {            
+            m_interceptionFlow.SwitchToReplyDirection(); // make sure, flow is in reply direction
             try {
-                flow.ReceiveReply();
+                m_interceptionFlow.ReceiveReply(m_clientRequestInfo);
             } catch (Exception ex) {
-                throw flow.ReceiveException(ex);
+                throw m_interceptionFlow.ReceiveException(m_clientRequestInfo, ex);
             }
         }
 
@@ -328,10 +337,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <returns>the modified or unmodified receivedException, depending on the interception chain:
         /// the interception chain may change the resulting exception.</returns>
         /// <remarks>unexpected exceptions during interception chain processing are thrown to the caller.</remarks>
-        internal Exception InterceptReceiveException(Exception receivedException) {
-            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
-            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
-            return flow.ReceiveException(receivedException);            
+        internal Exception InterceptReceiveException(Exception receivedException) {            
+            m_interceptionFlow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+            return m_interceptionFlow.ReceiveException(m_clientRequestInfo, receivedException);            
         }
 
         /// <summary>
@@ -340,22 +348,29 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <remarks>in case of interception point throwing an excpetion: pass the exception through
         /// the remaining interception points by calling receive exception. The exception is at the
         /// end thrown to the caller for further handling.</remarks>
-        internal void InterceptReceiveOther() {
-            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();
-            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+        internal void InterceptReceiveOther() {            
+            m_interceptionFlow.SwitchToReplyDirection(); // make sure, flow is in reply direction
             try {
-                flow.ReceiveOther();
+                m_interceptionFlow.ReceiveOther(m_clientRequestInfo);
             } catch (Exception ex) {
-                throw flow.ReceiveException(ex);
+                throw m_interceptionFlow.ReceiveException(m_clientRequestInfo, ex);
             }            
         }
         
         /// <summary>
         /// returns false, if reply interception chain has not yet been completed; otherwise true.
         /// </summary>
-        internal bool IsReplyInterceptionChainCompleted() {
-            ClientRequestInterceptionFlow flow = GetOrCreateClientInterceptionFlow();            
-            return (flow.IsInReplyDirection() && !(flow.HasNextInterceptor()));
+        internal bool IsReplyInterceptionChainCompleted() {            
+            return (m_interceptionFlow.IsInReplyDirection() && !(m_interceptionFlow.HasNextInterceptor()));
+        }
+        
+        /// <summary>
+        /// because for async calls, we need two passes through the interception chain, this methods resets the
+        /// chain for the second pass.
+        /// </summary>
+        internal void PrepareSecondAscyncInterception() {
+            m_interceptionFlow.SwitchToRequestDirection();
+            m_interceptionFlow.ResetToStart();
         }
         
         #endregion IMethods
@@ -377,6 +392,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         private IMethodCallMessage m_requestCallMessage;
         private ReturnMessage m_replyMessage;
         
+        private ServerRequestInterceptionFlow m_interceptionFlow;
+        private ServerRequestInfoImpl m_serverRequestInfo;        
+        
         #endregion IFields
         #region IConstructors
     
@@ -387,6 +405,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             m_requestMessage = new SimpleGiopMsg();
             m_requestCallMessage = null; // not yet created; will be created from requestMessage later.
             m_replyMessage = null; // not yet available
+            InitalizeForInterception();
         }
         
         /// <summary>
@@ -400,6 +419,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
             m_requestMessage = request;
             m_replyMessage = reply;
+            InitalizeForInterception();
         }
         
         #endregion IConstructors
@@ -824,23 +844,25 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion IProperties
         #region IMethods
         
-        private ServerRequestInterceptionFlow GetOrCreateServerInterceptionFlow() {
-            ServerRequestInterceptionFlow result = 
-                (ServerRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
-            if (result ==  null) {
+        private void InitalizeForInterception() {
+            // flow lifetime is bound to message lifetime, GiopServerRequest is only a wrapper around message and
+            // can be recreated during message lifetime.
+            m_interceptionFlow = (ServerRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
+            if (m_interceptionFlow ==  null) {
                 ServerRequestInterceptor[] interceptors = 
                     OrbServices.GetSingleton().InterceptorManager.ServerRequestInterceptors;
                 if (interceptors.Length == 0) {
-                    result = new ServerRequestInterceptionFlow();
-                } else {
-                    ServerRequestInfoImpl info = new ServerRequestInfoImpl(this);
-                    result = new ServerRequestInterceptionFlow(interceptors, info);
+                    m_interceptionFlow = new ServerRequestInterceptionFlow();
+                } else {                    
+                    m_interceptionFlow = new ServerRequestInterceptionFlow(interceptors);
                 }
-                SimpleGiopMsg.SetInterceptionFlow(m_requestMessage, result);
+                SimpleGiopMsg.SetInterceptionFlow(m_requestMessage, m_interceptionFlow);
             }
-            return result;
+            if (m_interceptionFlow.NeedsRequestInfo()) {
+                m_serverRequestInfo = new ServerRequestInfoImpl(this);
+            }
         }
-        
+                
         /// <summary>
         /// returns the idl method name if available or null, if not yet available.
         /// </summary>
@@ -1039,24 +1061,22 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <remarks>throws exception, if a problem occurs during call of  receive request service contexts interception points.
         /// Client need to handle exception by calling InterceptSendException at the appropriate time and
         /// pass the exception on to the client.</remarks>
-        internal void InterceptReceiveRequestServiceContexts() {
-            ServerRequestInterceptionFlow flow = GetOrCreateServerInterceptionFlow();
-            flow.ReceiveRequestServiceContexts();
+        internal void InterceptReceiveRequestServiceContexts() {            
+            m_interceptionFlow.ReceiveRequestServiceContexts(m_serverRequestInfo);
         }
 
         /// <summary>
         /// portable interception point: receive request
         /// </summary>
-        internal void InterceptReceiveRequest() {
-            ServerRequestInterceptionFlow flow = GetOrCreateServerInterceptionFlow();
+        internal void InterceptReceiveRequest() {            
             try {
-                flow.ResetToStart(); // reset to the first element, because positioned at the end after receive request service contexts.
-                flow.ReceiveRequest();
+                m_interceptionFlow.ResetToStart(); // reset to the first element, because positioned at the end after receive request service contexts.
+                m_interceptionFlow.ReceiveRequest(m_serverRequestInfo);
             } catch (Exception) {
                 // swith to reply direction and reset to first, because all Receive service contexts 
                 // interception points completed -> exception reply must pass all interception points.
-                flow.SwitchToReplyDirection();
-                flow.ResetToStart();
+                m_interceptionFlow.SwitchToReplyDirection();
+                m_interceptionFlow.ResetToStart();
                 throw; // exception response
             }
             
@@ -1066,22 +1086,20 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// portable interception point: send exception
         /// </summary>
         /// <returns>the modified or unmodified exception after the interception chain has completed.</returns>
-        internal Exception InterceptSendException(Exception ex) {
-            ServerRequestInterceptionFlow flow = GetOrCreateServerInterceptionFlow();
-            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
-            return flow.SendException(ex);
+        internal Exception InterceptSendException(Exception ex) {            
+            m_interceptionFlow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+            return m_interceptionFlow.SendException(m_serverRequestInfo, ex);
         }        
         
         /// <summary>
         /// portable interception point: send reply
         /// </summary>
-        internal void InterceptSendReply() {
-            ServerRequestInterceptionFlow flow = GetOrCreateServerInterceptionFlow();
-            flow.SwitchToReplyDirection(); // make sure, flow is in reply direction
+        internal void InterceptSendReply() {            
+            m_interceptionFlow.SwitchToReplyDirection(); // make sure, flow is in reply direction
             try {
-                flow.SendReply();
+                m_interceptionFlow.SendReply(m_serverRequestInfo);
             } catch (Exception ex) {
-                throw flow.SendException(ex);
+                throw m_interceptionFlow.SendException(m_serverRequestInfo, ex);
             }            
         }                
         
