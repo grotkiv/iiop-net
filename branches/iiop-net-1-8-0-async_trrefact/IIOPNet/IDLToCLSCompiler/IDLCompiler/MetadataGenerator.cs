@@ -2204,6 +2204,13 @@ public class MetaDataGenerator : IDLParserVisitor {
         }
         return result;
     }
+    
+    private void AddOneWayAttribute(MethodBuilder builder) {
+        ConstructorInfo info = 
+            typeof(System.Runtime.Remoting.Messaging.OneWayAttribute).GetConstructor(Type.EmptyTypes);
+        CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(info, new object[0]);
+        builder.SetCustomAttribute(attributeBuilder);
+    }
 
     /**
      * @see parser.IDLParserVisitor#visit(ASTop_dcl, Object)
@@ -2226,6 +2233,9 @@ public class MetaDataGenerator : IDLParserVisitor {
             m_ilEmitHelper.AddMethod(typeAtBuild, methodName, transmittedName,
                                      parameters, returnType,
                                      MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public | MethodAttributes.HideBySig);
+        if (node.IsOneWay()) {
+            AddOneWayAttribute(methodBuilder);
+        }
         int currentChild = 2;
         if ((node.jjtGetNumChildren() > currentChild) && (node.jjtGetChild(currentChild) is ASTraises_expr)) {
             // has a raises expression, add attributes for allowed exceptions
