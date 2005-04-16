@@ -796,8 +796,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         private void UpdateClientRequestWithReplyData(GiopClientRequest request,
                                                       IMessage response,
                                                       ServiceContextList cntxColl) {
-            SimpleGiopMsg.SetServiceContextInMessage(response, cntxColl); // store the deserialised service context for handling in interceptors
             request.Reply = response;
+            request.ResponseServiceContext = cntxColl; // store the deserialised service context for handling in interceptors
         }
         
         internal IMessage DeserialiseReply(CdrInputStream cdrStream, 
