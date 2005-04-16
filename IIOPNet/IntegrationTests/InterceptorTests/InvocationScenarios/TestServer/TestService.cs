@@ -48,6 +48,10 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             throw new TestServerSideException();
         }
 
+        [OneWay]
+        public void OneWayCall() {
+        }
+
         public override object InitializeLifetimeService() {
             // live forever
             return null;
