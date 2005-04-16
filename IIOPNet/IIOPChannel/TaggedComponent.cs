@@ -28,9 +28,12 @@
  */
 
 using System;
+using System.Collections;
 using Ch.Elca.Iiop.Cdr;
 using Ch.Elca.Iiop.Idl;
-
+using Ch.Elca.Iiop.Marshalling;
+using Ch.Elca.Iiop.Util;
+using omg.org.CORBA;
 
 namespace omg.org.IOP {       
     
@@ -158,24 +161,51 @@ namespace omg.org.IOP {
         }
         
         /// <summary>
+        /// serialise the component data as cdr encapsulation.
+        /// </summary>
+        private byte[] SerialiseComponentData(int tag, object data) {
+            CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0);
+            MarshallerForType marshaller = 
+                TaggedComponentDataSerRegistry.Instance.GetOrCreateMarshaller(tag, data.GetType());
+            marshaller.Marshal(data, encap);
+            return encap.GetEncapsulationData();
+        }        
+        
+        /// <summary>
         /// serialise the given component data and adds it to the list of components.
+        /// The data is encoded in a cdr encapsulation.
         /// </summary>
         public void AddComponent(int tag, object data) {
+            if (data == null) {
+                throw new BAD_PARAM(80, CompletionStatus.Completed_MayBe);
+            }
             TaggedComponent[] result = new TaggedComponent[m_components.Length + 1];
             Array.Copy(m_components, result, m_components.Length);
-            // result[m_components.Length] = null; // TODO: serialise
+            result[m_components.Length] = 
+                new TaggedComponent(tag, SerialiseComponentData(tag, data));
             m_components = result;
+        }
+                        
+        /// <summary>deserialise the component data of the given type; encoded as cdr encapsulation.</summary>        
+        private object DeserialiseComponentData(int tag, Type componentDataType, byte[] serialisedData) {
+            CdrEncapsulationInputStream encap = new CdrEncapsulationInputStream(serialisedData);
+            MarshallerForType marshaller = 
+                TaggedComponentDataSerRegistry.Instance.GetOrCreateMarshaller(tag, componentDataType);
+            return marshaller.Unmarshal(encap);
         }
         
         /// <summary>
         /// returns the deserialised data of the first component with the given tag or null, if not found.
+        /// Assumes, that the componentData is encapsulated in a cdr encapsulation. The secound argument
+        /// specifies, how the data inside the encapsulation looks like.
         /// </summary>
         public object GetComponent(int tag, Type componentDataType) {
             object result = null;            
             for (int i = 0; i < m_components.Length; i++) {
                 if (m_components[i].Tag == tag) {
                     TaggedComponent resultComp = m_components[i];
-                    // TODO deserialise
+                    result = DeserialiseComponentData(tag, componentDataType, 
+                                                      resultComp.ComponentData);
                     break;
                 }                            
             }
@@ -185,6 +215,57 @@ namespace omg.org.IOP {
         #endregion IMethods
         
     }    
+    
+    
+    
+    /// <summary>
+    /// registry managing serializer for tagged components data; for efficiency reason, caches these serialisers.
+    /// </summary>
+    internal class TaggedComponentDataSerRegistry {
+
+        #region SFields               
+        
+        private static TaggedComponentDataSerRegistry s_instance = new TaggedComponentDataSerRegistry();
+        
+        #endregion SFields
+        #region IFields
+        
+        private Hashtable m_taggedComponetsDataSer = new Hashtable();        
+        
+        #endregion IFields
+        #region IConstructors
+        
+        private TaggedComponentDataSerRegistry() {
+                    
+        }
+        
+        #endregion IConstructors
+        #region SProperties
+        
+        internal static TaggedComponentDataSerRegistry Instance {
+            get {
+                return s_instance;
+            }
+        }
+        
+        #endregion SProperties
+        #region IMethods
+        
+        internal MarshallerForType GetOrCreateMarshaller(int id, Type componentData) {
+            lock(m_taggedComponetsDataSer.SyncRoot) {
+                MarshallerForType result = (MarshallerForType)m_taggedComponetsDataSer[id];
+                if (result == null) {
+                    result = new MarshallerForType(componentData, AttributeExtCollection.EmptyCollection);
+                    m_taggedComponetsDataSer[id] = result;
+                }
+                return result;
+            }
+        }
+        
+        #endregion IMethods
+        
+    }
+
 
     
 }
