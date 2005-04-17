@@ -44,52 +44,37 @@ namespace omg.org.IOP {
     
         #region IFields
         
-        private int m_serviceId;
+        public int context_id;
         [IdlSequence(0L)]
-        private byte[] m_context_data;
+        public byte[] context_data;
         
         #endregion IFields
         #region IConstructors
         
-        public ServiceContext(int serviceId, byte[] context_data) {
-            m_serviceId = serviceId;
-            m_context_data = context_data;
+        public ServiceContext(int contextId, byte[] context_data) {
+            this.context_id = contextId;
+            this.context_data = context_data;
         }
         
         /// <summary>
         /// deserialise from input stream
         /// </summary>
         internal ServiceContext(CdrInputStream inputStream) {
-            m_serviceId = (int)inputStream.ReadULong();
+            context_id = (int)inputStream.ReadULong();
             int contextDataLength = (int)inputStream.ReadULong();
-            m_context_data = inputStream.ReadOpaque(contextDataLength);
+            context_data = inputStream.ReadOpaque(contextDataLength);
         }
         
         #endregion IConstructors
-        #region IProperties
-        
-        public int ServiceId {
-            get {
-                return m_serviceId;
-            }
-        }
-        
-        public byte[] ContextData {
-            get {
-                return m_context_data;
-            }
-        }                        
-        
-        #endregion IProperties
         #region IMethods
         
         /// <summary>
         /// serialise the service context
         /// </summary>
         internal void Write(CdrOutputStream outputStream) {
-            outputStream.WriteULong((uint)m_serviceId);
-            outputStream.WriteULong((uint)m_context_data.Length);
-            outputStream.WriteOpaque(m_context_data);
+            outputStream.WriteULong((uint)context_id);
+            outputStream.WriteULong((uint)context_data.Length);
+            outputStream.WriteOpaque(context_data);
         }
         
         #endregion IMethods
@@ -126,11 +111,11 @@ namespace omg.org.IOP {
             uint nrOfServiceContexts = inputStream.ReadULong();
             for (int i = 0; i < nrOfServiceContexts; i++) {
                 ServiceContext context = new ServiceContext(inputStream);
-                if (!m_contexts.Contains(context.ServiceId)) {
-                    m_contexts[context.ServiceId] = context;
+                if (!m_contexts.Contains(context.context_id)) {
+                    m_contexts[context.context_id] = context;
                 } else {
                     // ignore multiple contexts with same id; iop interfaces allow access by id
-                    Debug.WriteLine("ignoring duplicate context with id: " + context.ServiceId);
+                    Debug.WriteLine("ignoring duplicate context with id: " + context.context_id);
                 }
             }
         }
@@ -161,7 +146,7 @@ namespace omg.org.IOP {
         /// add a service context to the list.
         /// </summary>
         public void AddServiceContext(ServiceContext context) {
-            m_contexts[context.ServiceId] = context;
+            m_contexts[context.context_id] = context;
         }
         
         #endregion IMethods

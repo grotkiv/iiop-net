@@ -94,52 +94,37 @@ namespace omg.org.IOP {
     
         #region IFields
         
-        private int m_tag;
+        public int tag;
         [IdlSequence(0L)]
-        private byte[] m_component_data;
+        public byte[] component_data;
         
         #endregion IFields
         #region IConstructors
         
         public TaggedComponent(int tag, byte[] component_data) {
-            m_tag = tag;
-            m_component_data = component_data;
+            this.tag = tag;
+            this.component_data = component_data;
         }
         
         /// <summary>
         /// deserialise from input stream
         /// </summary>
         internal TaggedComponent(CdrInputStream inputStream) {
-            m_tag = (int)inputStream.ReadULong();
+            this.tag = (int)inputStream.ReadULong();
             int componentDataLength = (int)inputStream.ReadULong();
-            m_component_data = inputStream.ReadOpaque(componentDataLength);
+            this.component_data = inputStream.ReadOpaque(componentDataLength);
         }
         
         #endregion IConstructors
-        #region IProperties
-        
-        public int Tag {
-            get {
-                return m_tag;
-            }
-        }
-        
-        public byte[] ComponentData {
-            get {
-                return m_component_data;
-            }
-        }                        
-        
-        #endregion IProperties
         #region IMethods
         
         /// <summary>
         /// serialise the service context
         /// </summary>
         internal void Write(CdrOutputStream outputStream) {
-            outputStream.WriteULong((uint)m_tag);
-            outputStream.WriteULong((uint)m_component_data.Length);
-            outputStream.WriteOpaque(m_component_data);
+            outputStream.WriteULong((uint)tag);
+            outputStream.WriteULong((uint)component_data.Length);
+            outputStream.WriteOpaque(component_data);
         }
         
         #endregion IMethods
@@ -162,7 +147,7 @@ namespace omg.org.IOP {
         
         /// <summary>deserialise the component data of the given type; encoded as cdr encapsulation.</summary>        
         internal static object DeserialiseComponentData(TaggedComponent component, Type componentDataType) {
-            CdrEncapsulationInputStream encap = new CdrEncapsulationInputStream(component.ComponentData);
+            CdrEncapsulationInputStream encap = new CdrEncapsulationInputStream(component.component_data);
             Marshaller marshaller = Marshaller.GetSingleton();
             return marshaller.Unmarshal(componentDataType, AttributeExtCollection.EmptyCollection, 
                                         encap);
@@ -240,7 +225,7 @@ namespace omg.org.IOP {
         /// </summary>
         private object GetComponentInternal(int tag) {
             for (int i = 0; i < m_components.Length; i++) {
-                if (m_components[i].Tag == tag) {
+                if (m_components[i].tag == tag) {
                     return m_components[i];
                 }
             }            

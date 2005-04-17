@@ -821,7 +821,7 @@ namespace Ch.Elca.Iiop {
             result.Append("IIOP-channel data, hostname: " + m_hostName +
                           ", port: " + m_port);
             foreach (TaggedComponent taggedComp in m_additionTaggedComponents) {
-                result.Append("; tagged component with id: " + taggedComp.Tag);
+                result.Append("; tagged component with id: " + taggedComp.tag);
             }
             return result.ToString();
         }

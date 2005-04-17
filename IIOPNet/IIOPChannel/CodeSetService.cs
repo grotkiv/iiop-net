@@ -270,7 +270,7 @@ namespace Ch.Elca.Iiop.Services {
         /// </summary>
         /// <param name="svcContext"></param>
         internal CodeSetServiceContext(omg.org.IOP.ServiceContext svcContext) {
-            Deserialise(svcContext.ContextData);
+            Deserialise(svcContext.context_data);
         }
 
 
