@@ -52,6 +52,10 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         public void OneWayCall() {
         }
 
+        public TestService GetReferenceToThis() {
+            return this;
+        }
+
         public override object InitializeLifetimeService() {
             // live forever
             return null;

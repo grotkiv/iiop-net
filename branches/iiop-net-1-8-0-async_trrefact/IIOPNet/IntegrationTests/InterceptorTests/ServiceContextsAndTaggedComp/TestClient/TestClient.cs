@@ -90,7 +90,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
         
         [Test]
-        public void TestContextAndComponentNoException() {
+        public void TestContextNoException() {
             try {
                 int contextEntryVal = 4;
                 m_testInterceptorInit.RequestIntercept.ContextEntryBegin = contextEntryVal;
@@ -116,8 +116,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
                 Assertion.Assert("service context not present", m_testInterceptorInit.RequestIntercept.HasReceivedContextElement);
                 Assertion.AssertEquals("service context content", contextEntryVal,
-                                       m_testInterceptorInit.RequestIntercept.ContextElement.TestEntry);
-                
+                                       m_testInterceptorInit.RequestIntercept.ContextElement.TestEntry);              
 
             } finally {
                 m_testInterceptorInit.RequestIntercept.ClearInvocationHistory();
@@ -125,6 +124,28 @@ namespace Ch.Elca.Iiop.IntegrationTests {
                 m_interceptorControl.ClearInterceptorHistory();
             }            
         }
+
+        [Test]
+        public void TestTaggedComponentAvailableNoException() {
+            try {
+                // the server side includes the component into the ior; ior interceptor is on server side ->
+                // for this test, can't use an ior created from a corbaloc on client side.
+                TestService serverSideRef = m_testService.GetReferenceToThis();                
+
+                System.Byte arg = 1;
+                System.Byte result = serverSideRef.TestIncByte(arg);
+                Assertion.AssertEquals((System.Byte)(arg + 1), result);
+
+                Assertion.Assert("tagged component", m_testInterceptorInit.RequestIntercept.HasTaggedComponet);
+                Assertion.AssertEquals("tagged component value", 1, 
+                                       m_testInterceptorInit.RequestIntercept.TaggedComponent.TestEntry);
+            } finally {
+                m_testInterceptorInit.RequestIntercept.ClearInvocationHistory();
+                // call is not intercepted on server side
+                m_interceptorControl.ClearInterceptorHistory();
+            }            
+        }
+
 
         #endregion IMethods
 
