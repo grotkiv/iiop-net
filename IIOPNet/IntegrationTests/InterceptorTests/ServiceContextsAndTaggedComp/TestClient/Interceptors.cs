@@ -159,8 +159,12 @@ namespace Ch.Elca.Iiop.IntegrationTests {
                 return;
             }
             m_inPathResult = InPathResult.Reply;
-            ServiceContext context = ri.get_reply_service_context(1000);
-            m_lastContextElement = (TestServiceContext)m_codec.decode(context.context_data);    
+            try {
+                ServiceContext context = ri.get_reply_service_context(1000);
+                m_lastContextElement = (TestServiceContext)m_codec.decode(context.context_data);    
+            } catch (BAD_PARAM) {
+                m_lastContextElement = null; // not found
+            }
         }
 
         public void receive_exception(ClientRequestInfo ri) {
