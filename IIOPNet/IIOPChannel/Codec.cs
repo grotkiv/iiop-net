@@ -192,7 +192,64 @@ namespace omg.org.IOP.CodecFactory_package {
  
  
 namespace Ch.Elca.Iiop.Interception {
+    
+    using omg.org.IOP;
 
+    /// <summary>
+    /// implementation of <see cref="omg.org.IOP.CodecFactory"></see>
+    /// </summary>
+    public class CodecFactoryImpl : CodecFactory {
+        
+        public Codec create_codec (Encoding enc) {
+            throw new NotImplementedException();
+        }        
+        
+    }
+    
+    
+    /// <summary>
+    /// implementation of <see cref="omg.org.IOP.Codec"></see>
+    /// </summary>
+    public class CodecImpl : Codec {
+        
+        /// <summary>
+        /// <see cref="omg.org.IOP.Codec.encode"></see>
+        /// </summary>
+        [ThrowsIdlException(typeof(omg.org.IOP.Codec_package.InvalidTypeForEncoding))]
+        [return: IdlSequence(0L)]
+        public byte[] encode (object data) {
+            throw new NotImplementedException();
+        }
+        
+        /// <summary>
+        /// <see cref="omg.org.IOP.Codec.decode"></see>
+        /// </summary>
+        [ThrowsIdlException(typeof(omg.org.IOP.Codec_package.FormatMismatch))]
+        public object decode ([IdlSequence(0L)] byte[] data) {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// <see cref="omg.org.IOP.Codec.encode_value"></see>
+        /// </summary>
+        [ThrowsIdlException(typeof(omg.org.IOP.Codec_package.InvalidTypeForEncoding))]
+        [return: IdlSequence(0L)]        
+        public byte[] encode_value (object data) {
+            throw new NotImplementedException();
+        }
+        
+        /// <summary>
+        /// <see cref="omg.org.IOP.Codec.decode_value"></see>
+        /// </summary>
+        [ThrowsIdlException(typeof(omg.org.IOP.Codec_package.FormatMismatch))]
+        [ThrowsIdlException(typeof(omg.org.IOP.Codec_package.TypeMismatch))]
+        public object decode_value ([IdlSequence(0L)] byte[] data,
+                                    omg.org.CORBA.TypeCode tc) {
+            throw new NotImplementedException();
+        }
+
+        
+    }
      
      
 }
