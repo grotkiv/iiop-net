@@ -92,6 +92,11 @@ namespace omg.org.IOP {
     [IdlStruct]
     public struct TaggedComponent {
     
+        #region SFields
+        
+        public static readonly Type ClassType = typeof(TaggedComponent);
+        
+        #endregion SFields
         #region IFields
         
         public int tag;
@@ -296,6 +301,16 @@ namespace omg.org.IOP {
             } else {
                 throw new BAD_PARAM(75, CompletionStatus.Completed_MayBe);
             }
+        }
+        
+        public TaggedComponent[] GetComponents(int tag) {
+            ArrayList result = new ArrayList();
+            for (int i = 0; i < m_components.Length; i++) {
+                if (m_components[i].tag == tag) {
+                    result.Add(m_components[i]);
+                }
+            }            
+            return (TaggedComponent[])result.ToArray(TaggedComponent.ClassType);
         }
                 
         #endregion IMethods
