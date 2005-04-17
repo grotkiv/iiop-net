@@ -254,6 +254,33 @@ namespace Ch.Elca.Iiop.Interception {
         
         #endregion IProperties
         #region IMethods
+                
+        /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.get_effective_component"></see></summary>
+        public TaggedComponent get_effective_component(int id) {
+            throw new NotImplementedException();
+        }
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.get_effective_components"></see></summary>
+        [return: IdlSequence(0L)]
+        public TaggedComponent[] get_effective_components(int id) {
+            throw new NotImplementedException();
+        }
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.get_request_policy"></see></summary>
+        /// <remarks>always throws INV_POLICY, because policies not yet supported.</remarks>
+        public Policy get_request_policy(int type) {
+            throw new INV_POLICY(1, CompletionStatus.Completed_MayBe);
+        }
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.add_request_service_context"></see></summary>
+        public void add_request_service_context(ServiceContext service_context, bool replace) {
+            if ((!m_clientRequest.RequestServiceContext.ContainsServiceContext(service_context.ServiceId)) ||
+                replace) {
+                m_clientRequest.RequestServiceContext.AddServiceContext(service_context);
+            } else {                
+                throw new BAD_INV_ORDER(11, CompletionStatus.Completed_MayBe);
+            }            
+        }        
         
         /// <summary>sets the received exception to the given one.</summary>
         internal void SetReceivedException(Exception ex) {
@@ -288,15 +315,67 @@ namespace Ch.Elca.Iiop.Interception {
         #endregion IConstructors
         #region IProperties
         
-        /// <summary>the opaque id, describing the target of the operation invocation.</summary>
+        /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.sending_exception"></see></summary>
+        public object sending_exception {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.object_id"></see></summary>
         public byte[] object_id {
             get {
                 return m_serverRequest.ObjectKey;
             }
         }        
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.adapter_id"></see></summary>
+        [IdlSequence(0L)]
+        public byte[] adapter_id {
+            get {
+                throw new System.NotImplementedException();
+            }
+        }
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.target_most_derived_interface"></see></summary>
+        [StringValue()]
+        [WideChar(false)]
+        public string target_most_derived_interface {
+            get {
+                throw new NotImplementedException();
+            }
+        }                                
                 
         #endregion IProperties
         #region IMethods
+        
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.get_server_policy"></see></summary>
+        /// <remarks>always throws INV_POLICY, because policies not yet supported.</remarks>
+        public Policy get_server_policy(int type) {
+            throw new INV_POLICY(2, CompletionStatus.Completed_MayBe);
+        }
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.set_slot"></see></summary>
+        [ThrowsIdlException(typeof(InvalidSlot))]
+        public void set_slot(int id, object data) {
+            throw new System.NotImplementedException();
+        }
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.target_is_a"></see></summary>
+        public bool target_is_a([StringValue()][WideChar(false)] string id) {
+            throw new System.NotImplementedException();
+        }
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.add_reply_service_context"></see></summary>
+        public void add_reply_service_context(ServiceContext service_context, bool replace) {
+            if ((!m_serverRequest.ResponseServiceContext.ContainsServiceContext(service_context.ServiceId)) ||
+                replace) {
+                m_serverRequest.ResponseServiceContext.AddServiceContext(service_context);
+            } else {                
+                throw new BAD_INV_ORDER(11, CompletionStatus.Completed_MayBe);
+            }
+        }        
         
         /// <summary>sets the sent exception to the given one.</summary>
         internal void SetSentException(Exception ex) {

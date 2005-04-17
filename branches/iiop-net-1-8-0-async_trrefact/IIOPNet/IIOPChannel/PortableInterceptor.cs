@@ -481,9 +481,7 @@ namespace omg.org.PortableInterceptor {
         /// </summary>
         MarshalByRefObject forward_reference {
             get;
-        }
-        
-        // TODO: missing properties
+        }                
         
         #endregion IProperties
         #region IMethods
@@ -519,6 +517,8 @@ namespace omg.org.PortableInterceptor {
     [InterfaceType(IdlTypeInterface.LocalInterface)]
     public interface ClientRequestInfo : RequestInfo {
         
+        #region IProperties
+        
         /// <summary>the object, the client called to perform the operation</summary>
         MarshalByRefObject target {
             get;
@@ -531,6 +531,34 @@ namespace omg.org.PortableInterceptor {
         
         // TODO: missing properties
         
+        #endregion IProperties
+        #region IMethods
+        
+        /// <summary>
+        /// gets the component from the profile selected for this request.
+        /// </summary>
+        TaggedComponent get_effective_component(int id);
+        
+        /// <summary>
+        /// gets the components from the profile selected for this request.
+        /// </summary>
+        [return: IdlSequence(0L)]
+        TaggedComponent[] get_effective_components(int id);
+        
+        /// <summary>
+        /// returns the policy in effect for this request. If policy type not valid, throws INV_POLICY with
+        /// minor code 1.
+        /// </summary>
+        Policy get_request_policy(int type);
+        
+        /// <summary>
+        /// allows interceptor to add service context to the request. if replace is true, an 
+        /// already existing context is replaced by this one.
+        /// </summary>
+        void add_request_service_context(ServiceContext service_context, bool replace);
+        
+        #endregion IMethods
+        
         
     }
     
@@ -542,10 +570,55 @@ namespace omg.org.PortableInterceptor {
     [InterfaceType(IdlTypeInterface.LocalInterface)]
     public interface ServerRequestInfo : RequestInfo {
 
+        #region IProperties
+        
+        /// <summary>the exception to be returned to the client.</summary>
+        object sending_exception {
+            get;
+        }
+        
         /// <summary>the opaque id, describing the target of the operation invocation.</summary>
+        [IdlSequence(0L)]
         byte[] object_id {
             get;
         }
+        
+        /// <summary>This attribute is the opaque identifier for the object-adapter.</summary>
+        [IdlSequence(0L)]
+        byte[] adapter_id {
+            get;
+        }
+        
+        /// <summary>the repository id of the most derived interface of the servant.</summary>
+        [StringValue()]
+        [WideChar(false)]
+        string target_most_derived_interface {
+            get;
+        }
+        
+        #endregion IProperties
+        #region IMethods
+                
+        /// <summary>returns the policy in effect for the given policy type. If policy was not registered
+        /// via register_policy_factory, a INV_POLICY with minor code 2 is returned.</summary>        
+        Policy get_server_policy(int type);
+        
+        /// <summary>
+        /// set a slot in the PI::Current, which is in the scope fo the request. if data already existing in
+        /// the slot, it is overwritten. InvalidSlot is raised, if slot was not allocated.
+        /// </summary>        
+        [ThrowsIdlException(typeof(InvalidSlot))]
+        void set_slot(int id, object data);
+        
+        /// <summary>
+        /// returns true, if the servant is the given repository id.
+        /// </summary>
+        bool target_is_a([StringValue()][WideChar(false)] string id);
+        
+        /// <summary>allows interceptors to add service contexts to the reply.</summary>
+        void add_reply_service_context(ServiceContext service_context, bool replace);
+        
+        #endregion IMethods
         
     }
     
