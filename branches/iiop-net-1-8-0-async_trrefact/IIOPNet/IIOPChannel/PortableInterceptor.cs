@@ -530,6 +530,21 @@ namespace omg.org.PortableInterceptor {
         }
         
         // TODO: missing properties
+        // IOP:TaggedProfile effective_profile {
+        //     get;
+        // }
+        
+        /// <summary>the exception to be returned to the client.</summary>
+        object received_exception {
+            get;
+        }
+        
+        /// <summary>the repository id of the exception returned to the client.</summary>
+        [StringValue()]
+        [WideChar(false)]
+        string received_exception_id {
+            get;
+        }
         
         #endregion IProperties
         #region IMethods

@@ -239,18 +239,35 @@ namespace Ch.Elca.Iiop.Interception {
         #endregion IConstructors
         #region IProperties
                 
+        /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.target"></see></summary>
         public MarshalByRefObject target {
             get {
                 throw new NotImplementedException();
             }
         }
-                
+
+        /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.effective_target"></see></summary>        
         public MarshalByRefObject effective_target {
             get {
                 throw new NotImplementedException();
             }
         }
-
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.received_exception"></see></summary>        
+        public object received_exception {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+        
+        /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.received_exception_id"></see></summary>        
+        [StringValue()]
+        [WideChar(false)]
+        public string received_exception_id {
+            get {
+                throw new NotImplementedException();
+            }
+        }
         
         #endregion IProperties
         #region IMethods
