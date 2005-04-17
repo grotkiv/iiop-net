@@ -291,7 +291,7 @@ namespace Ch.Elca.Iiop.Interception {
         
         /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.add_request_service_context"></see></summary>
         public void add_request_service_context(ServiceContext service_context, bool replace) {
-            if ((!m_clientRequest.RequestServiceContext.ContainsServiceContext(service_context.ServiceId)) ||
+            if ((!m_clientRequest.RequestServiceContext.ContainsServiceContext(service_context.context_id)) ||
                 replace) {
                 m_clientRequest.RequestServiceContext.AddServiceContext(service_context);
             } else {                
@@ -386,7 +386,7 @@ namespace Ch.Elca.Iiop.Interception {
         
         /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.add_reply_service_context"></see></summary>
         public void add_reply_service_context(ServiceContext service_context, bool replace) {
-            if ((!m_serverRequest.ResponseServiceContext.ContainsServiceContext(service_context.ServiceId)) ||
+            if ((!m_serverRequest.ResponseServiceContext.ContainsServiceContext(service_context.context_id)) ||
                 replace) {
                 m_serverRequest.ResponseServiceContext.AddServiceContext(service_context);
             } else {                
