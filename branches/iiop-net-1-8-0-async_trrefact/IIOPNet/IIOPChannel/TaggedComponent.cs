@@ -150,9 +150,9 @@ namespace omg.org.IOP {
         /// </summary>
         private static byte[] SerialiseComponentData(int tag, object data) {
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0);
-            MarshallerForType marshaller = 
-                TaggedComponentDataSerRegistry.Instance.GetOrCreateMarshaller(tag, data.GetType());
-            marshaller.Marshal(data, encap);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            marshaller.Marshal(data.GetType(), AttributeExtCollection.EmptyCollection, 
+                               data, encap);
             return encap.GetEncapsulationData();
         }                
         
@@ -163,9 +163,9 @@ namespace omg.org.IOP {
         /// <summary>deserialise the component data of the given type; encoded as cdr encapsulation.</summary>        
         internal static object DeserialiseComponentData(TaggedComponent component, Type componentDataType) {
             CdrEncapsulationInputStream encap = new CdrEncapsulationInputStream(component.ComponentData);
-            MarshallerForType marshaller = 
-                TaggedComponentDataSerRegistry.Instance.GetOrCreateMarshaller(component.Tag, componentDataType);
-            return marshaller.Unmarshal(encap);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            return marshaller.Unmarshal(componentDataType, AttributeExtCollection.EmptyCollection, 
+                                        encap);
         }        
         
         #endregion SMethods        
@@ -317,55 +317,5 @@ namespace omg.org.IOP {
         
     }    
     
-    
-    
-    /// <summary>
-    /// registry managing serializer for tagged components data; for efficiency reason, caches these serialisers.
-    /// </summary>
-    internal class TaggedComponentDataSerRegistry {
-
-        #region SFields               
-        
-        private static TaggedComponentDataSerRegistry s_instance = new TaggedComponentDataSerRegistry();
-        
-        #endregion SFields
-        #region IFields
-        
-        private Hashtable m_taggedComponetsDataSer;        
-        
-        #endregion IFields
-        #region IConstructors
-        
-        private TaggedComponentDataSerRegistry() {
-            m_taggedComponetsDataSer = new Hashtable();
-        }
-        
-        #endregion IConstructors
-        #region SProperties
-        
-        internal static TaggedComponentDataSerRegistry Instance {
-            get {
-                return s_instance;
-            }
-        }
-        
-        #endregion SProperties
-        #region IMethods
-        
-        internal MarshallerForType GetOrCreateMarshaller(int id, Type componentData) {
-            lock(m_taggedComponetsDataSer.SyncRoot) {
-                MarshallerForType result = (MarshallerForType)m_taggedComponetsDataSer[id];
-                if (result == null) {
-                    result = new MarshallerForType(componentData, AttributeExtCollection.EmptyCollection);
-                    m_taggedComponetsDataSer[id] = result;
-                }
-                return result;
-            }
-        }
-        
-        #endregion IMethods
-        
-    }    
-
     
 }
