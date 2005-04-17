@@ -152,6 +152,14 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             ServiceContext context = new ServiceContext(1000,
                                                         m_codec.encode(contextEntry));
             ri.add_request_service_context(context, true);
+            try {
+                TaggedComponent taggedComponentEnc = ri.get_effective_component(1000);
+                omg.org.CORBA.TypeCode typeCode = 
+                    omg.org.CORBA.OrbServices.GetSingleton().create_tc_for_type(typeof(TestComponent));
+                m_taggedComponent = m_codec.decode_value(taggedComponentEnc.component_data, typeCode);
+            } catch (BAD_PARAM) {
+                m_taggedComponent = null;
+            }
         }
 
         public void receive_reply(ClientRequestInfo ri) {
