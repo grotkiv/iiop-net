@@ -34,6 +34,25 @@
 
  namespace omg.org.IOP {
  
+    /// <summary>
+    /// Encoding format: cdr encapsulation.
+    /// </summary>
+    public sealed class ENCODING_CDR_ENCAPS {
+        
+        #region Constants
+        
+        public const short ConstVal = 0;
+        
+        #endregion Constants
+        #region IConstructors
+        
+        private ENCODING_CDR_ENCAPS() {
+        }
+        
+        #endregion IConstructors        
+        
+    }
+    
      
     /// <summary>
     /// The IORInfo allows IORInterceptor (on the server side) to components
@@ -75,7 +94,41 @@
         object decode_value ([IdlSequence(0L)] byte[] data,
                              omg.org.CORBA.TypeCode tc);
         
-    }     
+    }
+    
+    /// <summary>
+    /// The Encoding structure defines the encoding format of a Codec. It details the
+    /// encoding format, such as CDR Encapsulation encoding, and the major and minor
+    /// versions of that format.
+    /// </summary>    
+    [Serializable()]
+    [RepositoryID("IDL:omg.org/IOP/Encoding:1.0")]
+    [IdlStruct()]
+    public struct Encoding : IIdlEntity {
+               
+        public short format;
+        public byte major_version;
+        public byte minor_version;
+        
+        public Encoding(short format, byte major_version, byte minor_version) {
+            this.format = format;
+            this.major_version = major_version;
+            this.minor_version = minor_version;
+        }        
+        
+    }
+    
+    /// <summary>
+    /// Create a Codec of the given encoding.
+    /// </summary>
+    [RepositoryID("IDL:omg.org/IOP/CodecFactory:1.0")]
+    [InterfaceType(IdlTypeInterface.LocalInterface)]    
+    public interface CodecFactory {
+        
+        [ThrowsIdlException(typeof(omg.org.IOP.CodecFactory_package.UnknownEncoding))]
+        Codec create_codec (Encoding enc);
+        
+    }
      
  }
  
@@ -118,5 +171,21 @@
          }
      
      }     
+     
+     
+ }
+ 
+ namespace omg.org.IOP.CodecFactory_package {
+ 
+     /// <summary>
+     /// raised, if the codec factory, cannot create a Codec of the given encoding.
+     /// </summary>
+     [Serializable]
+     public class UnknownEncoding : AbstractUserException {
+     
+         public UnknownEncoding() {
+         }
+         
+     }
  
  }
