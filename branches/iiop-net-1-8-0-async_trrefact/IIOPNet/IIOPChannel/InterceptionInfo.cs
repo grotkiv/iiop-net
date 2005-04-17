@@ -330,6 +330,34 @@ namespace Ch.Elca.Iiop.Interception {
         #endregion IConstructors
         #region IMethods
                 
+        /// <summary>
+        /// gets the server side policy for the given type. Throws INV_POLICY with a minor code 2,
+        /// if policy not knwon.
+        /// </summary>
+        /// <remarks>policies not yet supported, throws always INV_POLICY exception.</remarks>
+        public Policy get_effective_policy(int type) {
+            throw new INV_POLICY(2, CompletionStatus.Completed_MayBe);
+        }
+        
+        /// <summary>
+        /// adds the specified tagged component to all profiles.
+        /// </summary>        
+        public void add_ior_component(TaggedComponent component) {
+            for (int i = 0; i < m_profiles.Length; i++) {
+                m_profiles[i].AddTaggedComponent(component);
+            }
+        }
+        
+        /// <summary>
+        /// adds the specified tagged component to the profile with the given id.
+        /// </summary>        
+        public void add_ior_component_to_profile(TaggedComponent component, int profileId) {
+            for (int i = 0; i < m_profiles.Length; i++) {
+                if (m_profiles[i].ProfileId == profileId) {
+                    m_profiles[i].AddTaggedComponent(component);
+                }
+            }
+        }
         
         #endregion IMethods
         

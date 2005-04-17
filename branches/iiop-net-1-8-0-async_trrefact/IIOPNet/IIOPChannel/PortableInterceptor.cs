@@ -575,8 +575,21 @@ namespace omg.org.PortableInterceptor {
     [InterfaceType(IdlTypeInterface.LocalInterface)]
     public interface IORInfo {
         
-        // TODO
+        /// <summary>
+        /// gets the server side policy for the given type. Throws INV_POLICY with a minor code 2,
+        /// if policy not knwon.
+        /// </summary>
+        Policy get_effective_policy(int type);
         
+        /// <summary>
+        /// adds the specified tagged component to all profiles.
+        /// </summary>        
+        void add_ior_component(TaggedComponent component);
+        
+        /// <summary>
+        /// adds the specified tagged component to the profile with the given id.
+        /// </summary>        
+        void add_ior_component_to_profile(TaggedComponent component, int profileId);
     }
     
     
