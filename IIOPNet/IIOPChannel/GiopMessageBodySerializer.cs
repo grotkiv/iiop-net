@@ -309,10 +309,10 @@ namespace Ch.Elca.Iiop.MessageHandling {
             if (targetIor.Version.IsAfterGiop1_0()) {
 
                 if (!conDesc.IsCodeSetNegotiated()) {                               
-                    ITaggedComponent codeSetComponent = CodeSetService.FindCodeSetComponent(targetIor.Profiles);
+                    object codeSetComponent = CodeSetService.FindCodeSetComponent(targetIor.Profiles);
                     if (codeSetComponent != null) {
-                        int charSet = CodeSetService.ChooseCharSet((CodeSetComponentData)codeSetComponent.ComponentData);
-                        int wcharSet = CodeSetService.ChooseWCharSet((CodeSetComponentData)codeSetComponent.ComponentData);
+                        int charSet = CodeSetService.ChooseCharSet((CodeSetComponentData)codeSetComponent);
+                        int wcharSet = CodeSetService.ChooseWCharSet((CodeSetComponentData)codeSetComponent);
                         conDesc.SetNegotiatedCodeSets(charSet, wcharSet);
                     } else {
                         conDesc.SetCodeSetNegotiated();

@@ -27,20 +27,30 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-
+using System;
 using Ch.Elca.Iiop.Idl;
 using Ch.Elca.Iiop.CorbaObjRef;
 
 namespace Ch.Elca.Iiop {
 
+    /// <summary>the data encoded for the tagged component ALTERNATE_IIOP_ADDRESS.</summary>
     [IdlStruct]
-    public struct AlternateIiopAddressComponentData : ITaggedComponentData {
+    public struct AlternateIiopAddressComponentData {
+        
+        #region SFields
+        
+        public static Type ClassType = typeof(AlternateIiopAddressComponentData);
+        
+        #endregion SFields
+        #region IFields
         
         [StringValue()]
         [WideChar(false)]
         public string HostID;
         
         public short Port;            
+        
+        #endregion IFields
         
     }
     

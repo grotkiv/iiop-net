@@ -40,6 +40,7 @@ using System.Threading;
 using System.Text;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.CorbaObjRef;
+using omg.org.IOP;
 
 #if DEBUG_LOGFILE
 using System.IO;
@@ -694,7 +695,7 @@ namespace Ch.Elca.Iiop {
             return hostNameToUse;
         }
 
-        private void SetupChannelData(string hostName, int port, ITaggedComponent[] additionalComponents) {
+        private void SetupChannelData(string hostName, int port, TaggedComponent[] additionalComponents) {
             IiopChannelData newChannelData = new IiopChannelData(hostName, port);
             if ((additionalComponents != null) && (additionalComponents.Length > 0)){
                 newChannelData.AddAdditionalTaggedComponents(additionalComponents);
@@ -706,7 +707,7 @@ namespace Ch.Elca.Iiop {
         public void StartListening(object data) {
             // start Listening
             if (!m_connectionListener.IsListening()) {
-                ITaggedComponent[] additionalComponents;
+                TaggedComponent[] additionalComponents;
                 // use IPAddress.Any and not a specific ip-address, to allow connections to loopback and normal ip; but if forcedBind use the specified one
                 IPAddress bindTo = (m_forcedBind == null ? IPAddress.Any : m_forcedBind);
                 int listeningPort = m_connectionListener.StartListening(bindTo, m_port, out additionalComponents);
@@ -780,7 +781,7 @@ namespace Ch.Elca.Iiop {
 
         #region SFields
         
-        private Type s_taggedComponentType = typeof(ITaggedComponent);
+        private Type s_taggedComponentType = typeof(TaggedComponent);
         
         #endregion SFields
         #region IFields
@@ -806,9 +807,9 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>allows to add additional tagged component to an IOR marshalled over this channel.</summary>
-        public ITaggedComponent[] AdditionalTaggedComponents {
+        public TaggedComponent[] AdditionalTaggedComponents {
             get {
-                return (ITaggedComponent[])m_additionTaggedComponents.ToArray(s_taggedComponentType);
+                return (TaggedComponent[])m_additionTaggedComponents.ToArray(s_taggedComponentType);
             }
         }
 
@@ -819,24 +820,24 @@ namespace Ch.Elca.Iiop {
             StringBuilder result = new StringBuilder();
             result.Append("IIOP-channel data, hostname: " + m_hostName +
                           ", port: " + m_port);
-            foreach (ITaggedComponent taggedComp in m_additionTaggedComponents) {
-                result.Append("; tagged component with id: " + taggedComp.Id);
+            foreach (TaggedComponent taggedComp in m_additionTaggedComponents) {
+                result.Append("; tagged component with id: " + taggedComp.Tag);
             }
             return result.ToString();
         }
         
         /// <summary>add passed additional tagged component to all IOR for objects hosted by this appdomain.</summary>
-        public void AddAdditionalTaggedComponent(ITaggedComponent taggedComponent) {
+        public void AddAdditionalTaggedComponent(TaggedComponent taggedComponent) {
             m_additionTaggedComponents.Add(taggedComponent);
         }
         
         /// <summary>adds passed additional tagged components to all IOR for objects hosted by this appdomain.</summary>
-        public void AddAdditionalTaggedComponents(ITaggedComponent[] newTaggedComponents) {
+        public void AddAdditionalTaggedComponents(TaggedComponent[] newTaggedComponents) {
             m_additionTaggedComponents.AddRange(newTaggedComponents);
         }
         
         /// <summary>replaces the current additional tagged components by the new ones.</summary>
-        public void ReplaceAdditionalTaggedComponents(ITaggedComponent[] newTaggedComponents) {
+        public void ReplaceAdditionalTaggedComponents(TaggedComponent[] newTaggedComponents) {
             // now add additional components to the channel data:            
             m_additionTaggedComponents.Clear();
             if (newTaggedComponents != null) {

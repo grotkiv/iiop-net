@@ -38,37 +38,11 @@ using Ch.Elca.Iiop.Cdr;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.Idl;
 using Ch.Elca.Iiop.Marshalling;
-using Ch.Elca.Iiop.Services;
-using Ch.Elca.Iiop.Security.Ssl;
 using omg.org.CORBA;
+using omg.org.IOP;
 
 namespace Ch.Elca.Iiop.CorbaObjRef {
-
-    /// <summary>
-    /// Interface supported by all tagged-components. 
-    /// Tagged Components are used in IorProfiles.
-    /// </summary>
-    public interface ITaggedComponent {
-        
-        #region IProperties
-        
-        int Id { 
-            get; 
-        }
-        
-        /// <summary>the component data to serialise / deserialise</summary>
-        ITaggedComponentData ComponentData {
-            get;
-        }
-
-        #endregion IProperties
-
-    }
-    
-    /// <summary>Marker interface for tagged component data</summary>
-    public interface ITaggedComponentData : IIdlEntity {
-    }
-
+   
 
     /// <summary>
     /// This class represents a Corba IOR.
@@ -298,7 +272,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         protected byte[] m_objectKey;
         
         /// <summary>the tagged components in this profile</summary>
-        private ArrayList /*<ITaggedComponent>*/ m_taggedComponents = new ArrayList();
+        protected TaggedComponentList m_taggedComponents = new TaggedComponentList();
 
         #endregion IFields
         #region IConstructors
@@ -350,7 +324,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         }
         
         /// <summary>the tagged components in this profile</summary>
-        public IList /*<ITaggedComponent>*/ TaggedComponents {
+        public TaggedComponentList TaggedComponents {
             get { 
                 return m_taggedComponents; 
             }
@@ -366,18 +340,36 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         #endregion IProperties
         #region IMethods  
         
-        public void AddTaggedComponents(ITaggedComponent[] taggedComponents) {
-            if (taggedComponents != null) {
-                m_taggedComponents.AddRange(taggedComponents);
-            }
+        public void AddTaggedComponent(TaggedComponent component) {
+            m_taggedComponents.AddComponent(component);
         }
-
+        
+        public void AddTaggedComponents(TaggedComponent[] components) {
+            m_taggedComponents.AddComponents(components);
+        }        
+        
+        public void AddTaggedComponentWithData(int tag, object componentData) {
+            m_taggedComponents.AddComponentWithData(tag, componentData);
+        }
+        
+        public object GetTaggedComponentData(int tag, Type componentType) {
+            return m_taggedComponents.GetComponentData(tag, componentType);
+        }
+                
+        public bool ContainsTaggedComponent(int tag) {
+            return m_taggedComponents.ContainsTaggedComponent(tag);
+        }
+        
+        public TaggedComponent GetTaggedComponent(int tag) {
+            return m_taggedComponents.GetComponent(tag);
+        }
+        
         /// <summary>writes this profile into an encapsulation</summary>
         public abstract void WriteToStream(CdrOutputStream cdrStream);
 
         /// <summary>reads this profile data from a stream</summary>
-        protected abstract void ReadDataFromStream(CdrInputStream cdrStream);
-
+        protected abstract void ReadDataFromStream(CdrInputStream cdrStream);                
+        
         #endregion IMethods
     
     }
@@ -392,11 +384,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 
         public InternetIiopProfile(GiopVersion version, string hostName, short port, byte[] objectKey) : base(version, hostName, port, objectKey) {
             // default codesetComponent
-            TaggedComponents.Add(new TaggedComponent(TaggedComponentIds.CODESET_COMPONENT_ID, 
-                                                     new CodeSetComponentData(Services.CodeSetService.DEFAULT_CHAR_SET,
-                                                                              new int[] {Services.CodeSetService.ISO646IEC_SINGLE },
-                                                                              Services.CodeSetService.DEFAULT_WCHAR_SET,
-                                                                              new int[] { Services.CodeSetService.ISO646IEC_MULTI })));
+            TaggedComponents.AddComponent(Services.CodeSetService.DEFAULT_CODESET_TAGGED_COMPONENT);
         }
 
         /// <summary>
@@ -443,13 +431,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             Debug.WriteLine("");
             // GIOP 1.1, 1.2:
             if (!(m_giopVersion.Major == 1 && m_giopVersion.Minor == 0)) {
-                uint nrOfComponent = encapsulation.ReadULong();
-                Debug.WriteLine("nr of tagged-components in this profile: " + nrOfComponent);                
-                for (int i = 0; i < nrOfComponent; i++) {
-                    int id = (int)encapsulation.ReadULong();
-                    TaggedComponentSerializer ser = TaggedComponentSerRegistry.GetSerializer(id);
-                    TaggedComponents.Add(ser.ReadFromStream(encapsulation));
-                }
+                m_taggedComponents = new TaggedComponentList(encapsulation);
             }
             
             Debug.WriteLine("parsing Internet-IIOP-profile completed");
@@ -474,11 +456,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             encapStream.WriteOpaque(m_objectKey);
             // the tagged components            
             if (!(m_giopVersion.Major == 1 && m_giopVersion.Minor == 0)) { // for GIOP >= 1.1, tagged components are possible
-                encapStream.WriteULong((uint)TaggedComponents.Count);
-                foreach (TaggedComponent comp in TaggedComponents) {
-                    TaggedComponentSerializer ser = TaggedComponentSerRegistry.GetSerializer(comp.Id);
-                    ser.WriteToStream(comp, encapStream);
-                }
+                m_taggedComponents.WriteTaggedComponentList(encapStream);
             }
             // write the whole encapsulation to the stream
             cdrStream.WriteEncapsulation(encapStream);
@@ -502,11 +480,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 
         public MultipleComponentsProfile() : base(new GiopVersion(1,2), null, 0, null) {
             // default codesetComponent
-            TaggedComponents.Add(new TaggedComponent(TaggedComponentIds.CODESET_COMPONENT_ID, 
-                                                     new CodeSetComponentData(Services.CodeSetService.DEFAULT_CHAR_SET,
-                                                                              new int[] {Services.CodeSetService.ISO646IEC_SINGLE },
-                                                                              Services.CodeSetService.DEFAULT_WCHAR_SET,
-                                                                              new int[] { Services.CodeSetService.ISO646IEC_MULTI })));
+            TaggedComponents.AddComponent(Services.CodeSetService.DEFAULT_CODESET_TAGGED_COMPONENT);        
         }
 
         /// <summary>
@@ -534,14 +508,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             CdrEncapsulationInputStream encapsulation = inputStream.ReadEncapsulation();
 
             Debug.WriteLine("parse Multiple component Profile");
-            uint nrOfComponents = encapsulation.ReadULong();
-            Debug.WriteLine("nr of components following: " + nrOfComponents);
-            
-            for (int i = 0; i < nrOfComponents; i++) {
-                int id = (int)encapsulation.ReadULong();
-                TaggedComponentSerializer ser = TaggedComponentSerRegistry.GetSerializer(id);
-                TaggedComponents.Add(ser.ReadFromStream(encapsulation));
-            }
+            m_taggedComponents = new TaggedComponentList(encapsulation);
             
             Debug.WriteLine("parsing multiple components profile completed");
         }
@@ -558,11 +525,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             byte flags = 0;
             CdrEncapsulationOutputStream encapStream = new CdrEncapsulationOutputStream(flags);
             // the tagged components
-            encapStream.WriteULong((uint)TaggedComponents.Count);
-            foreach (TaggedComponent comp in TaggedComponents) {
-                TaggedComponentSerializer ser = TaggedComponentSerRegistry.GetSerializer(comp.Id);
-                ser.WriteToStream(comp, encapStream);
-            }
+            m_taggedComponents.WriteTaggedComponentList(encapStream);
             // write the whole encapsulation to the stream
             cdrStream.WriteEncapsulation(encapStream);
         }
@@ -630,267 +593,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 
         #endregion IMethods
     
-    }
-
-
-    [IdlStruct]
-    public struct GenericTaggedComponentData : ITaggedComponentData {
-    
-        #region IFields
-        
-        [IdlSequence(0L)]
-        public byte[] Data;
-        
-        #endregion IFields
-        #region IConstructors
-                
-        public GenericTaggedComponentData(byte[] data) {
-            Data = data;
-        }
-        
-        #endregion IConstructors
-    
-    }
-
-
-    /// <summary>
-    /// generic tagged component
-    /// </summary>
-    public class TaggedComponent : ITaggedComponent {
-        
-        #region IFields
-        
-        private int m_id;
-        private ITaggedComponentData m_componentData;
-
-        #endregion IFields
-        #region IConstructors
-
-        public TaggedComponent(int id, ITaggedComponentData data) {
-            m_id = id;
-            m_componentData = data;            
-        }
-
-        #endregion IConstructors
-        #region IProperties
-
-        public int Id {
-            get {
-                return m_id;
-            }
-        }
-        
-        public ITaggedComponentData ComponentData {
-            get {
-                return m_componentData;
-            }
-        }
-
-        #endregion IProperties
-
     }    
-    
-      
-    /// <summary>describes rules to use for tagged component data serialisation</summary>
-    internal class TaggedComponentEncodingRules {
-        
-        
-        #region IFields
-        
-        private bool m_isEncapsulated;
-        
-        #endregion IFields
-        #region IConstructors
-        
-        public TaggedComponentEncodingRules(bool isEncapsulated) {
-            m_isEncapsulated = isEncapsulated;    
-        }
-        
-        #endregion IConstructors
-        #region IProperties
-        
-        public bool IsEncapsulated {
-            get {
-                return m_isEncapsulated;
-            }
-        }                
-        
-        #endregion IProperties
-        
-    }
-    
-
-    /// <summary>
-    /// serializer for tagged components
-    /// </summary>
-    internal class TaggedComponentSerializer {
-        
-
-        #region IFields
-        
-        private int m_id;
-        private Type m_taggedComponentDataType;
-        
-        private MarshallerForType m_componentDataMarshaller;
-        
-        private TaggedComponentEncodingRules m_encodingRules;
-        
-        #endregion IFields
-        #region IConstructors
-        
-        public TaggedComponentSerializer(int taggedComponentId, Type taggedComponentDataType,
-                                         TaggedComponentEncodingRules encodingRules) {
-            if ((taggedComponentDataType == null) || (encodingRules == null)) {
-                throw new INTERNAL(113, CompletionStatus.Completed_MayBe);
-            }
-            m_id = taggedComponentId;
-            m_taggedComponentDataType = taggedComponentDataType;
-            AttributeExtCollection attributes = AttributeExtCollection.EmptyCollection;
-            m_componentDataMarshaller = new MarshallerForType(taggedComponentDataType, 
-                                                              attributes);
-            m_encodingRules = encodingRules;            
-        }
-        
-        /// <summary>used to create efficiently a clone for another id</summary>
-        private TaggedComponentSerializer(int taggedComponentId, Type taggedComponentDataType,
-                                          TaggedComponentEncodingRules encodingRules,
-                                          MarshallerForType componentDataMarshaller) {
-            m_id = taggedComponentId;
-            m_taggedComponentDataType = taggedComponentDataType;
-            m_componentDataMarshaller = componentDataMarshaller;
-            m_encodingRules = encodingRules;                                              
-        }
-        
-        #endregion IConstructors        
-        #region IProperties
-        
-        public int Id {
-            get {
-                return m_id;
-            }
-        }                
-        
-        /// <summary>
-        /// the type of the tagged component data for this id
-        /// </summary>
-        public Type TaggedComponentDataType {
-            get {
-                return m_taggedComponentDataType;
-            }
-        }
-        
-        #endregion IProperties
-        #region IMethods
-
-        public void WriteToStream(TaggedComponent toSer, CdrOutputStream cdrStream) {
-            if (!m_taggedComponentDataType.IsInstanceOfType(toSer.ComponentData)) {
-                throw new MARSHAL(119, CompletionStatus.Completed_MayBe);
-            }
-            cdrStream.WriteULong((uint)m_id);
-            if (m_encodingRules.IsEncapsulated) {
-                // marshal tagged component data to an encapsulation
-                CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0);
-                m_componentDataMarshaller.Marshal(toSer.ComponentData, encap);
-                // write encapsulation to the stream
-                cdrStream.WriteEncapsulation(encap);                
-            } else {
-                m_componentDataMarshaller.Marshal(toSer.ComponentData, cdrStream);
-            }                                    
-        }
-               
-        public ITaggedComponent ReadFromStream(CdrInputStream cdrStream) {
-            if (m_encodingRules.IsEncapsulated) {
-                CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();                
-                ITaggedComponentData data = 
-                    (ITaggedComponentData)m_componentDataMarshaller.Unmarshal(encap);                                                
-                return new TaggedComponent(m_id, data);                
-            } else {
-                ITaggedComponentData data = 
-                    (ITaggedComponentData)m_componentDataMarshaller.Unmarshal(cdrStream);
-                return new TaggedComponent(m_id, data);                
-            }                    
-        }
-        
-
-        #endregion IMethods
-        #region SMethods
-        
-        internal static TaggedComponentSerializer GetCloneForId(TaggedComponentSerializer prototype, 
-                                                                int newId) {
-            return new TaggedComponentSerializer(newId, prototype.m_taggedComponentDataType,
-                                                 prototype.m_encodingRules, prototype.m_componentDataMarshaller);
-        }
-        
-        #endregion SMethods
-
-    }    
-    
-    
-    public sealed class TaggedComponentIds {
-    
-        #region Constants
-        
-        public const int CODESET_COMPONENT_ID = 1;
-        public const int ALTERNATE_IIOP_ADDRESS = 3;
-        public const int TAG_SSL_SEC_TRANS = 20;        
-        
-        #endregion Constants
-        #region IConstructors
-        
-        private TaggedComponentIds() {
-        }
-        
-        #endregion IConstructors        
-    
-    }
-    
-    
-    /// <summary>
-    /// registry managing serializer for tagged components
-    /// </summary>
-    internal class TaggedComponentSerRegistry {
-
-        #region SFields
-        
-        private static Hashtable s_taggedComponetsSer = new Hashtable();
-        
-        private static TaggedComponentSerializer s_genericSerializerPrototype;
-
-        #endregion SFields
-        #region SConstructor
-        
-        static TaggedComponentSerRegistry() {
-            s_genericSerializerPrototype = new TaggedComponentSerializer(0, typeof(GenericTaggedComponentData),
-                                                                         new TaggedComponentEncodingRules(false));
-            AddTaggedComponentSer(new TaggedComponentSerializer(TaggedComponentIds.CODESET_COMPONENT_ID, typeof(CodeSetComponentData),
-                                                                new TaggedComponentEncodingRules(true)));
-            AddTaggedComponentSer(new TaggedComponentSerializer(TaggedComponentIds.TAG_SSL_SEC_TRANS, typeof(SSLComponentData),
-                                                                new TaggedComponentEncodingRules(true)));
-            AddTaggedComponentSer(new TaggedComponentSerializer(TaggedComponentIds.ALTERNATE_IIOP_ADDRESS,
-                                                                typeof(AlternateIiopAddressComponentData),
-                                                                new TaggedComponentEncodingRules(true)));
-        }
-
-        #endregion SConstructor
-        #region SMethods
-
-        private static void AddTaggedComponentSer(TaggedComponentSerializer ser) {
-            s_taggedComponetsSer.Add(ser.Id, ser);
-        }
-
-        public static TaggedComponentSerializer GetSerializer(int id) {
-            TaggedComponentSerializer ser = (TaggedComponentSerializer)s_taggedComponetsSer[id];
-            if (ser == null) {
-                // more efficient to clone a generic prototype, because of type mapping costs
-                ser = TaggedComponentSerializer.GetCloneForId(s_genericSerializerPrototype, id);
-            }
-            return ser;
-        }
-
-        #endregion SMethods
-
-    }
-    
 
 }
 
@@ -960,14 +663,9 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("wrong minor", 2, ior.Version.Minor);
             Assertion.AssertEquals("wrong number of profiles", 1, ior.Profiles.Length);
             Assertion.AssertEquals("wrong number of components in profile", 2, ior.Profiles[0].TaggedComponents.Count);
-            bool sslComponentFound = false;
-            foreach (ITaggedComponent comp in ior.Profiles[0].TaggedComponents) {
-                if (comp.Id == TaggedComponentIds.TAG_SSL_SEC_TRANS) {
-                    sslComponentFound = true;
-                    break;
-                }
-            }
-            Assertion.Assert("no ssl tagged component found", sslComponentFound);
+            Assertion.AssertNotNull("no ssl tagged component found",
+                                    ior.Profiles[0].GetTaggedComponentData(TAG_SSL_SEC_TRANS.ConstVal,
+                                                                           Ch.Elca.Iiop.Security.Ssl.SSLComponentData.ClassType));
         }
         
     }

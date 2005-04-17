@@ -33,6 +33,7 @@ using System.IO;
 using System.Net;
 using System.Collections;
 using Ch.Elca.Iiop.CorbaObjRef;
+using omg.org.IOP;
 
 
 namespace Ch.Elca.Iiop {
@@ -183,7 +184,7 @@ namespace Ch.Elca.Iiop {
         /// Those additional components hold the additional information needed by clients to connect to this listener.
         /// Can contain an array with 0 elements, if default information in the IOR is enough.
         /// </param>
-        int StartListening(IPAddress bindTo, int listeningPortSuggestion, out ITaggedComponent[] additionalTaggedComponents);
+        int StartListening(IPAddress bindTo, int listeningPortSuggestion, out TaggedComponent[] additionalTaggedComponents);
         
         /// <summary>is this listener active</summary>
         bool IsListening();
