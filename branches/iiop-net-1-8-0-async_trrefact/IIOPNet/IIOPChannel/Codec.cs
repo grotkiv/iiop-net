@@ -27,12 +27,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
  
- using System;
- using omg.org.CORBA;
- using Ch.Elca.Iiop;
- using Ch.Elca.Iiop.Idl;
+using System;
+using omg.org.CORBA;
+using Ch.Elca.Iiop;
+using Ch.Elca.Iiop.Idl;
 
- namespace omg.org.IOP {
+namespace omg.org.IOP {
  
     /// <summary>
     /// Encoding format: cdr encapsulation.
@@ -130,62 +130,69 @@
         
     }
      
- }
+}
  
- namespace omg.org.IOP.Codec_package {
+namespace omg.org.IOP.Codec_package {
  
-     /// <summary>
-     /// This exception is raised by encode or encode_value when the type is invalid for the
-     /// encoding.
-     /// </summary>
-     [Serializable]
-     public class InvalidTypeForEncoding : AbstractUserException {
+    /// <summary>
+    /// This exception is raised by encode or encode_value when the type is invalid for the
+    /// encoding.
+    /// </summary>
+    [Serializable]
+    public class InvalidTypeForEncoding : AbstractUserException {
      
-         public InvalidTypeForEncoding() {
-         }
+        public InvalidTypeForEncoding() {
+        }
      
-     }
+    }
 
      
-     /// <summary>
-     /// This exception is raised by decode or decode_value when the data in the octet
-     /// sequence cannot be decoded into an any.
-     /// </summary>
-     [Serializable]
-     public class FormatMismatch : AbstractUserException {
+    /// <summary>
+    /// This exception is raised by decode or decode_value when the data in the octet
+    /// sequence cannot be decoded into an any.
+    /// </summary>
+    [Serializable]
+    public class FormatMismatch : AbstractUserException {
      
-         public FormatMismatch() {
-         }
+        public FormatMismatch() {
+        }
      
-     }
+    }
 
      
-     /// <summary>
-     /// This exception is raised by decode_value when the given TypeCode does not match
-     /// the given octet sequence.
-     /// </summary>
-     [Serializable]
-     public class TypeMismatch : AbstractUserException {
+    /// <summary>
+    /// This exception is raised by decode_value when the given TypeCode does not match
+    /// the given octet sequence.
+    /// </summary>
+    [Serializable]
+    public class TypeMismatch : AbstractUserException {
      
-         public TypeMismatch() {
-         }
+        public TypeMismatch() {
+        }
      
-     }     
+    }     
      
      
- }
+}
  
- namespace omg.org.IOP.CodecFactory_package {
+namespace omg.org.IOP.CodecFactory_package {
  
-     /// <summary>
-     /// raised, if the codec factory, cannot create a Codec of the given encoding.
-     /// </summary>
-     [Serializable]
-     public class UnknownEncoding : AbstractUserException {
+    /// <summary>
+    /// raised, if the codec factory, cannot create a Codec of the given encoding.
+    /// </summary>
+    [Serializable]
+    public class UnknownEncoding : AbstractUserException {
      
-         public UnknownEncoding() {
-         }
+        public UnknownEncoding() {
+        }
          
-     }
+    }
  
- }
+}
+ 
+ 
+namespace Ch.Elca.Iiop.Interception {
+
+     
+     
+}
