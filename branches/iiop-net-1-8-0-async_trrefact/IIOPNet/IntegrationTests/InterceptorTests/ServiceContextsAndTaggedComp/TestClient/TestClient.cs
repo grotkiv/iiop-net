@@ -92,6 +92,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         [Test]
         public void TestContextAndComponentNoException() {
             try {
+                int contextEntryVal = 4;
+                m_testInterceptorInit.RequestIntercept.ContextEntryBegin = contextEntryVal;
+
                 System.Byte arg = 1;
                 System.Byte result = m_testService.TestIncByte(arg);
                 Assertion.AssertEquals((System.Byte)(arg + 1), result);
@@ -100,6 +103,22 @@ namespace Ch.Elca.Iiop.IntegrationTests {
                 
                 Assertion.AssertEquals("a on in path called (reply)", 
                                        InPathResult.Reply, m_testInterceptorInit.RequestIntercept.InPathResult);
+
+                Assertion.Assert("expected server side: rec. svc. context on in path called", 
+                                 m_interceptorControl.IsReceiveSvcContextCalled());
+
+                Assertion.Assert("expected server side: rec. on in path called", 
+                                 m_interceptorControl.IsReceiveRequestCalled());
+
+                Assertion.AssertEquals("expected server side: send on out path called (reply)", 
+                                       OutPathResult.OutPathResult_Reply, 
+                                       m_interceptorControl.GetOutPathResult());
+
+                Assertion.Assert("service context not present", m_testInterceptorInit.RequestIntercept.HasReceivedContextElement);
+                Assertion.AssertEquals("service context content", contextEntryVal,
+                                       m_testInterceptorInit.RequestIntercept.ContextElement.TestEntry);
+                
+
             } finally {
                 m_testInterceptorInit.RequestIntercept.ClearInvocationHistory();
                 // call is not intercepted on server side
