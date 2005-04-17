@@ -258,11 +258,31 @@ namespace Ch.Elca.Iiop.Interception {
     /// </summary>
 	internal sealed class ORBInitInfoImpl : ORBInitInfo {
 	        
-	    private InterceptorManager m_manager;	    
+	    private InterceptorManager m_manager;
+	    private CodecFactoryImpl m_codecFactory;
 	    
 	    internal ORBInitInfoImpl(InterceptorManager manager) {
 	        m_manager = manager;    
+	        m_codecFactory = new CodecFactoryImpl();
 	    }
+	    
+	    
+        /// <summary><see cref="omg.org.IOP.ORBInitInfo.orb_id"></see></summary>
+        [StringValue()]
+        [WideChar(false)]
+        public string orb_id {
+            get {
+                return "IIOP.NET";
+            }
+        }
+        
+        
+        /// <summary><see cref="omg.org.IOP.ORBInitInfo.codec_factory"></see></summary>
+        public omg.org.IOP.CodecFactory codec_factory {
+            get {
+                return m_codecFactory;
+            }
+        }
 	    
 	    
 	    public void add_client_request_interceptor(ClientRequestInterceptor interceptor) {
@@ -285,6 +305,13 @@ namespace Ch.Elca.Iiop.Interception {
 	        }
 	        m_manager.add_ior_interceptor(interceptor);
 	    }
+        
+        /// <summary>
+        /// <see cref="omg.org.IOP.ORBInitInfo.allocate_slot_id"></see>
+        /// </summary>
+        public int allocate_slot_id() {
+            throw new NotImplementedException();
+        }
 
 	    
 	}
