@@ -632,7 +632,21 @@ namespace omg.org.PortableInterceptor {
     [RepositoryID("IDL:omg.org/PortableInterceptor/OrbInitalizer:1.0")]
     [InterfaceType(IdlTypeInterface.LocalInterface)]        
     public interface ORBInitInfo {
-            
+        
+        
+        /// <summary>the id of the ORB being intalized</summary>
+        [StringValue()]
+        [WideChar(false)]
+        string orb_id {
+            get;
+        }
+        
+        
+        /// <summary>a mean for getting a codec during initalization.</summary>
+        CodecFactory codec_factory {
+            get;
+        }
+        
         [ThrowsIdlException(typeof(omg.org.PortableInterceptor.DuplicateName))]
         void add_client_request_interceptor(ClientRequestInterceptor interceptor);
         
@@ -641,6 +655,15 @@ namespace omg.org.PortableInterceptor {
         
         [ThrowsIdlException(typeof(omg.org.PortableInterceptor.DuplicateName))]
         void add_ior_interceptor(IORInterceptor interceptor);
+        
+        /// <summary>
+        /// allocates a slot on PortableInterceptor::Current
+        /// </summary>
+        int allocate_slot_id();
+        
+        
+        
+        
         
     }
       
