@@ -1748,21 +1748,25 @@ namespace Ch.Elca.Iiop.Cdr {
             StreamPosition streamPos = new StreamPosition(stream); // also include encaps length in global offset, because not in GetPosition() considered
             uint globalOffset = streamPos.GlobalPosition;  // global position of this stream beginning (GetPosition() on this stream doesn't consider length field read -> global offset is just after lenght)
             byte[] data = stream.ReadOpaque((int)encapsLength);
-            Initalize(data, globalOffset);
+            Initalize(data, globalOffset, new GiopVersion(1,2)); // for encapsulation, the GIOP-dependant operation must be compatible with GIOP-1.2, if not specified otherwise
         }
         
         /// <summary>
         /// constructs an encapsulation input stream from the encapsulation data.
         /// </summary>
         /// <param name="encapsulationData"></param>
-        public CdrEncapsulationInputStream(byte[] encapsulationData) : base(new IndirectionStoreIndirKey()) {
-            Initalize(encapsulationData, 0);
+        public CdrEncapsulationInputStream(byte[] encapsulationData) : this(encapsulationData, new GiopVersion(1,2)) {
+             // for encapsulation, the GIOP-dependant operation must be compatible with GIOP-1.2, if not specified otherwise
+        }
+        
+        public CdrEncapsulationInputStream(byte[] encapsulationData, GiopVersion version) : base(new IndirectionStoreIndirKey()) {
+            Initalize(encapsulationData, 0, version);
         }
 
         #endregion IConstructor
         #region IMethods
         
-        private void Initalize(byte[] data, uint globalOffset) {
+        private void Initalize(byte[] data, uint globalOffset, GiopVersion version) {
             m_globalOffset = globalOffset;
             Stream baseStream = new MemoryStream();
             // copy the data into the underlying stream
@@ -1771,7 +1775,7 @@ namespace Ch.Elca.Iiop.Cdr {
             // now set the stream
             SetStream(baseStream);
             byte flags = ReadOctet(); // read the flags out of the encapsulation
-            ConfigStream(flags, new GiopVersion(1,2)); // for encapsulation, the GIOP-dependant operation must be compatible with GIOP-1.2
+            ConfigStream(flags, version); 
             SetMaxLength(((uint)data.Length)-1); // flags are already read --> minus 1
         }
         
@@ -1807,8 +1811,12 @@ namespace Ch.Elca.Iiop.Cdr {
         #region IConstructors
         
         public CdrEncapsulationOutputStream(byte flags) :
-            this(flags, new GiopVersion(1,2), null) { // for Encapsulation, GIOP-Version dep operation must be compatible with GIOP-1.2
+            this(flags, new GiopVersion(1,2), null) { // for Encapsulation, GIOP-Version dep operation must be compatible with GIOP-1.2, if not specified otherwise
         }
+        
+        public CdrEncapsulationOutputStream(byte flags, GiopVersion version) :
+            this(flags, version, null) { 
+        }        
         
         public CdrEncapsulationOutputStream(byte flags, CdrOutputStream targetStream) : 
             this(flags, new GiopVersion(1,2), targetStream) {

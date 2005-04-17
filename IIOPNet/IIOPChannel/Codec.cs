@@ -194,6 +194,9 @@ namespace omg.org.IOP.CodecFactory_package {
 namespace Ch.Elca.Iiop.Interception {
     
     using omg.org.IOP;
+    using Ch.Elca.Iiop.Cdr;
+    using Ch.Elca.Iiop.Marshalling;
+    using Ch.Elca.Iiop.Util;
 
     /// <summary>
     /// implementation of <see cref="omg.org.IOP.CodecFactory"></see>
@@ -201,16 +204,39 @@ namespace Ch.Elca.Iiop.Interception {
     public class CodecFactoryImpl : CodecFactory {
         
         public Codec create_codec (Encoding enc) {
-            throw new NotImplementedException();
+            GiopVersion version = new GiopVersion(enc.major_version, enc.minor_version);
+            if (enc.format == omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal) {
+                Codec impl = new CodecImplEncap(version);
+                return impl;
+            } else {
+                throw new omg.org.IOP.CodecFactory_package.UnknownEncoding();
+            }
         }        
         
     }
     
     
     /// <summary>
-    /// implementation of <see cref="omg.org.IOP.Codec"></see>
+    /// implementation of <see cref="omg.org.IOP.Codec"> for format ENCODING_CDR_ENCAPS.</see>
     /// </summary>
-    public class CodecImpl : Codec {
+    public class CodecImplEncap : Codec {
+        
+        #region IFields
+        
+        private GiopVersion m_version;
+        private MarshallerForType m_marshallerForAnyType;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        public CodecImplEncap(GiopVersion version) {
+            m_version = version;
+            m_marshallerForAnyType = 
+                new MarshallerForType(ReflectionHelper.ObjectType, AttributeExtCollection.EmptyCollection);
+        }
+        
+        #endregion IConstructors
+        #region IMethods
         
         /// <summary>
         /// <see cref="omg.org.IOP.Codec.encode"></see>
@@ -218,7 +244,9 @@ namespace Ch.Elca.Iiop.Interception {
         [ThrowsIdlException(typeof(omg.org.IOP.Codec_package.InvalidTypeForEncoding))]
         [return: IdlSequence(0L)]
         public byte[] encode (object data) {
-            throw new NotImplementedException();
+            CdrEncapsulationOutputStream outputStream = new CdrEncapsulationOutputStream(0, m_version);
+            m_marshallerForAnyType.Marshal(data, outputStream);
+            return outputStream.GetEncapsulationData();
         }
         
         /// <summary>
@@ -226,7 +254,8 @@ namespace Ch.Elca.Iiop.Interception {
         /// </summary>
         [ThrowsIdlException(typeof(omg.org.IOP.Codec_package.FormatMismatch))]
         public object decode ([IdlSequence(0L)] byte[] data) {
-            throw new NotImplementedException();
+            CdrEncapsulationInputStream inputStream = new CdrEncapsulationInputStream(data, m_version);            
+            return m_marshallerForAnyType.Unmarshal(inputStream);
         }
 
         /// <summary>
@@ -235,7 +264,19 @@ namespace Ch.Elca.Iiop.Interception {
         [ThrowsIdlException(typeof(omg.org.IOP.Codec_package.InvalidTypeForEncoding))]
         [return: IdlSequence(0L)]        
         public byte[] encode_value (object data) {
-            throw new NotImplementedException();
+            CdrEncapsulationOutputStream outputStream = new CdrEncapsulationOutputStream(0, m_version);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            if (!(data is Any)) {
+                marshaller.Marshal(data.GetType(), AttributeExtCollection.EmptyCollection,
+                                   data, outputStream);                                   
+            } else {
+                Type marshalAs = ((TypeCodeImpl)((Any)data).Type).GetClsForTypeCode();
+                AttributeExtCollection marshalAsAttrs = 
+                    ((TypeCodeImpl)((Any)data).Type).GetClsAttributesForTypeCode();
+                marshaller.Marshal(marshalAs, marshalAsAttrs, 
+                                   data, outputStream);
+            }
+            return outputStream.GetEncapsulationData();
         }
         
         /// <summary>
@@ -245,9 +286,15 @@ namespace Ch.Elca.Iiop.Interception {
         [ThrowsIdlException(typeof(omg.org.IOP.Codec_package.TypeMismatch))]
         public object decode_value ([IdlSequence(0L)] byte[] data,
                                     omg.org.CORBA.TypeCode tc) {
-            throw new NotImplementedException();
+            CdrEncapsulationInputStream inputStream = new CdrEncapsulationInputStream(data, m_version);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            Type marshalAs = ((TypeCodeImpl)tc).GetClsForTypeCode();
+            AttributeExtCollection marshalAsAttrs = 
+                    ((TypeCodeImpl)tc).GetClsAttributesForTypeCode();            
+            return marshaller.Unmarshal(marshalAs, marshalAsAttrs, inputStream);
         }
 
+        #endregion IMethods
         
     }
      
