@@ -364,6 +364,10 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             return m_taggedComponents.GetComponent(tag);
         }
         
+        public TaggedComponent[] GetTaggedComponents(int tag) {
+            return m_taggedComponents.GetComponents(tag);
+        }
+        
         /// <summary>writes this profile into an encapsulation</summary>
         public abstract void WriteToStream(CdrOutputStream cdrStream);
 
