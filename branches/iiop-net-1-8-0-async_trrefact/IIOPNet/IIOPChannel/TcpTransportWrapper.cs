@@ -37,6 +37,7 @@ using System.Diagnostics;
 using System.Collections;
 using Ch.Elca.Iiop.CorbaObjRef;
 using omg.org.CORBA;
+using omg.org.IOP;
 
 namespace Ch.Elca.Iiop {
 
@@ -379,14 +380,14 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary><see cref="Ch.Elca.Iiop.IServerConnectionListener.StartListening"</summary>
-        public int StartListening(IPAddress bindTo, int listeningPortSuggestion, out ITaggedComponent[] additionalTaggedComponents) {
+        public int StartListening(IPAddress bindTo, int listeningPortSuggestion, out TaggedComponent[] additionalTaggedComponents) {
             if (!m_isInitalized) {
                 throw CreateNotInitalizedException();
             }
             if (m_listenerActive) {
                 throw CreateAlreadyListeningException();
             }
-            additionalTaggedComponents = new ITaggedComponent[0];
+            additionalTaggedComponents = new TaggedComponent[0];
             int resultPort = listeningPortSuggestion;            
             
             m_listener = new TcpListener(bindTo, listeningPortSuggestion);

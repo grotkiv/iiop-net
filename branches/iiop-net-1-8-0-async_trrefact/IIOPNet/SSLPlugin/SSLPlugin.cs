@@ -39,6 +39,7 @@ using Ch.Elca.Iiop.CorbaObjRef;
 using Org.Mentalis.Security.Ssl;
 using Org.Mentalis.Security.Certificates;
 using omg.org.CORBA;
+using omg.org.IOP;
 
 namespace Ch.Elca.Iiop.Security.Ssl {
 
@@ -267,10 +268,10 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         
         /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.CreateTransport(Ior)"/></summary>
         public IClientTransport CreateTransport(Ior target) {
-            ITaggedComponent sslComponent = GetSSLComponent(target);
+            SSLComponentData sslComponent = GetSSLComponent(target);
             IPAddress asIpAddress = ConvertToIpAddress(target.HostName);
-            int port = ((SSLComponentData)sslComponent.ComponentData).GetPort();            
-            SecurityOptions options = CreateClientSecurityOptions((SSLComponentData)sslComponent.ComponentData);
+            int port = sslComponent.GetPort();
+            SecurityOptions options = CreateClientSecurityOptions(sslComponent);
             IClientTransport result;
             if (asIpAddress == null) {
                 result = new SslClientTransport(target.HostName, port, options);
@@ -324,20 +325,35 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         /// </summary>
         public bool CanCreateTranporForIor(Ior target) {
             // check for SSL component
-            return (target.HostName != null) && (GetSSLComponent(target) != null);
+            return (target.HostName != null) && (HasSSLComponent(target));
         }
         
-        private ITaggedComponent GetSSLComponent(Ior ior) {            
+        private bool HasSSLComponent(Ior ior) {
             foreach (IorProfile profile in ior.Profiles) {
                 if (profile is InternetIiopProfile) {
-                    foreach (ITaggedComponent taggedComponent in profile.TaggedComponents) {
-                        if (taggedComponent.Id == TaggedComponentIds.TAG_SSL_SEC_TRANS) {
-                            return taggedComponent;
-                        }
+                    if (profile.TaggedComponents.ContainsTaggedComponent(TAG_SSL_SEC_TRANS.ConstVal)) {
+                        return true;
                     }
                 }
             }
-            return null;
+            return false;
+        }
+        
+        private SSLComponentData GetSSLComponent(Ior ior) {            
+            object result = null;
+            foreach (IorProfile profile in ior.Profiles) {
+                if (profile is InternetIiopProfile) {
+                    result = profile.TaggedComponents.GetComponentData(TAG_SSL_SEC_TRANS.ConstVal, SSLComponentData.ClassType);                    
+                    if (result != null) {
+                        break;
+                    }
+                }
+            }
+            if (result != null) {
+                return (SSLComponentData)result;
+            } else {
+                throw new INTERNAL(734, CompletionStatus.Completed_No);
+            }
         }
         
         /// <summary>
@@ -536,7 +552,7 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         }
         
         /// <summary><see cref="Ch.Elca.Iiop.IServerConnectionListener.StartListening"</summary>
-        public int StartListening(IPAddress bindTo, int listeningPortSuggestion, out ITaggedComponent[] taggedComponents) {
+        public int StartListening(IPAddress bindTo, int listeningPortSuggestion, out TaggedComponent[] taggedComponents) {
             if (!m_isInitalized) {
                 throw CreateNotInitalizedException();
             }
@@ -558,11 +574,11 @@ namespace Ch.Elca.Iiop.Security.Ssl {
                 SSLComponentData sslData = new SSLComponentData(Convert.ToInt16(m_supportedOptions),
                                                                 Convert.ToInt16(m_requiredOptions),
                                                                 (short)resultPort);
-                taggedComponents = new ITaggedComponent[] { new TaggedComponent(TaggedComponentIds.TAG_SSL_SEC_TRANS, 
-                                                                                sslData) };
+                taggedComponents = new TaggedComponent[] { 
+                    TaggedComponent.CreateTaggedComponent(TAG_SSL_SEC_TRANS.ConstVal, sslData) };
                 resultPort = 0; // don't allow unsecured connections -> port is in ssl components
             } else {
-                taggedComponents = new ITaggedComponent[0];
+                taggedComponents = new TaggedComponent[0];
             }
             
             m_listenerActive = true;

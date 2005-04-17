@@ -36,13 +36,19 @@ using Ch.Elca.Iiop.Cdr;
 using Ch.Elca.Iiop.CorbaObjRef;
 using Ch.Elca.Iiop.Idl;
 using omg.org.CORBA;
+using omg.org.IOP;
 
 namespace Ch.Elca.Iiop.Services {
     
     
     [IdlStruct]
-    public struct CodeSetComponentData : ITaggedComponentData {
+    public struct CodeSetComponentData {
         
+        #region SFields
+        
+        public static Type ClassType = typeof(CodeSetComponentData);
+        
+        #endregion SFields        
         #region IFields
         
         public int NativeCharSet;
@@ -95,6 +101,15 @@ namespace Ch.Elca.Iiop.Services {
 
 
         #endregion Constants
+        #region SFields
+        
+        internal readonly static TaggedComponent DEFAULT_CODESET_TAGGED_COMPONENT = 
+            TaggedComponent.CreateTaggedComponent(TAG_CODE_SETS.ConstVal, 
+                                                  new CodeSetComponentData(Services.CodeSetService.DEFAULT_CHAR_SET,
+                                                                           new int[] {Services.CodeSetService.ISO646IEC_SINGLE },
+                                                                           Services.CodeSetService.DEFAULT_WCHAR_SET,
+                                                                           new int[] { Services.CodeSetService.ISO646IEC_MULTI }));
+        #endregion SFields        
         #region IConstructors
         
         private CodeSetService() {
@@ -103,13 +118,16 @@ namespace Ch.Elca.Iiop.Services {
         #endregion IConstructors
         #region SMethods
                 
-        internal static ITaggedComponent FindCodeSetComponent(IorProfile[] profiles) {
+        /// <summary>
+        /// returns the code set component data or null if not found
+        /// </summary>
+        internal static object /* CodeSetComponentData */ FindCodeSetComponent(IorProfile[] profiles) {
             foreach (IorProfile profile in profiles) {
-                IList components = profile.TaggedComponents;
-                foreach (ITaggedComponent taggedComp in components) {
-                    if (taggedComp.Id == TaggedComponentIds.CODESET_COMPONENT_ID) {
-                        return taggedComp;
-                    }
+                TaggedComponentList list = profile.TaggedComponents;
+                object result = 
+                    list.GetComponentData(TAG_CODE_SETS.ConstVal, CodeSetComponentData.ClassType);
+                if (result != null) {
+                    return (CodeSetComponentData)result;
                 }
             }
             return null;
@@ -222,7 +240,7 @@ namespace Ch.Elca.Iiop.Services {
                                                          int charSet, int wcharSet) {
             omg.org.IOP.ServiceContext context = CreateServiceContext(charSet, wcharSet);
             contexts.AddServiceContext(context);
-        }
+        }                
         
         #endregion SMethods
     
