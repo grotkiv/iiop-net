@@ -747,11 +747,27 @@ namespace omg.org.PortableInterceptor {
         /// <summary>
         /// allocates a slot on PortableInterceptor::Current
         /// </summary>
-        int allocate_slot_id();
+        int allocate_slot_id();        
         
+    }
+    
+    [RepositoryID("IDL:omg.org/PortableInterceptor/Current:1.0")]
+    [InterfaceType(IdlTypeInterface.LocalInterface)]    
+    public interface Current : omg.org.CORBA.Current {
         
-        
-        
+        /// <summary>
+        /// A service can get the slot date it set in PICurrent with this method.
+        /// </summary>
+        [ThrowsIdlException(typeof(InvalidSlot))]
+        object get_slot(int id);
+
+        /// <summary>
+        /// A service sets data in a slot via this method. If data already exists, it's overriden.
+        /// If set_slot is called on a slot, which is not allocated, InvalidSlot is raised.
+        /// set_slot must not be called from withing a ORB initalizer.
+        /// </summary>        
+        [ThrowsIdlException(typeof(InvalidSlot))]
+        void set_slot(int id, object data);
         
     }
       
