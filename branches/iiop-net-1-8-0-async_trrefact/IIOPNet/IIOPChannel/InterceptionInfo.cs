@@ -252,6 +252,13 @@ namespace Ch.Elca.Iiop.Interception {
             }
         }
         
+        /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.effective_target"></see></summary>
+        public TaggedProfile effective_profile {
+            get {
+                throw new NotImplementedException();
+            }
+        }        
+        
         /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.received_exception"></see></summary>        
         public object received_exception {
             get {
