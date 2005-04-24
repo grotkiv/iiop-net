@@ -82,6 +82,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         public const string CALLED_METHOD_KEY = "_called_method";
         /// <summary>the key to access the service context for this message (either request or reply context, depending on the message</summary>
         public const string SERVICE_CONTEXT = "_service_context";
+        /// <summary>the key to access the piCurrent request scoped slots for this message</summary>
+        public const string PI_CURRENT_SLOTS = "_piCurrent_slots_";
         /// <summary>the key to access the interception flow instance in this message</summary>
         public const string INTERCEPTION_FLOW = "_interception_flow";
         /// <summary>the key to access the isAsyncMessage property in the message properties.</summary>
@@ -147,6 +149,20 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal static RequestInterceptionFlow GetInterceptionFlow(IMessage msg) {
             return (RequestInterceptionFlow)msg.Properties[SimpleGiopMsg.INTERCEPTION_FLOW];
         }
+        
+        /// <summary>
+        /// helper method to extract the pi current from inside a message
+        /// </summary>
+        internal static PICurrentImpl GetPICurrent(IMessage msg) {
+            return (PICurrentImpl)msg.Properties[SimpleGiopMsg.PI_CURRENT_SLOTS];
+        }
+        
+        /// <summary>
+        /// helper method to set the picurrent inside a message.
+        /// </summary>
+        internal static void SetPICurrent(IMessage msg, PICurrentImpl current) {
+            msg.Properties[SimpleGiopMsg.PI_CURRENT_SLOTS] = current;
+        }                
 
         /// <summary>
         /// helper method, which sets the is_async to true for message
@@ -452,6 +468,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                           clientRequest.MethodToCall, clientRequest.CalledUri, 
                                           clientRequest.RequestId));
             try {
+                clientRequest.SetRequestPICurrentFromThreadScopeCurrent(); // copy from thread scope picurrent before processing request
                 clientRequest.InterceptSendRequest();
                 GiopVersion version = targetIor.Version;
                 ServiceContextList cntxColl = clientRequest.RequestServiceContext;
@@ -584,6 +601,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
 
                 serverRequest.RequestServiceContext = cntxColl;
                 serverRequest.InterceptReceiveRequestServiceContexts();
+                serverRequest.SetThreadScopeCurrentFromPICurrent(); // copy request scope picurrent to thread scope pi-current
                 
                 IDictionary contextElements;
                 serverRequest.ResolveCall(); // determine the .net target method
@@ -684,67 +702,72 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal void SerialiseReply(GiopServerRequest request, CdrOutputStream targetStream, 
                                    GiopVersion version,
                                    GiopConnectionDesc conDesc) {            
-            Trace.WriteLine("serializing response for method: " + request.GetRequestedMethodNameInternal());
-            bool isExceptionReply = request.IsExceptionReply;
-            Exception exceptionToSend = null;            
+            Trace.WriteLine("serializing response for method: " + request.GetRequestedMethodNameInternal());            
             try {
-                // reply interception point
-                if (!request.IsExceptionReply) {
-                    request.InterceptSendReply();
-                } else {                    
-                    exceptionToSend = request.InterceptSendException(request.IdlException);
+                bool isExceptionReply = request.IsExceptionReply;
+                Exception exceptionToSend = null;
+                try {
+                    request.SetRequestPICurrentFromThreadScopeCurrent(); // copy from thread scope picurrent after processing request by servant
+                    // reply interception point
+                    if (!request.IsExceptionReply) {
+                        request.InterceptSendReply();
+                    } else {
+                        exceptionToSend = request.InterceptSendException(request.IdlException);
+                    }
+                } catch (Exception ex) {
+                    // update the reply with the exception from interception layer
+                    isExceptionReply = true;
+                    if (SerialiseAsSystemException(ex)) {
+                        exceptionToSend = ex;
+                    } else {
+                        exceptionToSend = new UNKNOWN(300, CompletionStatus.Completed_MayBe);
+                    }
                 }
-            } catch (Exception ex) {
-                // update the reply with the exception from interception layer
-                isExceptionReply = true;
-                if (SerialiseAsSystemException(ex)) {
-                    exceptionToSend = ex;
-                } else {
-                    exceptionToSend = new UNKNOWN(300, CompletionStatus.Completed_MayBe);
-                }
-            }
-            ServiceContextList cntxColl = request.ResponseServiceContext;
-            SetCodeSet(targetStream, conDesc);
-            
-            if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1
-                SerialiseContext(targetStream, cntxColl); // serialize the context
-            }
-            
-            targetStream.WriteULong(request.RequestId);
-            
-            if (!isExceptionReply) {
-                Trace.WriteLine("sending normal response to client");
-                targetStream.WriteULong(0); // reply status ok
+                ServiceContextList cntxColl = request.ResponseServiceContext;
+                SetCodeSet(targetStream, conDesc);
                 
-                if (!((version.Major == 1) && (version.Minor <= 1))) { // for GIOP 1.2 and later, service context is here
+                if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1
                     SerialiseContext(targetStream, cntxColl); // serialize the context
                 }
-                // serialize a response to a successful request
-                SerialiseResponseOk(targetStream, request, version);
-                Trace.WriteLine("reply body serialised");
-            } else {                
-                Trace.WriteLine("excpetion to send to client: " + exceptionToSend.GetType());
                 
-                if (SerialiseAsSystemException(exceptionToSend)) {
-                    targetStream.WriteULong(2); // system exception
-                } else if (SerialiseAsUserException(exceptionToSend)) {
-                    targetStream.WriteULong(1); // user exception
-                } else {
-                    // should not occur
-                    targetStream.WriteULong(2);
-                    exceptionToSend = new INTERNAL(204, CompletionStatus.Completed_Yes);
-                }
+                targetStream.WriteULong(request.RequestId);
                 
-                if (!((version.Major == 1) && (version.Minor <= 1))) { // for GIOP 1.2 and later, service context is here
-                    SerialiseContext(targetStream, cntxColl); // serialize the context
-                }
-                AlignBodyIfNeeded(targetStream, version);
-                if (SerialiseAsSystemException(exceptionToSend)) {
-                    SerialiseSystemException(targetStream, exceptionToSend);
+                if (!isExceptionReply) {
+                    Trace.WriteLine("sending normal response to client");
+                    targetStream.WriteULong(0); // reply status ok
+                    
+                    if (!((version.Major == 1) && (version.Minor <= 1))) { // for GIOP 1.2 and later, service context is here
+                        SerialiseContext(targetStream, cntxColl); // serialize the context
+                    }
+                    // serialize a response to a successful request
+                    SerialiseResponseOk(targetStream, request, version);
+                    Trace.WriteLine("reply body serialised");
                 } else {
-                    SerialiseUserException(targetStream, (AbstractUserException)exceptionToSend);
+                    Trace.WriteLine("excpetion to send to client: " + exceptionToSend.GetType());
+                    
+                    if (SerialiseAsSystemException(exceptionToSend)) {
+                        targetStream.WriteULong(2); // system exception
+                    } else if (SerialiseAsUserException(exceptionToSend)) {
+                        targetStream.WriteULong(1); // user exception
+                    } else {
+                        // should not occur
+                        targetStream.WriteULong(2);
+                        exceptionToSend = new INTERNAL(204, CompletionStatus.Completed_Yes);
+                    }
+                    
+                    if (!((version.Major == 1) && (version.Minor <= 1))) { // for GIOP 1.2 and later, service context is here
+                        SerialiseContext(targetStream, cntxColl); // serialize the context
+                    }
+                    AlignBodyIfNeeded(targetStream, version);
+                    if (SerialiseAsSystemException(exceptionToSend)) {
+                        SerialiseSystemException(targetStream, exceptionToSend);
+                    } else {
+                        SerialiseUserException(targetStream, (AbstractUserException)exceptionToSend);
+                    }
+                    Trace.WriteLine("exception reply serialised");
                 }
-                Trace.WriteLine("exception reply serialised");
+            } finally {
+                request.ClearThreadScopePICurrent(); // no longer needed, clear afterwards to prevent access to stale data during next requests
             }
         }
 
