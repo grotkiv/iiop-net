@@ -183,8 +183,7 @@ namespace Ch.Elca.Iiop.Interception {
         /// </summary>
         [ThrowsIdlException(typeof(InvalidSlot))]
         public object get_slot(int id) {
-            // TODO
-            throw new NotImplementedException();
+            return m_giopRequest.PICurrent.get_slot(id);
         }
         
         /// <summary>
@@ -392,7 +391,7 @@ namespace Ch.Elca.Iiop.Interception {
         /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.set_slot"></see></summary>
         [ThrowsIdlException(typeof(InvalidSlot))]
         public void set_slot(int id, object data) {
-            throw new System.NotImplementedException();
+            m_serverRequest.PICurrent.set_slot(id, data);
         }
         
         /// <summary><see cref="omg.org.PortableInterceptor.ServerRequestInfo.target_is_a"></see></summary>

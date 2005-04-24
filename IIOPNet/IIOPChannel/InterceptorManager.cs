@@ -32,6 +32,7 @@ using System.Collections;
 using Ch.Elca.Iiop.Idl;
 using omg.org.PortableInterceptor;
 using omg.org.CORBA;
+using omg.org.IOP;
 
 
 namespace Ch.Elca.Iiop.Interception {
@@ -67,11 +68,14 @@ namespace Ch.Elca.Iiop.Interception {
 	    private ServerRequestInterceptor[] m_serverRequestInterceptorsInitalized;
 	    private IORInterceptor[] m_iorInterceptorsInitalized;
 	    
+	    private OrbServices m_orb;
+	    
 	    #endregion IFields
 	    #region IConstructors
 		
-	    internal InterceptorManager() {
+	    internal InterceptorManager(OrbServices orb) {
 	        m_interceptionRegistrationComplete = false;
+	        m_orb = orb;
 		}
 	    
 	    #endregion IConstructors
@@ -144,7 +148,7 @@ namespace Ch.Elca.Iiop.Interception {
 	                    throw new BAD_INV_ORDER(700, CompletionStatus.Completed_MayBe);
 	                }
 	                // call all registered orb initalizers.
-	                ORBInitInfoImpl info = new ORBInitInfoImpl(this);
+	                ORBInitInfoImpl info = new ORBInitInfoImpl(m_orb);
 	                foreach (ORBInitalizer init in orbInitalizers) {
 	                    init.pre_init(info);	                    
 	                }
@@ -259,11 +263,13 @@ namespace Ch.Elca.Iiop.Interception {
 	internal sealed class ORBInitInfoImpl : ORBInitInfo {
 	        
 	    private InterceptorManager m_manager;
-	    private CodecFactoryImpl m_codecFactory;
+	    private CodecFactory m_codecFactory;
+	    private OrbServices m_orb;
 	    
-	    internal ORBInitInfoImpl(InterceptorManager manager) {
-	        m_manager = manager;    
-	        m_codecFactory = new CodecFactoryImpl();
+	    internal ORBInitInfoImpl(OrbServices orb) {
+	        m_orb = orb;
+	        m_manager = orb.InterceptorManager;
+	        m_codecFactory = orb.CodecFactory;
 	    }
 	    
 	    
@@ -310,7 +316,7 @@ namespace Ch.Elca.Iiop.Interception {
         /// <see cref="omg.org.IOP.ORBInitInfo.allocate_slot_id"></see>
         /// </summary>
         public int allocate_slot_id() {
-            throw new NotImplementedException();
+            return m_orb.PICurrentManager.AllocateSlotId();
         }
 
 	    

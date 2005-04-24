@@ -90,6 +90,13 @@ namespace Ch.Elca.Iiop.MessageHandling {
             set;
         }
         
+        /// <summary>
+        /// the request scoped PICurrent.
+        /// </summary>
+        internal abstract PICurrentImpl PICurrent {
+            get;
+        }
+        
         #endregion IProperties
         
     }
@@ -106,7 +113,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         private IMessage m_replyMessage;
         
         private ClientRequestInterceptionFlow m_interceptionFlow;
-        private ClientRequestInfoImpl m_clientRequestInfo;
+        private ClientRequestInfoImpl m_clientRequestInfo;        
         
         #endregion IFields
         #region IConstructors
@@ -280,12 +287,27 @@ namespace Ch.Elca.Iiop.MessageHandling {
             set {
                 m_replyMessage = value;
             }
-        }                        
+        }   
+        
+        /// <summary>
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.PICurrent"/>.
+        /// </summary>
+        internal override PICurrentImpl PICurrent {
+            get {
+                PICurrentImpl piCurrent =
+                    (PICurrentImpl)SimpleGiopMsg.GetPICurrent(m_requestMessage);
+                if (piCurrent == null) {
+                    piCurrent = OrbServices.GetSingleton().PICurrentManager.CreateEmptyRequestScope();
+                    SimpleGiopMsg.SetPICurrent(m_requestMessage, piCurrent);
+                }
+                return piCurrent;
+            }
+        }
                 
         #endregion IProperties
         #region IMethods
-        
-        private void IntializeForInterception() {
+                
+        private void IntializeForInterception() {            
             // flow lifetime is bound to message lifetime, GiopClientRequest is only a wrapper around message and
             // can be recreated during message lifetime.
             m_interceptionFlow =
@@ -303,8 +325,16 @@ namespace Ch.Elca.Iiop.MessageHandling {
             if (m_interceptionFlow.NeedsRequestInfo()) {
                 // optimization: needs not be created, if non-intercepted.
                 m_clientRequestInfo = new ClientRequestInfoImpl(this);
-            }
+            }            
         }
+        
+        /// <summary>
+        /// updates the picurrent from the thread scope PICurrent
+        /// </summary>
+        internal void SetRequestPICurrentFromThreadScopeCurrent() {
+            PICurrentImpl piCurrent = OrbServices.GetSingleton().PICurrentManager.CreateRequestScopeFromThreadScope();
+            SimpleGiopMsg.SetPICurrent(m_requestMessage, piCurrent);
+        }                
                         
         /// <summary>
         /// portable interception point: send request
@@ -372,7 +402,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             m_interceptionFlow.SwitchToRequestDirection();
             m_interceptionFlow.ResetToStart();
         }
-        
+                
         #endregion IMethods
          
     }
@@ -393,7 +423,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         private ReturnMessage m_replyMessage;
         
         private ServerRequestInterceptionFlow m_interceptionFlow;
-        private ServerRequestInfoImpl m_serverRequestInfo;        
+        private ServerRequestInfoImpl m_serverRequestInfo;                
         
         #endregion IFields
         #region IConstructors
@@ -841,6 +871,22 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
         }
         
+        /// <summary>
+        /// see <see cref="Ch.Elca.Iiop.MessageHandling.AbstractGiopRequest.PICurrent"/>.
+        /// </summary>
+        internal override PICurrentImpl PICurrent {
+            get {
+                PICurrentImpl piCurrent = 
+                    (PICurrentImpl)SimpleGiopMsg.GetPICurrent(m_requestMessage);
+                if (piCurrent == null) {
+                    piCurrent = OrbServices.GetSingleton().PICurrentManager.CreateEmptyRequestScope();
+                    SimpleGiopMsg.SetPICurrent(m_requestMessage, piCurrent);
+                }
+                return piCurrent;
+            }
+        }                
+
+        
         #endregion IProperties
         #region IMethods
         
@@ -860,8 +906,31 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
             if (m_interceptionFlow.NeedsRequestInfo()) {
                 m_serverRequestInfo = new ServerRequestInfoImpl(this);
-            }
+            }            
         }
+        
+        /// <summary>
+        /// updates the picurrent from the thread scope PICurrent
+        /// </summary>
+        internal void SetRequestPICurrentFromThreadScopeCurrent() {
+            PICurrentImpl piCurrent = OrbServices.GetSingleton().PICurrentManager.CreateRequestScopeFromThreadScope();
+            SimpleGiopMsg.SetPICurrent(m_requestMessage, piCurrent);
+        }
+        
+        /// <summary>
+        /// updates the thread scope PICurrent from thread scope
+        /// </summary>
+        internal void SetThreadScopeCurrentFromPICurrent() {
+            PICurrentImpl current = PICurrent;
+            OrbServices.GetSingleton().PICurrentManager.SetFromRequestScope(current);
+        }
+
+        /// <summary>
+        /// clears thread scope picurrent.
+        /// </summary>
+        internal void ClearThreadScopePICurrent() {
+            OrbServices.GetSingleton().PICurrentManager.ClearThreadScope();
+        }        
                 
         /// <summary>
         /// returns the idl method name if available or null, if not yet available.

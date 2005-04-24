@@ -38,6 +38,8 @@ using Ch.Elca.Iiop.CorbaObjRef;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.Interception;
 using omg.org.PortableInterceptor;
+using omg.org.IOP;
+
 
 namespace omg.org.CORBA {
 	
@@ -50,6 +52,11 @@ namespace omg.org.CORBA {
 		
 		/// <summary>takes a proxy and returns the IOR / corbaloc / ...</summary>
 		string object_to_string(object obj);
+		
+		/// <summary>allows to access a small set of well defined local objects.></summary>
+		/// <remarks>currently supported are: CodecFactory and PICurrent.</remarks>
+		[ThrowsIdlException(typeof(omg.org.CORBA.ORB_package.InvalidName))]
+		object resolve_initial_references ([StringValue()][WideChar(false)] string identifier);
 		
 		#region Typecode creation operations
 		
@@ -67,7 +74,7 @@ namespace omg.org.CORBA {
 		
 	}
 	
-	public interface IOrbServices : ORB {
+	public interface IOrbServices : ORB {	    	    
 		
 		/// <summary>takes an object an returns the typecode for it</summary>
 		TypeCode create_tc_for(object forObject);
@@ -124,13 +131,17 @@ namespace omg.org.CORBA {
 		
 		private IList m_orbInitalizers; 
 		private InterceptorManager m_interceptorManager;
+		private CodecFactory m_codecFactory;
+		private Ch.Elca.Iiop.Interception.PICurrentManager m_piCurrentManager;
 		
 		#endregion IFields
 		#region IConstructors
 		
 		private OrbServices() {			
 		    m_orbInitalizers = new ArrayList();
-		    m_interceptorManager = new InterceptorManager();
+		    m_interceptorManager = new InterceptorManager(this);
+		    m_codecFactory = new CodecFactoryImpl();
+		    m_piCurrentManager = PICurrentManager.Instance;
 		}
 		
 		#endregion IConstructors
@@ -149,6 +160,33 @@ namespace omg.org.CORBA {
 		internal InterceptorManager InterceptorManager {
 		    get {
 		        return m_interceptorManager;
+		    }
+		}
+		
+		/// <summary>
+		/// returns the instance of the codec factory.
+		/// </summary>
+		internal CodecFactory CodecFactory {
+		    get {
+		        return m_codecFactory;
+		    }
+		}
+		
+		/// <summary>
+		/// returns the thread-scoped instance of picurrent.
+		/// </summary>
+		internal Ch.Elca.Iiop.Interception.PICurrentImpl PICurrent {
+		    get {
+		        return m_piCurrentManager.GetThreadScopedCurrent();
+		    }
+		}
+		
+		/// <summary>
+		/// returns the manager responsible for PICurrents.
+		/// </summary>
+		internal Ch.Elca.Iiop.Interception.PICurrentManager PICurrentManager {
+		    get {
+		        return m_piCurrentManager;
 		    }
 		}
 		
@@ -205,6 +243,19 @@ namespace omg.org.CORBA {
                 return IiopUrlUtil.CreateIorForObjectFromThisDomain(mbr).ToString();
             }
 		}
+		
+		/// <summary>
+		/// <see cref="omg.org.CORBA.ORB.resolve_initial_references"/>
+		/// </summary>
+		public object resolve_initial_references ([StringValue()][WideChar(false)] string identifier) {
+		    if (identifier == "CodecFactory") {
+		        return CodecFactory;
+		    } else if (identifier == "PICurrent") {
+		        return PICurrent;
+		    } else {
+		        throw new omg.org.CORBA.ORB_package.InvalidName();
+		    }
+		}		
 		
 		#region Typecode creation operations
 		
@@ -319,6 +370,23 @@ namespace omg.org.CORBA {
 	}
 	
 	
+}
+
+namespace omg.org.CORBA.ORB_package {
+    
+    [RepositoryIDAttribute("IDL:omg.org/CORBA/ORB/InvalidName:1.0")]
+    [Serializable]
+    public class InvalidName : AbstractUserException {
+        
+        #region IConstructors
+
+        /// <summary>constructor needed for deserialisation</summary>
+        public InvalidName() { }
+
+        #endregion IConstructors
+
+    }    
+    
 }
 
 
