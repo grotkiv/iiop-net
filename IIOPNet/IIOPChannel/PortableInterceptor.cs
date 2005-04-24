@@ -538,10 +538,10 @@ namespace omg.org.PortableInterceptor {
             get;
         }
         
-        // TODO: missing properties
-        // IOP:TaggedProfile effective_profile {
-        //     get;
-        // }
+        /// <summary>the profile, which will be used to send the request.</summary>
+        TaggedProfile effective_profile {
+             get;
+        }
         
         /// <summary>the exception to be returned to the client.</summary>
         object received_exception {
