@@ -45,7 +45,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
         public TestService(int slotId) {
             m_slotId = slotId;
-        }
+        }        
 
         public System.Int32 TestAddToContextData(System.Int32 arg) {
             ORB orb = OrbServices.GetSingleton();
@@ -55,6 +55,21 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             int result = contextData + arg;
             current.set_slot(m_slotId, result);
             return result;
+        }
+
+        public System.Int32 TestReceiveReqNotChangeThreadScope(System.Int32 arg) {
+            return TestAddToContextData(arg);
+        }
+
+        public System.Int32 TestReceiveReqChangeThreadScope(System.Int32 arg) {
+            return TestAddToContextData(arg);
+        }
+
+        public bool NoValueInScope() {
+            ORB orb = OrbServices.GetSingleton();
+            omg.org.PortableInterceptor.Current current = 
+                (omg.org.PortableInterceptor.Current)orb.resolve_initial_references("PICurrent");
+            return (current.get_slot(m_slotId) == null);
         }
 
         public override object InitializeLifetimeService() {

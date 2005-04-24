@@ -87,7 +87,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
         
         [Test]
-        public void TestContextNoException() {
+        public void TestSlotModifyInClientRecContextAndServer() {
             try {
                 int slotId = m_testInterceptorInit.RequestIntercept.SlotId;
                 ORB orb = OrbServices.GetSingleton();
@@ -98,11 +98,96 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
                 System.Int32 arg = 1;
                 System.Int32 result = m_testService.TestAddToContextData(arg);
-                Assertion.AssertEquals((System.Byte)(arg + contextEntryVal), result);
+                Assertion.AssertEquals(arg + contextEntryVal, result);
 
                 Assertion.Assert("service context not present", m_testInterceptorInit.RequestIntercept.HasReceivedContextElement);
                 Assertion.AssertEquals("service context content", arg + contextEntryVal,
                                        m_testInterceptorInit.RequestIntercept.ContextElement.TestEntry);              
+
+                current = 
+                    (omg.org.PortableInterceptor.Current)orb.resolve_initial_references("PICurrent");
+                Assertion.AssertEquals("slot was modified", contextEntryVal, current.get_slot(slotId));      
+
+
+            } finally {
+                m_testInterceptorInit.RequestIntercept.ClearInvocationHistory();
+            }            
+        }
+
+        [Test]
+        public void TestSlotModifyInClientRecContextReceiveRCSAndServer() {
+            // receive request modifies the request scope slots
+            try {
+                int slotId = m_testInterceptorInit.RequestIntercept.SlotId;
+                ORB orb = OrbServices.GetSingleton();
+                omg.org.PortableInterceptor.Current current = 
+                    (omg.org.PortableInterceptor.Current)orb.resolve_initial_references("PICurrent");
+                int contextEntryVal = 4;
+                current.set_slot(slotId, contextEntryVal);
+
+                System.Int32 arg = 1;
+                System.Int32 result = m_testService.TestReceiveReqNotChangeThreadScope(arg);
+                Assertion.AssertEquals(arg + contextEntryVal, result);
+
+                Assertion.Assert("service context not present", m_testInterceptorInit.RequestIntercept.HasReceivedContextElement);
+                Assertion.AssertEquals("service context content", arg + contextEntryVal,
+                                       m_testInterceptorInit.RequestIntercept.ContextElement.TestEntry);              
+
+                current = 
+                    (omg.org.PortableInterceptor.Current)orb.resolve_initial_references("PICurrent");
+                Assertion.AssertEquals("slot was modified", contextEntryVal, current.get_slot(slotId));      
+
+            } finally {
+                m_testInterceptorInit.RequestIntercept.ClearInvocationHistory();
+            }            
+        }
+
+        [Test]
+        public void TestSlotModifyInClientRecContextReceiveTCSAndServer() {
+            // receive request modifies the thread scope slots
+            try {
+                int slotId = m_testInterceptorInit.RequestIntercept.SlotId;
+                ORB orb = OrbServices.GetSingleton();
+                omg.org.PortableInterceptor.Current current = 
+                    (omg.org.PortableInterceptor.Current)orb.resolve_initial_references("PICurrent");
+                int contextEntryVal = 4;
+                current.set_slot(slotId, contextEntryVal);
+
+                System.Int32 arg = 1;
+                System.Int32 result = m_testService.TestReceiveReqChangeThreadScope(arg);
+                Assertion.AssertEquals(arg + (3*contextEntryVal), result);
+
+                Assertion.Assert("service context not present", m_testInterceptorInit.RequestIntercept.HasReceivedContextElement);
+                Assertion.AssertEquals("service context content", arg + (3*contextEntryVal),
+                                       m_testInterceptorInit.RequestIntercept.ContextElement.TestEntry);        
+
+                current = 
+                    (omg.org.PortableInterceptor.Current)orb.resolve_initial_references("PICurrent");
+                Assertion.AssertEquals("slot was modified", contextEntryVal, current.get_slot(slotId));      
+
+            } finally {
+                m_testInterceptorInit.RequestIntercept.ClearInvocationHistory();
+            }            
+        }
+
+        [Test]
+        public void TestNoSlotSet() {
+            // receive request modifies the thread scope slots
+            try {
+                int slotId = m_testInterceptorInit.RequestIntercept.SlotId;
+                ORB orb = OrbServices.GetSingleton();
+                omg.org.PortableInterceptor.Current current = 
+                    (omg.org.PortableInterceptor.Current)orb.resolve_initial_references("PICurrent");
+                current.set_slot(slotId, null);
+
+                System.Boolean result = m_testService.NoValueInScope();
+                Assertion.Assert("value in slot", result);
+
+                Assertion.Assert("service context present", !m_testInterceptorInit.RequestIntercept.HasReceivedContextElement);
+
+                current = 
+                    (omg.org.PortableInterceptor.Current)orb.resolve_initial_references("PICurrent");
+                Assertion.AssertNull("slot was set", current.get_slot(slotId));
 
             } finally {
                 m_testInterceptorInit.RequestIntercept.ClearInvocationHistory();

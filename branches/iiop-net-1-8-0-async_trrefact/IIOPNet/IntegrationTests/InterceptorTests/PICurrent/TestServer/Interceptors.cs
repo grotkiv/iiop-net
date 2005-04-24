@@ -82,20 +82,33 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         public void receive_request_service_contexts(ServerRequestInfo ri) {
-            ServiceContext context = ri.get_request_service_context(1000);
-            TestServiceContext contextReceived = (TestServiceContext)m_codec.decode(context.context_data);
-            ri.set_slot(m_slotId, contextReceived.TestEntry);
+            if (ri.operation != "NoValueInScope") {
+                ServiceContext context = ri.get_request_service_context(1000);
+                TestServiceContext contextReceived = (TestServiceContext)m_codec.decode(context.context_data);
+                ri.set_slot(m_slotId, contextReceived.TestEntry);
+            }
         }
                 
         public void receive_request(ServerRequestInfo ri) {
+            // modify request scope after copy to the thread scope -> must not be propagated to the thread scope.
+            if (ri.operation == "TestReceiveReqNotChangeThreadScope") {
+                ri.set_slot(m_slotId, 2 * (int)ri.get_slot(m_slotId));
+            } else if (ri.operation == "TestReceiveReqChangeThreadScope") {
+                ORB orb = OrbServices.GetSingleton();
+                omg.org.PortableInterceptor.Current current = 
+                    (omg.org.PortableInterceptor.Current)orb.resolve_initial_references("PICurrent");
+                current.set_slot(m_slotId, 3 * (int)current.get_slot(m_slotId));
+            }
         }
         
         public void send_reply(ServerRequestInfo ri) {
-            int entryResult = (int)ri.get_slot(m_slotId);
-            TestServiceContext resultContextEntry = 
-                new TestServiceContext(entryResult);
-            ServiceContext context = new ServiceContext(1000, m_codec.encode(resultContextEntry));
-            ri.add_reply_service_context(context, true);
+            if (ri.operation != "NoValueInScope") {
+                int entryResult = (int)ri.get_slot(m_slotId);
+                TestServiceContext resultContextEntry = 
+                    new TestServiceContext(entryResult);
+                ServiceContext context = new ServiceContext(1000, m_codec.encode(resultContextEntry));
+                ri.add_reply_service_context(context, true);
+            }
         }
         
         public void send_exception(ServerRequestInfo ri) {

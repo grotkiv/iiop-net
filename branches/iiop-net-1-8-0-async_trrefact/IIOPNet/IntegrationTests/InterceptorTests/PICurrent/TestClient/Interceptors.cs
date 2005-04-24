@@ -95,12 +95,14 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }        
 
         public void send_request(ClientRequestInfo ri) {            
-            int testEntryBegin = (int)ri.get_slot(m_slotId);
-            TestServiceContext contextEntry = new TestServiceContext();
-            contextEntry.TestEntry = testEntryBegin;
-            ServiceContext context = new ServiceContext(1000,
+            if (ri.operation != "NoValueInScope") {
+                int testEntryBegin = (int)ri.get_slot(m_slotId);
+                TestServiceContext contextEntry = new TestServiceContext();
+                contextEntry.TestEntry = testEntryBegin;
+                ServiceContext context = new ServiceContext(1000,
                                                         m_codec.encode(contextEntry));
-            ri.add_request_service_context(context, true);
+                ri.add_request_service_context(context, true);
+            }
         }
 
         public void receive_reply(ClientRequestInfo ri) {
