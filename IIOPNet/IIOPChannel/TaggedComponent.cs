@@ -88,7 +88,7 @@ namespace omg.org.IOP {
         
     }
             
-    
+    [RepositoryID("IDL:omg.org/IOP/TaggedComponent:1.0")]
     [IdlStruct]
     public struct TaggedComponent {
     
