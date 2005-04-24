@@ -240,6 +240,15 @@ namespace omg.org.PortableInterceptor {
         }
         
         #endregion IConstructors
+        #region IProperties
+        
+        public MarshalByRefObject ForwardTo {
+            get {
+                return m_forward;
+            }
+        }
+        
+        #endregion IProperties
     }
     
     
