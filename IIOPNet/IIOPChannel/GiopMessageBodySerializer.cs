@@ -88,6 +88,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         public const string INTERCEPTION_FLOW = "_interception_flow";
         /// <summary>the key to access the isAsyncMessage property in the message properties.</summary>
         public const string IS_ASYNC_REQUEST = "_is_async_request";
+        /// <summary>the key to access the selected profile for connection on client side.</summary>
+        public const string TARGET_PROFILE_KEY = "_target_profile_key";
         /// <summary>the key used to access the object key in the message properties (only server side)</summary>
         public const string REQUESTED_OBJECT_KEY = "__ObjectKey";        
         /// <summary>the key used to access the uri-property in messages</summary>         
@@ -318,14 +320,14 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>
         /// perform code set establishment on the client side
         /// </summary>
-        protected void PerformCodeSetEstablishmentClient(Ior targetIor,
+        protected void PerformCodeSetEstablishmentClient(IIorProfile targetProfile,
                                                          GiopConnectionDesc conDesc,
                                                          ServiceContextList cntxColl) {
             
-            if (targetIor.Version.IsAfterGiop1_0()) {
+            if (targetProfile.Version.IsAfterGiop1_0()) {
 
                 if (!conDesc.IsCodeSetNegotiated()) {                               
-                    object codeSetComponent = CodeSetService.FindCodeSetComponent(targetIor.Profiles);
+                    object codeSetComponent = CodeSetService.FindCodeSetComponent(targetProfile);
                     if (codeSetComponent != null) {
                         int charSet = CodeSetService.ChooseCharSet((CodeSetComponentData)codeSetComponent);
                         int wcharSet = CodeSetService.ChooseWCharSet((CodeSetComponentData)codeSetComponent);
@@ -463,17 +465,17 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <param name="conDesc">the connection used for this request</param>  
         internal void SerialiseRequest(GiopClientRequest clientRequest,
                                        CdrOutputStream targetStream, 
-                                       Ior targetIor, GiopConnectionDesc conDesc) {
+                                       IIorProfile targetProfile, GiopConnectionDesc conDesc) {
             Trace.WriteLine(String.Format("serializing request for method {0}; uri {1}; id {2}", 
                                           clientRequest.MethodToCall, clientRequest.CalledUri, 
                                           clientRequest.RequestId));
             try {
                 clientRequest.SetRequestPICurrentFromThreadScopeCurrent(); // copy from thread scope picurrent before processing request
                 clientRequest.InterceptSendRequest();
-                GiopVersion version = targetIor.Version;
+                GiopVersion version = targetProfile.Version;
                 ServiceContextList cntxColl = clientRequest.RequestServiceContext;
                 // set code-set for the stream
-                PerformCodeSetEstablishmentClient(targetIor, conDesc, cntxColl);
+                PerformCodeSetEstablishmentClient(targetProfile, conDesc, cntxColl);
                 SetCodeSet(targetStream, conDesc);
                 
                 if (version.IsBeforeGiop1_2()) { // for GIOP 1.0 / 1.1
@@ -495,7 +497,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 targetStream.WriteOctet(responseFlags);
                 
                 targetStream.WritePadding(3); // reserved bytes
-                WriteTarget(targetStream, targetIor.ObjectKey, version); // write the target-info
+                WriteTarget(targetStream, targetProfile.ObjectKey, version); // write the target-info
                 targetStream.WriteString(clientRequest.RequestMethodName); // write the method name
                 
                 if (version.IsBeforeGiop1_2()) { // GIOP 1.0 / 1.1

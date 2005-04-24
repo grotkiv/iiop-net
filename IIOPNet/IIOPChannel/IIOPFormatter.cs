@@ -130,7 +130,7 @@ namespace Ch.Elca.Iiop {
         #region IMethods
         
         /// <summary>serialises the .NET msg to a GIOP-message</summary>
-        private void SerialiseRequest(IMessage msg, Ior target, GiopConnectionDesc conDesc,
+        private void SerialiseRequest(IMessage msg, IIorProfile target, GiopConnectionDesc conDesc,
                                       uint reqId,
                                       out ITransportHeaders headers, out Stream stream) {
             headers = new TransportHeaders();
@@ -167,8 +167,19 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>allocates a connection and adds 
         /// the connectionDesc to the message</summary>
-        private GiopClientConnectionDesc AllocateConnection(IMessage msg, Ior target) {
-            return m_conManager.AllocateConnectionFor(msg, target);
+        private GiopClientConnectionDesc AllocateConnection(IMessage msg, Ior target, out IIorProfile selectedProfile) {
+            for (int i = 0; i < target.Profiles.Length; i++) {
+                if (m_conManager.CanConnectWithProfile(target.Profiles[i])) {
+                    selectedProfile = target.Profiles[i];
+                    try {
+                        return m_conManager.AllocateConnectionFor(msg, selectedProfile);
+                    } catch (Exception ex) {
+                        Trace.WriteLine("exception while trying to connect to target: " + ex);
+                        continue; // try next profile
+                    }
+                }
+            }
+            throw new COMM_FAILURE(4000, CompletionStatus.Completed_No); // can't connect to ior.            
         }
         
         private Ior DetermineTarget(IMessage msg) {
@@ -195,14 +206,15 @@ namespace Ch.Elca.Iiop {
         public IMessage SyncProcessMessage(IMessage msg) {
             // allocate (reserve) connection
             Ior target = DetermineTarget(msg);
-            GiopClientConnectionDesc conDesc = AllocateConnection(msg, target);
+            IIorProfile selectedProfile;
+            GiopClientConnectionDesc conDesc = AllocateConnection(msg, target, out selectedProfile);
             uint reqId = GetRequestNumberFor(msg, conDesc);
             // serialise
             IMessage result;
             try {
                 ITransportHeaders requestHeaders;
                 Stream requestStream;
-                SerialiseRequest(msg, target, conDesc, reqId,
+                SerialiseRequest(msg, selectedProfile, conDesc, reqId,
                                  out requestHeaders, out requestStream);
 
                 // pass the serialised GIOP-request to the first stream handling sink
@@ -224,13 +236,14 @@ namespace Ch.Elca.Iiop {
         public IMessageCtrl AsyncProcessMessage(IMessage msg, IMessageSink replySink) {
             // allocate (reserve) connection
             Ior target = DetermineTarget(msg);
-            GiopClientConnectionDesc conDesc = AllocateConnection(msg, target);
+            IIorProfile selectedProfile;
+            GiopClientConnectionDesc conDesc = AllocateConnection(msg, target, out selectedProfile);
             uint reqId = GetRequestNumberFor(msg, conDesc);                        
             try {
                 SimpleGiopMsg.SetMessageAsyncRequest(msg); // mark message as async, needed for portable interceptors
                 ITransportHeaders requestHeaders;
                 Stream requestStream;
-                SerialiseRequest(msg, target, conDesc, reqId,
+                SerialiseRequest(msg, selectedProfile, conDesc, reqId,
                                  out requestHeaders, out requestStream);
                 // pass the serialised GIOP-request to the first stream handling sink
                 // this sink is the last sink in the message handling sink chain, therefore the reply sink chain of all the previous message handling

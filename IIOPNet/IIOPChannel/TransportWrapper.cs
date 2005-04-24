@@ -122,14 +122,17 @@ namespace Ch.Elca.Iiop {
     public interface IClientTransportFactory {
         
         /// <summary>creates a client transport to the target</summary>
-        IClientTransport CreateTransport(Ior target);
+        IClientTransport CreateTransport(IIorProfile target);
         
         /// <summary>creates a key identifying an endpoint; if two keys for two IORs are equal, 
         /// then the transport can be used to connect to both.</summary>
-        string GetEndpointKey(Ior target);
+        string GetEndpointKey(IIorProfile target);
         
         /// <summary>returns true, if this transport factory can create a transport for the given IOR, otherwise false</summary>
         bool CanCreateTranporForIor(Ior target);
+        
+        /// <summary>returns true, if this transport factory can connect with this profile, otherwise false.</summary>
+        bool CanUseProfile(IIorProfile profile);
         
         /// <summary>
         /// extract options, which are specific to the transport factory

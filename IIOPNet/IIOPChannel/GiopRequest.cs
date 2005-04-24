@@ -200,6 +200,16 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
         
         /// <summary>
+        /// the profile selected for the connection.
+        /// </summary>
+        internal Ch.Elca.Iiop.CorbaObjRef.IorProfile SelectedProfile {
+            get {
+                return (Ch.Elca.Iiop.CorbaObjRef.IorProfile)
+                    m_requestMessage.Properties[SimpleGiopMsg.TARGET_PROFILE_KEY];
+            }
+        }
+        
+        /// <summary>
         /// the MethodInfo of the request target method
         /// </summary>
         internal MethodInfo MethodToCall {
