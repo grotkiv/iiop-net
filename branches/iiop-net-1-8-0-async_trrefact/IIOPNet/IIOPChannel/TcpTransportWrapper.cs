@@ -78,12 +78,12 @@ namespace Ch.Elca.Iiop {
         /// <summary><see cref="Ch.Elca.Iiop.ITranport.CloseConnection/></summary>
         public void CloseConnection() {
             try {
-                m_stream.Close(); // close the stream and the socket.
-            } catch (Exception) { }
-            try {
                 m_socket.Close();
             } catch (Exception) {}
             m_socket = null;
+            try {
+                m_stream.Close(); // close the stream and the socket.
+            } catch (Exception) { }
         }
         
         public IAsyncResult BeginRead(byte[] buffer, int offset, int size, AsyncCallback callback, object state) {
