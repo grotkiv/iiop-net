@@ -121,15 +121,26 @@ namespace Ch.Elca.Iiop.Services {
         /// <summary>
         /// returns the code set component data or null if not found
         /// </summary>
-        internal static object /* CodeSetComponentData */ FindCodeSetComponent(IorProfile[] profiles) {
-            foreach (IorProfile profile in profiles) {
-                TaggedComponentList list = profile.TaggedComponents;
-                object result = 
-                    list.GetComponentData(TAG_CODE_SETS.ConstVal, CodeSetComponentData.ClassType);
+        internal static object /* CodeSetComponentData */ FindCodeSetComponent(IIorProfile[] profiles) {
+            foreach (IorProfile profile in profiles) {                
+                object result = FindCodeSetComponent(profile);
                 if (result != null) {
                     return (CodeSetComponentData)result;
                 }
             }
+            return null;
+        }        
+        
+        /// <summary>
+        /// returns the code set component data or null if not found
+        /// </summary>
+        internal static object /* CodeSetComponentData */ FindCodeSetComponent(IIorProfile profile) {
+            TaggedComponentList list = profile.TaggedComponents;
+            object result = 
+                list.GetComponentData(TAG_CODE_SETS.ConstVal, CodeSetComponentData.ClassType);
+            if (result != null) {
+                return (CodeSetComponentData)result;
+            }            
             return null;
         }        
 

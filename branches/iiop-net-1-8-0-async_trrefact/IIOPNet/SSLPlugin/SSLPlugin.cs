@@ -266,15 +266,23 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         #endregion IFields        
         
         
-        /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.CreateTransport(Ior)"/></summary>
-        public IClientTransport CreateTransport(Ior target) {
-            SSLComponentData sslComponent = GetSSLComponent(target);
-            IPAddress asIpAddress = ConvertToIpAddress(target.HostName);
+        /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.CreateTransport(IIorProfile)"/></summary>
+        public IClientTransport CreateTransport(IIorProfile profile) {
+            if (profile.ProfileId != TAG_INTERNET_IOP.ConstVal) {
+                throw new INTERNAL(734, CompletionStatus.Completed_No);
+            }
+            object sslComponentDataObject = GetSSLComponent(profile);            
+            if (sslComponentDataObject == null) {
+                throw new INTERNAL(734, CompletionStatus.Completed_No);
+            }
+            SSLComponentData sslComponent = (SSLComponentData)sslComponentDataObject;
+            IInternetIiopProfile targetProfile = (IInternetIiopProfile)profile;
+            IPAddress asIpAddress = ConvertToIpAddress(targetProfile.HostName);
             int port = sslComponent.GetPort();
             SecurityOptions options = CreateClientSecurityOptions(sslComponent);
             IClientTransport result;
             if (asIpAddress == null) {
-                result = new SslClientTransport(target.HostName, port, options);
+                result = new SslClientTransport(targetProfile.HostName, port, options);
             } else {
                 result = new SslClientTransport(asIpAddress, port, options);
             }
@@ -321,19 +329,34 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         }
         
         /// <summary>
-        /// <see cref="Ch.Elca.Iiop.IClientTransportFactory.CanCreateTransportForIor"/>op.IClientTransportFactory.CanCreateTransportForIor"/>
+        /// <see cref="Ch.Elca.Iiop.IClientTransportFactory.CanCreateTransportForIor"/>
         /// </summary>
         public bool CanCreateTranporForIor(Ior target) {
             // check for SSL component
-            return (target.HostName != null) && (HasSSLComponent(target));
+            for (int i = 0; i < target.Profiles.Length; i++) {
+                if (CanUseProfile(target.Profiles[i])) {
+                    return true;
+                }
+            }
+            return false;
         }
         
-        private bool HasSSLComponent(Ior ior) {
-            foreach (IorProfile profile in ior.Profiles) {
-                if (profile is InternetIiopProfile) {
-                    if (profile.TaggedComponents.ContainsTaggedComponent(TAG_SSL_SEC_TRANS.ConstVal)) {
-                        return true;
-                    }
+        /// <summary>
+        /// <see cref="Ch.Elca.Iiop.IClientTransportFactory.CanUseProfile"/>
+        /// </summary>
+        public bool CanUseProfile(IIorProfile profile) {
+            if (profile.ProfileId == TAG_INTERNET_IOP.ConstVal) {
+                IInternetIiopProfile iiopProf = (IInternetIiopProfile)profile;
+                return ((iiopProf.HostName != null) && HasSSLComponent(profile));
+            } else {
+                return false;
+            }
+        }
+        
+        private bool HasSSLComponent(IIorProfile profile) {            
+            if (profile.ProfileId == TAG_INTERNET_IOP.ConstVal) {
+                if (profile.TaggedComponents.ContainsTaggedComponent(TAG_SSL_SEC_TRANS.ConstVal)) {
+                    return true;
                 }
             }
             return false;
@@ -341,12 +364,10 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         
         private SSLComponentData GetSSLComponent(Ior ior) {            
             object result = null;
-            foreach (IorProfile profile in ior.Profiles) {
-                if (profile is InternetIiopProfile) {
-                    result = profile.TaggedComponents.GetComponentData(TAG_SSL_SEC_TRANS.ConstVal, SSLComponentData.ClassType);                    
-                    if (result != null) {
-                        break;
-                    }
+            for (int i = 0; i < ior.Profiles.Length; i++) {
+                result = GetSSLComponent(ior.Profiles[i]);                    
+                if (result != null) {
+                    break;
                 }
             }
             if (result != null) {
@@ -354,6 +375,14 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             } else {
                 throw new INTERNAL(734, CompletionStatus.Completed_No);
             }
+        }
+        
+        private object GetSSLComponent(IIorProfile profile) {
+            if (profile.ProfileId == TAG_INTERNET_IOP.ConstVal) {
+                return profile.TaggedComponents.GetComponentData(TAG_SSL_SEC_TRANS.ConstVal, SSLComponentData.ClassType);
+            } else {
+                return null;
+            }            
         }
         
         /// <summary>
@@ -369,9 +398,15 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             }            
         }
         
-        /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.GetEndpointKey(Ior)"/></summary>
-        public string GetEndpointKey(Ior target) {
-            return "iiop-ssl://"+target.HostName+":"+target.Port;
+        /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.GetEndpointKey(IIorProfile)"/></summary>
+        public string GetEndpointKey(IIorProfile target) {            
+            if (target.ProfileId ==  TAG_INTERNET_IOP.ConstVal) {
+                object sslComponent = GetSSLComponent(target);                
+                IInternetIiopProfile prof = (IInternetIiopProfile)target;
+                return "iiop-ssl://"+prof.HostName+":"+((SSLComponentData)sslComponent).Port;
+            } else {
+                return String.Empty;
+            }                        
         }
         
         /// <summary><see cref="Ch.Elca.Iiop.IServerTransportFactory.CreateConnectionListener"/></summary>

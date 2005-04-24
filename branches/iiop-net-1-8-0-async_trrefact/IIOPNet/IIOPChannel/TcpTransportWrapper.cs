@@ -251,26 +251,50 @@ namespace Ch.Elca.Iiop {
         #endregion IFields
         #region IMethods
         
-        /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.CreateTransport(Ior)"/></summary>
-        public IClientTransport CreateTransport(Ior target) {
-            IPAddress asIpAddress = ConvertToIpAddress(target.HostName);
-            IClientTransport result;
-            if (asIpAddress == null) {
-                result = new TcpClientTransport(target.HostName, target.Port);
+        /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.CreateTransport(IIorProfile)"/></summary>
+        public IClientTransport CreateTransport(IIorProfile targetProfile) {
+            if (targetProfile.ProfileId == TAG_INTERNET_IOP.ConstVal) {
+                IInternetIiopProfile iiopProf = (IInternetIiopProfile)targetProfile;
+                IPAddress asIpAddress = ConvertToIpAddress(iiopProf.HostName);
+                IClientTransport result;
+                if (asIpAddress == null) {
+                    result = new TcpClientTransport(iiopProf.HostName, iiopProf.Port);
+                } else {
+                    result = new TcpClientTransport(asIpAddress, iiopProf.Port);
+                }
+                result.ReceiveTimeOut = m_receiveTimeOut;
+                result.SendTimeOut = m_sendTimeOut;
+                return result;            
             } else {
-                result = new TcpClientTransport(asIpAddress, target.Port);
+                throw new INTERNAL(3001, CompletionStatus.Completed_No);
             }
-            result.ReceiveTimeOut = m_receiveTimeOut;
-            result.SendTimeOut = m_sendTimeOut;
-            return result;
         }
         
         /// <summary>
-        /// <see cref="Ch.Elca.Iiop.IClientTransportFactory.CanCreateTransportForIor"/>op.IClientTransportFactory.CanCreateTransportForIor"/>
+        /// <see cref="Ch.Elca.Iiop.IClientTransportFactory.CanCreateTransportForIor"/>
         /// </summary>
         public bool CanCreateTranporForIor(Ior target) {
-            return (target.HostName != null) && (target.Port > 0);
+            for (int i = 0; i < target.Profiles.Length; i++) {
+                if (CanUseProfile(target.Profiles[i])) {
+                    return true;
+                }
+            }
+            return false;            
         }
+        
+        /// <summary>
+        /// <see cref="Ch.Elca.Iiop.IClientTransportFactory.CanUseProfile"/>
+        /// </summary>        
+        public bool CanUseProfile(IIorProfile profile) {
+            if (profile.ProfileId == TAG_INTERNET_IOP.ConstVal) {
+                IInternetIiopProfile iiopProf = (IInternetIiopProfile)profile;
+                if ((iiopProf.HostName != null) && (iiopProf.Port > 0)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         
         /// <summary>
         /// returns the IPAddress if hostName is a valid ipAdress, otherwise returns null.
@@ -286,8 +310,13 @@ namespace Ch.Elca.Iiop {
         }        
         
         /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.GetEndpointKey(Ior)"/></summary>
-        public string GetEndpointKey(Ior target) {
-            return "iiop://"+target.HostName+":"+target.Port;
+        public string GetEndpointKey(IIorProfile target) {            
+            if (target.ProfileId ==  TAG_INTERNET_IOP.ConstVal) {
+                IInternetIiopProfile prof = (IInternetIiopProfile)target;
+                return "iiop://"+prof.HostName+":"+prof.Port;
+            } else {
+                return String.Empty;
+            }
         }
         
         /// <summary><see cref="Ch.Elca.Iiop.IServerTransportFactory.CreateConnectionListener"/></summary>

@@ -255,7 +255,8 @@ namespace Ch.Elca.Iiop.Interception {
         /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.effective_target"></see></summary>
         public TaggedProfile effective_profile {
             get {
-                throw new NotImplementedException();
+                IorProfile selectedProfile = m_clientRequest.SelectedProfile;
+                return selectedProfile.CreateTaggedProfile();
             }
         }        
         
@@ -280,13 +281,9 @@ namespace Ch.Elca.Iiop.Interception {
                 
         /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.get_effective_component"></see></summary>
         public TaggedComponent get_effective_component(int id) {
-            // TODO: only a temporary workaround, need refactoring of TaggedProfile first!
-            Ior target = Ch.Elca.Iiop.Util.IiopUrlUtil.CreateIorForUrl(m_clientRequest.CalledUri, String.Empty);
-            for (int i = 0; i < target.Profiles.Length; i++) {
-                IorProfile profile = target.Profiles[i];
-                if (profile.ContainsTaggedComponent(id)) {
-                    return profile.GetTaggedComponent(id);
-                }
+            IorProfile selectedProfile = m_clientRequest.SelectedProfile;
+            if (selectedProfile.ContainsTaggedComponent(id)) {
+                return selectedProfile.GetTaggedComponent(id);                
             }            
             throw new BAD_PARAM(25, CompletionStatus.Completed_MayBe);
         }
@@ -294,13 +291,9 @@ namespace Ch.Elca.Iiop.Interception {
         /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.get_effective_components"></see></summary>
         [return: IdlSequence(0L)]
         public TaggedComponent[] get_effective_components(int id) {
-            // TODO: only a temporary workaround, need refactoring of TaggedProfile first!
-            Ior target = Ch.Elca.Iiop.Util.IiopUrlUtil.CreateIorForUrl(m_clientRequest.CalledUri, String.Empty);
-            for (int i = 0; i < target.Profiles.Length; i++) {
-                IorProfile profile = target.Profiles[i];
-                if (profile.ContainsTaggedComponent(id)) {
-                    return profile.GetTaggedComponents(id);
-                }
+            IorProfile selectedProfile = m_clientRequest.SelectedProfile;            
+            if (selectedProfile.ContainsTaggedComponent(id)) {
+                return selectedProfile.GetTaggedComponents(id);
             }            
             throw new BAD_PARAM(25, CompletionStatus.Completed_MayBe);
         }

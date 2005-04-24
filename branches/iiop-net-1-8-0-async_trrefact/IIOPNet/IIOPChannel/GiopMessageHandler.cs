@@ -168,7 +168,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
 
         /// <summary>serialises an outgoing .NET request Message on client side</summary>
-        internal void SerialiseOutgoingRequestMessage(IMessage msg, Ior target, GiopConnectionDesc conDesc,
+        internal void SerialiseOutgoingRequestMessage(IMessage msg, IIorProfile target, GiopConnectionDesc conDesc,
                                                     Stream targetStream, uint requestId) {
             if (msg is IConstructionCallMessage) {
                 // not supported in CORBA, TBD: replace through do nothing instead of exception
@@ -182,6 +182,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 // serialize the message, this insert some data into msg, e.g. request-id
                 GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
                 msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = requestId; // set request-id
+                msg.Properties[SimpleGiopMsg.TARGET_PROFILE_KEY] = target;
                 GiopClientRequest request = new GiopClientRequest((IMethodCallMessage)msg);
                 ser.SerialiseRequest(request, 
                                      msgOutput.GetMessageContentWritingStream(),
@@ -460,7 +461,7 @@ namespace Ch.Elca.Iiop.Tests {
             MemoryStream targetStream = new MemoryStream();
             
             uint reqId = 5;
-            handler.SerialiseOutgoingRequestMessage(msg, target, conDesc, targetStream, reqId);
+            handler.SerialiseOutgoingRequestMessage(msg, target.Profiles[0], conDesc, targetStream, reqId);
             
             // check to serialised stream
             targetStream.Seek(0, SeekOrigin.Begin);

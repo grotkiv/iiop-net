@@ -221,7 +221,14 @@ namespace Ch.Elca.Iiop {
             return m_transportFactory.CanCreateTranporForIor(target);
         }
         
-        private ConnectionDescription CreateAndRegisterNewConnection(Ior target, string targetKey) {
+        /// <summary>
+        /// checks, if this connection manager is able to build up a connection with the given target profile.
+        /// </summary>
+        internal bool CanConnectWithProfile(IIorProfile targetProfile) {
+            return m_transportFactory.CanUseProfile(targetProfile);
+        }
+        
+        private ConnectionDescription CreateAndRegisterNewConnection(IIorProfile target, string targetKey) {
             ConnectionDescription result;
             IClientTransport transport =
                 m_transportFactory.CreateTransport(target);
@@ -236,7 +243,7 @@ namespace Ch.Elca.Iiop {
         }        
         
         /// <summary>allocation a connection for the message.</summary>
-        internal GiopClientConnectionDesc AllocateConnectionFor(IMessage msg, Ior target) {
+        internal GiopClientConnectionDesc AllocateConnectionFor(IMessage msg, IIorProfile target) {
             ConnectionDescription result = null;
             
             if (target != null) {

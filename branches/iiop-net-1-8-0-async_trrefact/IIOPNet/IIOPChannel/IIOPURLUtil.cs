@@ -114,10 +114,17 @@ namespace Ch.Elca.Iiop.Util {
                 uri = iiopLoc.ParseUrl(out objectUri, out version);
             } else if (url.StartsWith("IOR")) {
                 Ior ior = new Ior(url);
-                uri = new Uri("iiop" + ior.Version.Major + "." + ior.Version.Minor + 
-                              Uri.SchemeDelimiter + ior.HostName+":"+ior.Port);
-                objectUri = GetObjectUriForObjectKey(ior.ObjectKey);
-                version = ior.Version;
+                IInternetIiopProfile profile = ior.FindInternetIiopProfile();
+                if (profile != null) {
+                    uri = new Uri("iiop" + profile.Version.Major + "." + profile.Version.Minor + 
+                              Uri.SchemeDelimiter + profile.HostName+":"+profile.Port);
+                    objectUri = GetObjectUriForObjectKey(profile.ObjectKey);
+                    version = profile.Version;
+                } else {
+                    uri = null;
+                    objectUri = null;
+                    version = new GiopVersion(1,0);
+                }                
             } else if (url.StartsWith("corbaloc")) {
                 Corbaloc loc = new Corbaloc(url);
                 uri = loc.ParseUrl(out objectUri, out version);
