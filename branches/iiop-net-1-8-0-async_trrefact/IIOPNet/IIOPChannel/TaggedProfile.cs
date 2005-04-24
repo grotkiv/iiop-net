@@ -34,6 +34,57 @@ using Ch.Elca.Iiop.Idl;
  
 namespace omg.org.IOP {
   
+    public sealed class TAG_INTERNET_IOP {
+        
+        #region Constants
+        
+        public const int ConstVal = 0;
+        
+        #endregion Constants
+        #region IConstructors
+
+        private TAG_INTERNET_IOP() {
+        }        
+        
+        #endregion IConstructors
+        
+    }    
+
+    
+    public sealed class TAG_MULTIPLE_COMPONENTS {
+        
+        #region Constants
+        
+        public const int ConstVal = 1;
+        
+        #endregion Constants
+        #region IConstructors
+
+        private TAG_MULTIPLE_COMPONENTS() {
+        }        
+        
+        #endregion IConstructors
+        
+    }    
+    
+    
+    public sealed class TAG_SCCP_IOP {
+        
+        #region Constants
+        
+        public const int ConstVal = 2;
+        
+        #endregion Constants
+        #region IConstructors
+
+        private TAG_SCCP_IOP() {
+        }        
+        
+        #endregion IConstructors
+        
+    }        
+   
+    
     [RepositoryID("IDL:omg.org/IOP/TaggedProfile:1.0")]
     [IdlStruct()]
     public struct TaggedProfile {
