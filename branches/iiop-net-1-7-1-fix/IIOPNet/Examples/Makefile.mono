@@ -1,0 +1,5 @@
+build:
+	$(MAKE) -C GettingStarted -f Makefile.mono build
+
+clean:
+	$(MAKE) -C GettingStarted -f Makefile.mono clean
