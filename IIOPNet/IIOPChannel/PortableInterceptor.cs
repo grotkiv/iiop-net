@@ -69,6 +69,9 @@ namespace omg.org.Messaging {
         
     }
     
+    /// <summary>
+    /// control returns to the client, after message has been delivered to the client side transport.
+    /// </summary>
     public sealed class SYNC_WITH_TRANSPORT {
         
         #region Constants
