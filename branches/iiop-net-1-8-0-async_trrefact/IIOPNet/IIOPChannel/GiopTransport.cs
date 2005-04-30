@@ -128,7 +128,7 @@ namespace Ch.Elca.Iiop {
     }        
     
     /// <summary>
-    /// encapsulates a message to send and keeps track of what has already been sent
+    /// encapsulates the logic to send a message.
     /// </summary>
     internal class MessageSendTask {
         
@@ -142,102 +142,70 @@ namespace Ch.Elca.Iiop {
         #endregion Constants
         #region Fields
         
-        private long m_bytesAlreadySent;
-        private long m_bytesToSend;        
-        private long m_reqId;
-        private Stream m_messageToSend;
         private ITransport m_onTransport;
-        private GiopTransportMessageHandler m_messageHandler;
+        private GiopTransportMessageHandler m_messageHandler;        
         
         private byte[] m_buffer = new byte[READ_CHUNK_SIZE];
         
         #endregion Fields
         #region IConstructors
         
-        public MessageSendTask(Stream message, long bytesToSend, ITransport onTransport,
+        public MessageSendTask(ITransport onTransport,
                                GiopTransportMessageHandler messageHandler) {
-            Initalize(message, bytesToSend, -1, onTransport, messageHandler);            
+            Initalize(onTransport, messageHandler);
         }
 
-        
-        public MessageSendTask(Stream message, long bytesToSend, uint reqId, ITransport onTransport,
-                               GiopTransportMessageHandler messageHandler) {
-            Initalize(message, bytesToSend, reqId, onTransport, messageHandler);
-        }
-        
+                
         #endregion IConstructors
-        #region IProperties
         
-        internal uint RequestId {
-            get {
-                if (HasRequestId()) {
-                    return (uint)m_reqId;
-                } else {
-                    throw new Exception("no request id present for this message");
-                }
-            }
-        }
-        
-        #endregion IProperties
-        
-        private void Initalize(Stream message, long bytesToSend, long reqId, ITransport onTransport,
+        private void Initalize(ITransport onTransport,
                                GiopTransportMessageHandler messageHandler) {
-            m_messageToSend = message;
-            m_bytesToSend = bytesToSend;            
-            m_reqId = reqId;
             m_onTransport = onTransport;           
             m_messageHandler = messageHandler;
         }
-        
-        internal bool HasRequestId() {
-            return m_reqId >= 0;
-        }
-        
+                
         /// <summary>
         /// begins the send of the next message part on the transport;
         /// notifies callback about progress
         /// </summary>
-        internal void StartSendNextPart() {
-            if (HasNextPartToSend()) {
-            // need more data
-                long nrOfBytesToRead = m_bytesToSend - m_bytesAlreadySent;
+        internal void Send(Stream stream, long bytesToSend) {
+            if (bytesToSend <= 0) {
+                throw new omg.org.CORBA.INTERNAL(87, CompletionStatus.Completed_MayBe);
+            }
+
+            long bytesAlreadySent = 0;
+            while (HasDataToSend(bytesAlreadySent, bytesToSend)) {
+                // need more data
+                long nrOfBytesToRead = bytesToSend - bytesAlreadySent;
                 int toRead = (int)Math.Min(m_buffer.Length,
                                            nrOfBytesToRead);
                 
-                // read either the whole buffer length or 
+                // read either the whole buffer length or
                 // the remaining nr of bytes: nrOfBytesToRead - bytesRead
-                int bytesToSendInProgress = m_messageToSend.Read(m_buffer, 0, toRead);
+                int bytesToSendInProgress = stream.Read(m_buffer, 0, toRead);
                 if (bytesToSendInProgress <= 0) {
                     // underlying stream not enough data
                     throw new omg.org.CORBA.INTERNAL(88, CompletionStatus.Completed_MayBe);
-                }                                                
-                m_bytesAlreadySent += bytesToSendInProgress;
-                m_onTransport.BeginWrite(m_buffer, 0, bytesToSendInProgress, new AsyncCallback(this.HandleSentCompleted), this);
-            } else {
-                throw new INTERNAL(89, CompletionStatus.Completed_MayBe);
-            }
-        }
-
-        private void HandleSentCompleted(IAsyncResult ar) {
-            try {
-                m_onTransport.EndWrite(ar); // complete the write task                            
-                if (HasNextPartToSend()) {
-                    StartSendNextPart();
-                } else {                    
-                    m_messageHandler.MsgSentCallback(this); // doesn't throw exceptions
                 }
-            } catch (Exception ex) {
-                m_messageHandler.MsgSentCallbackException(this, ex);
+                bytesAlreadySent += bytesToSendInProgress;
+                IAsyncResult res =
+                    m_onTransport.BeginWrite(m_buffer, 0, bytesToSendInProgress, null, null);
+                bool waitOk = m_messageHandler.WaitForEvent(res.AsyncWaitHandle);
+                if (!waitOk) {
+                    throw new omg.org.CORBA.TIMEOUT(37, CompletionStatus.Completed_MayBe);
+                }
+                m_onTransport.EndWrite(res);
             }
-        }
+            // write complete
+        }                
         
         /// <summary>
-        /// returns true, if StartSendNextPart should be called to send another part of the message, else 
+        /// returns true, if another part should be sent, else 
         /// returns false to indicate that the message is completely sent
         /// </summary>
         /// <returns></returns>
-        internal bool HasNextPartToSend() {
-            return m_bytesAlreadySent < m_bytesToSend;
+        private bool HasDataToSend(long bytesAlreadySent, long bytesToSend) {
+            return bytesAlreadySent < bytesToSend;
         }
                         
     }            
@@ -572,6 +540,7 @@ namespace Ch.Elca.Iiop {
             new FragmentedMessageAssembler();
 
         private MessageReceiveTask m_messageReceiveTask;
+        private MessageSendTask m_messageSendTask;
         
         #endregion IFields
         #region IConstructors
@@ -601,6 +570,7 @@ namespace Ch.Elca.Iiop {
             m_transport = transport;            
             m_timeout = timeout;            
             m_writeLock = new AutoResetEvent(true);
+            m_messageSendTask = new MessageSendTask(m_transport, this);
         }    
                 
         #region Synchronization
@@ -609,7 +579,7 @@ namespace Ch.Elca.Iiop {
         /// wait for an event, considering timeout.
         /// </summary>
         /// <returns>true, if ok, false if timeout occured</returns>
-        private bool WaitForEvent(WaitHandle waiter) {
+        internal bool WaitForEvent(WaitHandle waiter) {
             if (!m_timeout.IsUnlimited) {
                 return waiter.WaitOne(m_timeout.TimeOut, false);
             } else {
@@ -684,6 +654,16 @@ namespace Ch.Elca.Iiop {
             }
         }
         
+        /// <summary>
+        /// deregister the waiter for the given requestId
+        /// </summary>        
+        internal void CancelWaitForResponseMessage(uint requestId) {
+            lock (m_waitingForResponse.SyncRoot) {
+                // deregister waiter
+                m_waitingForResponse[requestId] = null;
+            }
+        }        
+        
         #endregion Cancel Pending
         #region Sending messages
 
@@ -694,44 +674,36 @@ namespace Ch.Elca.Iiop {
             stream.Seek(0, SeekOrigin.Begin);
             return stream.Length;
         }
-        
-        private void StartWriteRequestMessage(Stream stream, uint requestId) {
-            long bytesToSend = PrepareStreamToSend(stream);
-            MessageSendTask task = new MessageSendTask(stream, bytesToSend, requestId,
-                                                       m_transport, this);
-            StartSendMessageTask(task);
-        }
-        
-        private void StartWriteMessageWithoutReqId(Stream stream) {
-            long bytesToSend = PrepareStreamToSend(stream);
-            MessageSendTask task = new MessageSendTask(stream, bytesToSend,
-                                                       m_transport, this);
-            StartSendMessageTask(task);            
-        }
-        
-        private void StartWriteResponseMessage(Stream stream) {
-            long bytesToSend = PrepareStreamToSend(stream);
-            MessageSendTask task = new MessageSendTask(stream, bytesToSend,
-                                                       m_transport, this);
-            StartSendMessageTask(task);
-        }   
-        
-        private void StartSendMessageTask(MessageSendTask task) {            
-            if (task.HasNextPartToSend()) {
-                task.StartSendNextPart();
-            }            
+                        
+        private void SendMessage(Stream message) {            
+            long bytesToSend = PrepareStreamToSend(message);
+            bool gotLock = WaitForWriteLock();
+            if (!gotLock) {
+                CloseConnectionAfterTimeout();
+                Debug.WriteLine("failed to send async request message due to timeout while trying to start writing");
+                throw new TIMEOUT(32, CompletionStatus.Completed_No);
+            }
+            try {
+                m_messageSendTask.Send(message, bytesToSend);
+            } catch (Exception ex) {
+                Trace.WriteLine("problem while writing message: " + ex);
+                // close connection
+                CloseConnectionAfterUnexpectedException(ex);
+            } finally {
+                try {
+                    // message send completed, signal availability of write lock
+                    m_writeLock.Set();
+                } catch (Exception ex) {
+                    CloseConnectionAfterUnexpectedException(ex);
+                }
+            }
         }
         
         /// <summary>
         /// send a message as a result to an incoming message
         /// </summary>
         internal void SendResponse(Stream responseStream) {
-            bool gotLock = WaitForWriteLock();
-            if (!gotLock) {
-                CloseConnectionAfterTimeout();
-                throw new omg.org.CORBA.TIMEOUT(30, CompletionStatus.Completed_No);
-            }
-            StartWriteResponseMessage(responseStream);
+            SendMessage(responseStream);
         }
         
         /// <summary>
@@ -751,11 +723,7 @@ namespace Ch.Elca.Iiop {
             GiopVersion version = new GiopVersion(1, 0);
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
             Stream messageCloseStream = handler.PrepareMessageCloseMessage(version);
-            bool gotLock = WaitForWriteLock();
-            while (!gotLock) {
-                gotLock = WaitForWriteLock();
-            }
-            StartWriteMessageWithoutReqId(messageCloseStream);
+            SendMessage(messageCloseStream);
         }
                 
         /// <summary>
@@ -763,12 +731,10 @@ namespace Ch.Elca.Iiop {
         /// has arravied or a timeout has occured.
         /// </summary>
         /// <returns>the response stream</returns>
-        internal Stream SendRequestSynchronous(Stream requestStream, uint requestId) {
-            bool gotLock = WaitForWriteLock();
-            if (!gotLock) {
-                CloseConnectionAfterTimeout();
-                throw new omg.org.CORBA.TIMEOUT(30, CompletionStatus.Completed_No);
-            }
+        internal Stream SendRequestSynchronous(Stream requestStream, uint requestId) {            
+            // interested in a response -> register to receive response.
+            // this must be done before sending the message, because otherwise,
+            // it would be possible, that a response arrives before being registered
             IResponseWaiter waiter;
             lock (m_waitingForResponse.SyncRoot) {
                 // create and register wait handle
@@ -778,9 +744,8 @@ namespace Ch.Elca.Iiop {
                 } else {
                     throw new omg.org.CORBA.INTERNAL(40, CompletionStatus.Completed_No);
                 }
-            }                
-            // begin sending of message
-            StartWriteRequestMessage(requestStream, requestId);
+            }            
+            SendMessage(requestStream);
             // wait for completion or timeout                
             bool received = waiter.StartWaiting();
             waiter.Completed();
@@ -803,27 +768,17 @@ namespace Ch.Elca.Iiop {
         }
         
         internal void SendRequestMessageOneWay(Stream requestStream, uint requestId) {
-            bool gotLock = WaitForWriteLock();
-            if (!gotLock) {
-                CloseConnectionAfterTimeout();
-                // don't throw an exception, silently stop try sending
-                Debug.WriteLine("failed to send oneway request message due to timeout while trying to start writing");
-                return;
-            }
-            // begin sending of message
-            StartWriteRequestMessage(requestStream, requestId);
+            SendMessage(requestStream);
+            // no answer expected.
         }
         
         internal void SendRequestMessageAsync(Stream requestStream, uint requestId,
                                               AsyncResponseAvailableCallBack callback,
                                               IClientChannelSinkStack clientSinkStack,
-                                              GiopClientConnection connection) {
-            bool gotLock = WaitForWriteLock();
-            if (!gotLock) {
-                CloseConnectionAfterTimeout();
-                Debug.WriteLine("failed to send async request message due to timeout while trying to start writing");
-                throw new TIMEOUT(32, CompletionStatus.Completed_No);
-            }
+                                              GiopClientConnection connection) {            
+            // interested in a response -> register to receive response.
+            // this must be done before sending the message, because otherwise,
+            // it would be possible, that a response arrives before being registered            
             IResponseWaiter waiter;
             lock (m_waitingForResponse.SyncRoot) {
                 // create and register wait handle                
@@ -834,60 +789,12 @@ namespace Ch.Elca.Iiop {
                 } else {
                     throw new omg.org.CORBA.INTERNAL(40, CompletionStatus.Completed_No);
                 }
-            }                
+            }            
+            SendMessage(requestStream);
             // wait for completion or timeout
             waiter.StartWaiting(); // notify the waiter, that the time for the request starts; is non-blocking
-            // begin sending of message
-            StartWriteRequestMessage(requestStream, requestId);
         }
-        
-        /// <summary>
-        /// deregister the waiter for the given requestId
-        /// </summary>        
-        internal void CancelWaitForResponseMessage(uint requestId) {
-            lock (m_waitingForResponse.SyncRoot) {
-                // deregister waiter
-                m_waitingForResponse[requestId] = null;
-            }
-        }
-        
-        /// <summary>
-        /// is notified, if a complete giop message has been sent.
-        /// </summary>
-        /// <remarks>doesn't throw exceptiosn</remarks>
-        internal void MsgSentCallback(MessageSendTask completedTask) {
-            try {
-                // message send completed, signal availability of write lock
-                m_writeLock.Set();
-            } catch (Exception ex) {
-                CloseConnectionAfterUnexpectedException(ex);
-            }
-        }
-        
-        /// <summary>handles an exception while sending a message</summary>
-        internal void MsgSentCallbackException(MessageSendTask problemTask, Exception ex) {            
-            try {
-                if (problemTask.HasRequestId()) {
-                    // check if somebody is waiting for an answer to the message sent
-                    lock (m_waitingForResponse.SyncRoot) {
-                        IResponseWaiter waiter = (IResponseWaiter)m_waitingForResponse[problemTask.RequestId];
-                        if (waiter != null) {
-                            m_waitingForResponse[problemTask.RequestId] = null;
-                            waiter.Problem = ex;
-                            waiter.Notify();
-                        }
-                    }
-                }
-            } catch (Exception) {
-            } finally {
-                try {
-                    // close connection
-                    CloseConnectionAfterUnexpectedException(ex);                        
-                } catch (Exception) {                
-                }
-            }
-        }
-        
+                                
         #endregion Sending messages
         #region Receiving messages          
                 

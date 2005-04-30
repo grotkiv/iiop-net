@@ -158,10 +158,10 @@ namespace Ch.Elca.Iiop.Interception {
         /// <summary>
         /// <see cref="omg.org.PortableInterceptor.RequestInfo.sync_scope"></see>        
         /// </summary>        
-        /// <remarks>for this imlementation, alwasy SYNC_NONE</remarks>
+        /// <remarks>for this imlementation, alwasy SYNC_WITH_TRANSPORT</remarks>
         public short sync_scope {
             get {
-                return omg.org.Messaging.SYNC_NONE.ConstVal;
+                return omg.org.Messaging.SYNC_WITH_TRANSPORT.ConstVal;
             }
         }        
         
