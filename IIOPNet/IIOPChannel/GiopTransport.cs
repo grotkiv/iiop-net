@@ -840,12 +840,14 @@ namespace Ch.Elca.Iiop {
             // here, the message is no longer fragmented, don't check for fragment here
             switch (header.GiopType) {
                 case GiopMsgTypes.Request:
-                    HandleRequestMessage(messageStream);
-                    messageReceived.StartReceiveMessage(); // receive next message
+                    EnqueueRequestMessage(messageStream); // put message into processing queue
+                    messageReceived.StartReceiveMessage(); // receive next message (non_blocking)
+                    ProcessQueuedRequests(); // make sure that somebody is processing requests; otherwise do it
                     break;
                 case GiopMsgTypes.LocateRequest:
-                    HandleLocateRequestMessage(messageStream);
-                    messageReceived.StartReceiveMessage(); // receive next message
+                    EnqueueLocateRequestMessage(messageStream); // put message into processing queue
+                    messageReceived.StartReceiveMessage(); // receive next message (non-blocking)
+                    ProcessQueuedRequests(); // make sure that somebody is processing requests; otherwise do it
                     break;
                 case GiopMsgTypes.Reply:
                     // see, if somebody is interested in the response
@@ -917,14 +919,29 @@ namespace Ch.Elca.Iiop {
             AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
         }
         
-        protected virtual void HandleRequestMessage(Stream messageStream) {
-            SendErrorResponseMessage(); // not supported by non-bidirectional handler
-        }
-        
-        protected virtual void HandleLocateRequestMessage(Stream messageStream) {
+        /// <summary>
+        /// adds this request to the currently pending ones.
+        /// </summary>
+        protected virtual void EnqueueRequestMessage(Stream requestStream) {
             SendErrorResponseMessage(); // not supported by non-bidirectional handler
         }
 
+        /// <summary>
+        /// adds this request to the currently pending ones.
+        /// </summary>
+        protected virtual void EnqueueLocateRequestMessage(Stream requestStream) {
+            SendErrorResponseMessage(); // not supported by non-bidirectional handler
+        }
+        
+        /// <summary>
+        /// makes sure, that the queued requests get processed. If currently nobody is processing the requests,
+        /// the caller is promoted to the requests processor. When the queue gets emtpy again, the caller is 
+        /// released. When the next requests arrives, a new thread is promoted to request processor.
+        /// </summary>
+        protected virtual void ProcessQueuedRequests() {
+            // nothing to do, because a request is never enqueued. This method will be overriden in subclass.
+        }
+        
         /// <summary>
         /// extracts the request id from a non-fragmented reply message
         /// </summary>
@@ -1054,32 +1071,31 @@ namespace Ch.Elca.Iiop {
             m_receiver = receiver;
         }
         
-        private void CheckOrEnableProcessing() {            
-            if (!m_processing) {
-                // start processing
-                m_processing = true;
-                ThreadPool.QueueUserWorkItem(new WaitCallback(this.Process), null);
-            }
-        }        
-
-        protected override void HandleRequestMessage(Stream messageStream) {
-            // process in a separate thread to allow reading of next message in parallel.
+        protected override void EnqueueRequestMessage(Stream requestStream) {
             lock(this) {
-                RequestToProcess req = new RequestToProcess(messageStream, RequestToProcessType.Request);
-                m_requestQueue.Enqueue(req);            
-                CheckOrEnableProcessing();
+                RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.Request);
+                m_requestQueue.Enqueue(req);
             }
-        }        
-        
-        protected override void HandleLocateRequestMessage(Stream messageStream) {
+        }
+
+        protected override void EnqueueLocateRequestMessage(Stream requestStream) {
             lock(this) {
                 // process in a separate thread to allow reading of next message in parallel.
-                RequestToProcess req = new RequestToProcess(messageStream, RequestToProcessType.LocateRequest);
+                RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.LocateRequest);
                 m_requestQueue.Enqueue(req);
-                CheckOrEnableProcessing();
             }
         }
         
+        protected override void ProcessQueuedRequests() {
+            lock(this) {
+                if (!m_processing) {
+                    // start processing
+                    m_processing = true;
+                    Process(); // promote this thread to request processor, because currently nobody processing.
+                }
+            }
+        }        
+                        
         /// <summary>
         /// processes requests incoming from one connection in order (otherwise problems with codeset establishment).
         /// </summary>        
@@ -1088,7 +1104,7 @@ namespace Ch.Elca.Iiop {
         /// - If no more requests are pending, release thread for other tasks.
         /// - called by the thread-pool
         /// </remarks>
-        private void Process(object state) {
+        private void Process() {
             try {
                 while (true) {
                     RequestToProcess req;
