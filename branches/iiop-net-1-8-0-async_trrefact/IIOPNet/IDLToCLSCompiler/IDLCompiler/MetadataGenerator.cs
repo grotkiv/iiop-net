@@ -711,7 +711,8 @@ public class MetaDataGenerator : IDLParserVisitor {
                                                                methods[j].ReturnTypeCustomAttributes.GetCustomAttributes(false)),
                                                            true),
                                          MethodAttributes.Abstract | MethodAttributes.Public |
-                                         MethodAttributes.Virtual | MethodAttributes.HideBySig);
+                                         MethodAttributes.Virtual | MethodAttributes.NewSlot |
+                                         MethodAttributes.HideBySig);
                 
             }
             // properties
@@ -730,14 +731,14 @@ public class MetaDataGenerator : IDLParserVisitor {
                     m_ilEmitHelper.AddPropertyGetter(classBuilder, properties[j].Name,
                                                      propType, MethodAttributes.Virtual | MethodAttributes.Abstract |
                                                                MethodAttributes.Public | MethodAttributes.HideBySig | 
-                                                               MethodAttributes.SpecialName);
+                                                               MethodAttributes.SpecialName | MethodAttributes.NewSlot);
                 MethodBuilder setAccessor = null;
                 if (properties[j].CanWrite) {
                     setAccessor = 
                         m_ilEmitHelper.AddPropertySetter(classBuilder, properties[j].Name,
                                                          propType, MethodAttributes.Virtual | MethodAttributes.Abstract |
                                                                    MethodAttributes.Public | MethodAttributes.HideBySig |
-                                                                   MethodAttributes.SpecialName);
+                                                                   MethodAttributes.SpecialName | MethodAttributes.NewSlot);
                 }
                 
                 m_ilEmitHelper.AddProperty(classBuilder, properties[j].Name,
@@ -2118,13 +2119,15 @@ public class MetaDataGenerator : IDLParserVisitor {
             MethodBuilder getAccessor = m_ilEmitHelper.AddPropertyGetter(builder, 
                                                                          propName, transmittedName,
                                                                          propType,
-                                                                         MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public);
+                                                                         MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public |
+                                                                         MethodAttributes.NewSlot);
             MethodBuilder setAccessor = null;
             if (!(node.isReadOnly())) {
                 setAccessor = m_ilEmitHelper.AddPropertySetter(builder, 
                                                                propName, transmittedName,
                                                                propType,
-                                                               MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public);
+                                                               MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public |
+                                                               MethodAttributes.NewSlot);
             }            
             m_ilEmitHelper.AddProperty(builder, propName, transmittedName,
                                        propType, getAccessor, setAccessor);
@@ -2232,7 +2235,8 @@ public class MetaDataGenerator : IDLParserVisitor {
         MethodBuilder methodBuilder = 
             m_ilEmitHelper.AddMethod(typeAtBuild, methodName, transmittedName,
                                      parameters, returnType,
-                                     MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public | MethodAttributes.HideBySig);
+                                     MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public |
+                                     MethodAttributes.HideBySig | MethodAttributes.NewSlot);
         if (node.IsOneWay()) {
             AddOneWayAttribute(methodBuilder);
         }
