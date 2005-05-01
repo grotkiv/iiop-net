@@ -55,9 +55,7 @@ namespace Ch.Elca.Iiop {
 
         private int m_charSetChosen = CodeSetService.DEFAULT_CHAR_SET;
         private int m_wcharSetChosen = CodeSetService.DEFAULT_WCHAR_SET;
-        
-        private Hashtable m_items = new Hashtable();                
-        
+               
         private bool m_codeSetNegotiated = false;
 
         #endregion IFields
@@ -80,13 +78,7 @@ namespace Ch.Elca.Iiop {
                 return m_wcharSetChosen;
             }
         }
-        
-        public IDictionary Items {
-            get {
-                return m_items;
-            }
-        }
-                        
+                                
         #endregion IProperties
         #region IMethods
         
@@ -204,7 +196,11 @@ namespace Ch.Elca.Iiop {
             return m_transportHandler.Transport.IsConnectionOpen();
         }
 
-        internal void CloseConnection() {            
+        /// <summary>
+        /// closes the connection.
+        /// </summary>
+        /// <remarks>this method must only be called by the ConnectionManager.</remarks>
+        internal void CloseConnection() {
             try {
                 m_transportHandler.ForceCloseConnection();
             } catch (Exception ex) {
