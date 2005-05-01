@@ -48,25 +48,25 @@ namespace Ch.Elca.Iiop.Util {
         #endregion
         #region IFields
         
-        private ArrayList m_attributes;
+        private object[] m_attributes;
         
         #endregion IFields
         #region IConstructors
 
         public AttributeExtCollection() {
-            m_attributes = new ArrayList();    
+            m_attributes = new object[0];
         }
         
         public AttributeExtCollection(Attribute[] attrs) {
-            m_attributes = new ArrayList();
-            m_attributes.AddRange(attrs);
+            m_attributes = new object[attrs.Length];
+            attrs.CopyTo(m_attributes, 0);
         }
 
         public AttributeExtCollection(AttributeExtCollection coll) {
-            m_attributes = (ArrayList)coll.m_attributes.Clone();
+            m_attributes = (object[])coll.m_attributes.Clone();
         }
         
-        private AttributeExtCollection(ArrayList content) {
+        private AttributeExtCollection(object[] content) {
             m_attributes = content;
         }
 
@@ -90,7 +90,7 @@ namespace Ch.Elca.Iiop.Util {
 
         public int Count {
             get {
-                return m_attributes.Count;
+                return m_attributes.Length;
             }
         }
 
@@ -108,9 +108,7 @@ namespace Ch.Elca.Iiop.Util {
         /// </summary>
         public static AttributeExtCollection ConvertToAttributeCollection(object[] attrs) {
             if ((attrs != null) && (attrs.Length > 0)) {
-                ArrayList resultList = new ArrayList();
-                resultList.AddRange(attrs);
-                return new AttributeExtCollection(resultList);
+                return new AttributeExtCollection(attrs);
             } else {
                 return EmptyCollection;
             }
@@ -120,16 +118,20 @@ namespace Ch.Elca.Iiop.Util {
         #region IMethods
     
         public bool Contains(Attribute attr) {
-            return m_attributes.Contains(attr);
+            for (int i = 0; i < m_attributes.Length; i++) {
+                if (m_attributes[i].Equals(attr)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
         /// check, if an attribute of the given type is in the collection
         /// </summary>
         public bool IsInCollection(Type attrType) {
-            IEnumerator enumerator = GetEnumerator();
-            while (enumerator.MoveNext()) {
-                Attribute attr = (Attribute)enumerator.Current;
+            for (int i = 0; i < m_attributes.Length; i++) {
+                Attribute attr = (Attribute)m_attributes[i];
                 if (attr.GetType() == attrType) { 
                     return true; 
                 }
@@ -150,9 +152,8 @@ namespace Ch.Elca.Iiop.Util {
             if (ReflectionHelper.IOrderedAttributeType.IsAssignableFrom(attrType)) {
                 isOrdered = true;
             }
-            IEnumerator enumerator = GetEnumerator();
-            while (enumerator.MoveNext()) {
-                Attribute attr = (Attribute)enumerator.Current;
+            for (int i = 0; i < m_attributes.Length; i++) {            
+                Attribute attr = (Attribute)m_attributes[i];
                 if (attr.GetType() == attrType) { 
                     if (!isOrdered) {
                         result = attr;
@@ -180,8 +181,14 @@ namespace Ch.Elca.Iiop.Util {
         public AttributeExtCollection RemoveAttributeOfType(Type attrType, out Attribute foundAttr) {
             foundAttr = GetAttributeForType(attrType);
             if (foundAttr != null) {
-                ArrayList newCollection = (ArrayList)m_attributes.Clone();                
-                newCollection.Remove(foundAttr);
+                object[] newCollection = new object[m_attributes.Length - 1]; // m_attributes.Length must be >= 0, because attr found
+                int newCollectionIndex = 0;
+                for (int i = 0; i < m_attributes.Length; i++) {
+                    if (m_attributes[i] != foundAttr) {
+                        newCollection[newCollectionIndex] = m_attributes[i];
+                        newCollectionIndex++;
+                    }
+                }                
                 return new AttributeExtCollection(newCollection);
             } else {
                 return this;
@@ -192,8 +199,9 @@ namespace Ch.Elca.Iiop.Util {
         /// insert the attribute in the collection at the first position
         /// </summary>
         public AttributeExtCollection MergeAttribute(Attribute attr) {
-            ArrayList newAttributes = (ArrayList)m_attributes.Clone();            
-            newAttributes.Insert(0, attr);
+            object[] newAttributes = new object[m_attributes.Length + 1];
+            newAttributes[0] = attr;
+            m_attributes.CopyTo(newAttributes, 1);
             return new AttributeExtCollection(newAttributes);
         }
         
@@ -201,21 +209,22 @@ namespace Ch.Elca.Iiop.Util {
         /// returns an attribute collection produced by merging this collection and the argument collection.
         /// </summary>
         public AttributeExtCollection MergeAttributeCollections(AttributeExtCollection coll) {
+            object[] resultList = new object[coll.m_attributes.Length + m_attributes.Length];            
             // first the new ones
-            ArrayList resultList = (ArrayList)coll.m_attributes.Clone();
+            coll.m_attributes.CopyTo(resultList, 0);
             // append content of this collection
-            resultList.AddRange(m_attributes);
+            m_attributes.CopyTo(resultList, coll.m_attributes.Length);
             return new AttributeExtCollection(resultList);
         }
 
         public AttributeExtCollection MergeMissingAttributes(object[] toAdd) {
-            ArrayList resultList = (ArrayList)m_attributes.Clone();                        
+            ArrayList resultList = new ArrayList(m_attributes);
             foreach (Attribute attr in toAdd) {
                 if (!resultList.Contains(attr)) {
                     resultList.Insert(0, attr);
                 }
             }
-            return new AttributeExtCollection(resultList);
+            return new AttributeExtCollection(resultList.ToArray());
         }
 
         public override bool Equals(object obj) {
@@ -231,14 +240,14 @@ namespace Ch.Elca.Iiop.Util {
             enumerator = ((AttributeExtCollection)obj).GetEnumerator();
             while (enumerator.MoveNext()) {
                 Attribute attr = (Attribute) enumerator.Current;
-                if (!(m_attributes.Contains(attr))) { return false; }
+                if (!(Contains(attr))) { return false; }
             }
             return true;
         }
 
         public override int GetHashCode() {
             int result = 0;
-            for (int i = 0; i < m_attributes.Count; i++) {
+            for (int i = 0; i < m_attributes.Length; i++) {
                 result = result ^ m_attributes[i].GetHashCode();
             }
             return result;
