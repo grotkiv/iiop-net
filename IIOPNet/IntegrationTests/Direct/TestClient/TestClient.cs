@@ -692,7 +692,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
-        public void TestConstantRegression() {
+        public void TestConstant() {
             Int32 constVal = MyConstant.ConstVal;
             Assertion.AssertEquals("wrong constant value", 11, constVal);
             
@@ -738,61 +738,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             UInt64 expectedValULongLong = 0x8000000000000000;
             Assertion.AssertEquals("wrong constant value", (Int64)expectedValULongLong, ULongLong_BiggerThanLongLong.ConstVal);
             
-        }
-
-        [Test]
-        public void TestConstantAllKinds() {
-            Assertion.AssertEquals("wrong const val short", -29, A_SHORT_CONST.ConstVal);
-            Assertion.AssertEquals("wrong const val short other const", 
-                                   A_SHORT_CONST.ConstVal, VAL_OF_A_SHORT_CONST.ConstVal);
-            Assertion.AssertEquals("wrong const val long", 30, A_LONG_CONST.ConstVal);
-            Assertion.AssertEquals("wrong const val long long", -31, A_LONG_LONG_CONST.ConstVal);
-
-            Assertion.AssertEquals("wrong const val ushort", 81, A_UNSIGNED_SHORT_CONST.ConstVal);
-            Assertion.AssertEquals("wrong const val ulong", 101, A_UNSIGNED_LONG_CONST.ConstVal);
-            Assertion.AssertEquals("wrong const val ulong long", 102, A_UNSIGNED_LONG_LONG_CONST.ConstVal);
-
-            Assertion.AssertEquals("wrong const val char", 'C', A_CHAR_CONST.ConstVal);
-            Assertion.AssertEquals("wrong const val char other const", 
-                                   A_CHAR_CONST.ConstVal, VAL_OF_A_CHAR_CONST.ConstVal);
-
-            Assertion.AssertEquals("wrong const val wchar", 'D', A_WCHAR_CONST.ConstVal);
-
-            Assertion.AssertEquals("wrong const val boolean true", true, A_BOOLEAN_CONST_TRUE.ConstVal);
-            Assertion.AssertEquals("wrong const val boolean false", false, A_BOOLEAN_CONST_FALSE.ConstVal);
-
-            Assertion.AssertEquals("wrong const val float", (Single)1.1, A_FLOAT_CONST.ConstVal);
-            Assertion.AssertEquals("wrong const val double", (Double)6.7E8, A_DOUBLE_CONST.ConstVal);
-
-            Assertion.AssertEquals("wrong const val string", "test", A_STRING_CONST.ConstVal);
-            Assertion.AssertEquals("wrong const val string bounded", 
-                                   "test-b", A_STRING_CONST_BOUNDED.ConstVal);
-
-            Assertion.AssertEquals("wrong const val wstring", "w-test", A_WSTRING_CONST.ConstVal);
-            Assertion.AssertEquals("wrong const val wstring bounded", 
-                                   "w-test-b", A_WSTRING_CONST_BOUNDED.ConstVal);
-
-            Assertion.AssertEquals("wrong const val typedef long", 10, 
-                                   SCOPED_NAME_CONST_LONGTD.ConstVal);
-
-            Assertion.AssertEquals("wrong const val enum", A_ENUM_FOR_CONST.CV1, 
-                                   SCOPED_NAME_CONST_ENUM.ConstVal);
-
-            Assertion.AssertEquals("wrong const val octet", 8, A_OCTET_CONST.ConstVal);
-        }
-
-        [Test]
-        public void TestConstValueAndSwitch() {
-            // check, if switch is possbile with constant values
-            int testValue = A_LONG_CONST.ConstVal;
-            switch(testValue) {
-                case A_LONG_CONST.ConstVal:
-                    // ok
-                    break;
-                default:
-                    Assertion.Fail("wrong value: " + testValue + "; should be: " + A_LONG_CONST.ConstVal);
-                    break;
-            }            
         }
 
         [Test]
@@ -925,7 +870,8 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Adder adder = m_testService.CreateNewWithUserID(id);
             string marshalUrl = RemotingServices.GetObjectUri(adder);
             Ior adderIor = new Ior(marshalUrl);
-            byte[] objectKey = adderIor.ObjectKey;
+            IInternetIiopProfile prof = adderIor.FindInternetIiopProfile();
+            byte[] objectKey = prof.ObjectKey;
             ASCIIEncoding enc = new ASCIIEncoding();
             string marshalUri = new String(enc.GetChars(objectKey));
             Assertion.AssertEquals("wrong user id", id, marshalUri);
@@ -941,7 +887,8 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Adder adder = m_testService.CreateNewWithSystemID();
             string marshalUrl = RemotingServices.GetObjectUri(adder);
             Ior adderIor = new Ior(marshalUrl);
-            byte[] objectKey = adderIor.ObjectKey;
+            IInternetIiopProfile prof = adderIor.FindInternetIiopProfile();
+            byte[] objectKey = prof.ObjectKey;
             ASCIIEncoding enc = new ASCIIEncoding();
             string marshalUri = new String(enc.GetChars(objectKey));            
             if (marshalUri.StartsWith("/")) {
@@ -969,21 +916,23 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Adder adder = m_testService.CreateNewWithUserID(id);
             string iorString = orbServices.object_to_string(adder);
             Ior adderIor = new Ior(iorString);
-            Assertion.AssertEquals(8087, adderIor.Port);            
-            Assertion.AssertEquals(1, adderIor.Version.Major);
-            Assertion.AssertEquals(2, adderIor.Version.Minor);
+            IInternetIiopProfile prof = adderIor.FindInternetIiopProfile();
+            Assertion.AssertEquals(8087, prof.Port);            
+            Assertion.AssertEquals(1, prof.Version.Major);
+            Assertion.AssertEquals(2, prof.Version.Minor);
             
             byte[] oid = { 0x6d, 0x79, 0x41, 0x64, 0x64, 0x65, 0x72, 0x49, 0x64, 0x32 };
-            CheckIorKey(oid, adderIor.ObjectKey);                        
+            CheckIorKey(oid, prof.ObjectKey);                        
 
             string testServiceIorString = m_testService.GetIorStringForThisObject();
             Ior testServiceIor = new Ior(testServiceIorString);
-            Assertion.AssertEquals(8087, testServiceIor.Port);
-            Assertion.AssertEquals(1, testServiceIor.Version.Major);
-            Assertion.AssertEquals(2, testServiceIor.Version.Minor);            
+            IInternetIiopProfile profSvcIor = testServiceIor.FindInternetIiopProfile();
+            Assertion.AssertEquals(8087, profSvcIor.Port);
+            Assertion.AssertEquals(1, profSvcIor.Version.Major);
+            Assertion.AssertEquals(2, profSvcIor.Version.Minor);            
             
             byte[] oidTestService = { 0x74, 0x65, 0x73, 0x74 };
-            CheckIorKey(oidTestService, testServiceIor.ObjectKey);                        
+            CheckIorKey(oidTestService, profSvcIor.ObjectKey);                        
 
 
         }
@@ -1002,7 +951,8 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Adder adder = m_testService.CreateNewWithUserID(id);
             string marshalUrl = RemotingServices.GetObjectUri(adder);
             Ior adderIor = new Ior(marshalUrl);
-            byte[] objectKey = adderIor.ObjectKey;
+            IInternetIiopProfile prof = adderIor.FindInternetIiopProfile();
+            byte[] objectKey = prof.ObjectKey;
             ASCIIEncoding enc = new ASCIIEncoding();
             string marshalUri = new String(enc.GetChars(objectKey));
             Assertion.AssertEquals("wrong user id", expectedMarshalledId, marshalUri);

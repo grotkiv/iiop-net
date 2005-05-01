@@ -249,11 +249,11 @@ namespace Ch.Elca.Iiop.Marshalling {
         #region IConstructors
         
         public CharSerialiser(bool useWide) {
-            m_useWide = useWide;
+        	m_useWide = useWide;
         }
         
         #endregion IConstructors
-        #region IMethods
+    	#region IMethods
 
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                        CdrOutputStream targetStream) {            
@@ -291,11 +291,11 @@ namespace Ch.Elca.Iiop.Marshalling {
         #region IConstructors
         
         public StringSerialiser(bool useWide) {
-            m_useWide = useWide;
+        	m_useWide = useWide;
         }
         
         #endregion IConstructors
-        #region IMethods
+    	#region IMethods
 
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                        CdrOutputStream targetStream) {            
@@ -388,8 +388,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 ior = IiopUrlUtil.CreateIorForObjectFromThisDomain(target);
             }
 
-            Debug.WriteLine("connection information for objRef, host: " + ior.HostName + ", port: " +
-                            ior.Port + ", objKey-length: " + ior.ObjectKey.Length); 
+            Debug.WriteLine("connection information for objRef, nr of profiles: " + ior.Profiles.Length);
 
             // now write the IOR to the stream
             ior.WriteToStream(targetStream);
@@ -418,8 +417,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 interfaceType = ReflectionHelper.MarshalByRefObjectType;
             }
             if (interfaceType == null) { 
-                // check, if formal can be assigned by remote object; for formal MarshalbyRefObject, every remote object is ok
-                if (formal.Equals(ReflectionHelper.MarshalByRefObjectType) || CheckAssignableRemote(formal, url)) {
+                if (CheckAssignableRemote(formal, url)) {
                     interfaceType = formal;
                 } else {
                     Trace.WriteLine("unknown incompatible type-id in IOR: " + ior.TypID);
@@ -794,16 +792,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         #region IFields
 
         private ValueObjectSerializer m_valueSer = new ValueObjectSerializer();
-        private bool m_convertMultiDimArray = false;
 
         #endregion IFields
-        #region IConstructors
-        
-        public BoxedValueSerializer(bool convertMultiDimArray) {
-            m_convertMultiDimArray = convertMultiDimArray;
-        }
-
-        #endregion IConstructors
         #region IMethods
         
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
@@ -813,15 +803,6 @@ namespace Ch.Elca.Iiop.Marshalling {
                 // which are subclasses of BoxedValueBase
                 throw new INTERNAL(10041, CompletionStatus.Completed_MayBe);
             }
-
-            if (m_convertMultiDimArray) {
-                // actual is a multi dimensional array, which must be first converted to a jagged array
-                if ((actual != null) && (!actual.GetType().IsArray) && (!(actual.GetType().GetArrayRank() > 1))) {
-                    throw new BAD_PARAM(9004, CompletionStatus.Completed_MayBe);
-                }
-                actual = BoxedArrayHelper.ConvertMoreDimToNestedOneDim((Array)actual);
-            }
-
             // perform a boxing
             object boxed = null;
             if (actual != null) {
@@ -845,15 +826,6 @@ namespace Ch.Elca.Iiop.Marshalling {
                 // perform an unboxing
                 result = boxedResult.Unbox();
             }
-
-            if (m_convertMultiDimArray) {
-                // result is a jagged arary, which must be converted to a true multidimensional array
-                if ((result != null) && (!result.GetType().IsArray)) {
-                    throw new BAD_PARAM(9004, CompletionStatus.Completed_MayBe);
-                }
-                result = BoxedArrayHelper.ConvertNestedOneDimToMoreDim((Array)result);
-            }
-
             Debug.WriteLine("unboxed result of boxedvalue-ser: " + result);
             return result;
         }
@@ -1104,153 +1076,66 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// <summary>serializes idl sequences</summary>
     internal class IdlSequenceSerializer : Serialiser {
         
-        #region IFields
-        
-        private int m_bound;
-        
+    	#region IFields
+    	
+    	private int m_bound;
+    	
         #endregion IFields
-        #region IConstructors
+    	#region IConstructors
         
         public IdlSequenceSerializer(int bound) {
-            m_bound = bound;    
+        	m_bound = bound;	
         }
         
         #endregion IConstructors
-        #region IMethods
+    	#region IMethods
 
         /// <summary>
         /// checks, if parameter to serialise does not contain more elements than allowed
         /// </summary>
         private void CheckBound(uint sequenceLength) {
-            if (IdlSequenceAttribute.IsBounded(m_bound) && (sequenceLength > m_bound)) {
+        	if (IdlSequenceAttribute.IsBounded(m_bound) && (sequenceLength > m_bound)) {
                 throw new BAD_PARAM(3434, CompletionStatus.Completed_MayBe);
             }
         }
         
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                        CdrOutputStream targetStream) {
-            Array array = (Array) actual;
-            if (array == null) {
-                // not allowed for a sequence:
-                throw new BAD_PARAM(3433, CompletionStatus.Completed_MayBe);
-            }
-            CheckBound((uint)array.Length);
-            targetStream.WriteULong((uint)array.Length);
-            // get marshaller for elemtype
-            Type elemType = formal.GetElementType();
-            MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            for (int i = 0; i < array.Length; i++) {
-                // it's more efficient to not determine serialise for each element; instead use cached ser
-                marshaller.Marshal(array.GetValue(i), targetStream);
-            }
+        	Array array = (Array) actual;
+        	if (array == null) {
+        		// not allowed for a sequence:
+        		throw new BAD_PARAM(3433, CompletionStatus.Completed_MayBe);
+        	}
+        	CheckBound((uint)array.Length);
+        	targetStream.WriteULong((uint)array.Length);
+        	// get marshaller for elemtype
+        	Type elemType = formal.GetElementType();
+        	MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
+        	for (int i = 0; i < array.Length; i++) {
+        		// it's more efficient to not determine serialise for each element; instead use cached ser
+        		marshaller.Marshal(array.GetValue(i), targetStream);
+        	}
         }
 
         internal override object Deserialise(Type formal, AttributeExtCollection attributes,
                                            CdrInputStream sourceStream) {
-            // mapped from an IDL-sequence
-            uint nrOfElements = sourceStream.ReadULong();
-            CheckBound(nrOfElements);
-            
-            Array result = Array.CreateInstance(formal.GetElementType(), (int)nrOfElements);
-            // get marshaller for array element type
-            Type elemType = formal.GetElementType();
-            MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            for (int i = 0; i < nrOfElements; i++) {
-                // it's more efficient to not determine serialise for each element; instead use cached ser
-                object entry = marshaller.Unmarshal(sourceStream);
-                result.SetValue(entry, i);
-            }
-            return result;
+        	// mapped from an IDL-sequence
+        	uint nrOfElements = sourceStream.ReadULong();
+        	CheckBound(nrOfElements);
+        	
+        	Array result = Array.CreateInstance(formal.GetElementType(), (int)nrOfElements);
+        	// get marshaller for array element type
+        	Type elemType = formal.GetElementType();
+        	MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
+        	for (int i = 0; i < nrOfElements; i++) {
+        		// it's more efficient to not determine serialise for each element; instead use cached ser
+        		object entry = marshaller.Unmarshal(sourceStream);
+        		result.SetValue(entry, i);
+        	}
+        	return result;
         }
 
         #endregion IMethods
-
-    }
-
-
-    /// <summary>serialises IDL-arrays</summary>
-    internal class IdlArraySerialiser : Serialiser {
-
-        #region IFields
-        
-        private int[] m_dimensions;
-        
-        #endregion IFields
-        #region IConstructors
-        
-        public IdlArraySerialiser(int[] dimensions) {
-            m_dimensions = dimensions;    
-        }
-        
-        #endregion IConstructors
-        #region IMethods
-
-        private void CheckInstance(Array array) {
-            if (m_dimensions.Length != array.Rank) {
-                throw new BAD_PARAM(3436, CompletionStatus.Completed_MayBe);
-            }
-            for (int i = 0; i < array.Rank; i++) {
-                if (m_dimensions[i] != array.GetLength(i)) {
-                    throw new BAD_PARAM(3437, CompletionStatus.Completed_MayBe);
-                }
-            }
-        } 
-
-
-        private void SerialiseDimension(Array array, MarshallerForType marshaller, CdrOutputStream targetStream,
-                                        int[] indices, int currentDimension) {
-            if (currentDimension == array.Rank) {
-                object value = array.GetValue(indices);
-                marshaller.Marshal(value, targetStream);
-            } else {
-                // the first dimension index in the array is increased slower than the second and so on ...
-                for (int j = 0; j < array.GetLength(currentDimension); j++) {
-                    indices[currentDimension] = j;                    
-                    SerialiseDimension(array, marshaller, targetStream, indices, currentDimension + 1);
-                }
-            }
-        }
-        
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                         CdrOutputStream targetStream) {
-            Array array = (Array) actual;
-            if (array == null) {
-                // not allowed for an idl array:
-                throw new BAD_PARAM(3433, CompletionStatus.Completed_MayBe);
-            }
-            CheckInstance(array);
-            // get marshaller for elemtype
-            Type elemType = formal.GetElementType();
-            MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            SerialiseDimension(array, marshaller, targetStream, new int[array.Rank], 0);
-        }
-
-        private void DeserialiseDimension(Array array, MarshallerForType marshaller, CdrInputStream sourceStream,
-                                          int[] indices, int currentDimension) {
-            if (currentDimension == array.Rank) {
-                object entry = marshaller.Unmarshal(sourceStream);
-                array.SetValue(entry, indices);
-            } else {
-                // the first dimension index in the array is increased slower than the second and so on ...
-                for (int j = 0; j < array.GetLength(currentDimension); j++) {                    
-                    indices[currentDimension] = j;                    
-                    DeserialiseDimension(array, marshaller, sourceStream, indices, currentDimension + 1);
-                }
-            }            
-        }
-
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
-           
-            Array result = Array.CreateInstance(formal.GetElementType(), m_dimensions);
-            // get marshaller for array element type
-            Type elemType = formal.GetElementType();
-            MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            DeserialiseDimension(result, marshaller, sourceStream, new int[result.Rank], 0);
-            return result;
-        }
-
-        #endregion IMethods        
 
     }
 
@@ -1298,7 +1183,6 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                        CdrOutputStream targetStream) {
             TypeCodeImpl typeCode = new NullTC();
-            object actualToSerialise = actual;
             Type actualType = null;            
             if (actual != null) {
                 if (actual.GetType().Equals(s_anyType)) {
@@ -1309,7 +1193,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                     }
                     // type, which should be used to serialise value is determined by typecode!
                     actualType = Repository.GetTypeForTypeCode(typeCode);
-                    actualToSerialise = ((Any)actual).Value;
+                    actual = ((Any)actual).Value;
                 } else {
                     // automatic type code creation
                     actualType = DetermineTypeToUse(actual);
@@ -1317,10 +1201,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             }
             m_typeCodeSer.Serialise(ReflectionHelper.CorbaTypeCodeType, typeCode, attributes, targetStream);
-            if (actual != null) {
+            if (actual != null) {               
                 Marshaller marshaller = Marshaller.GetSingleton();               
                 AttributeExtCollection typeAttributes = Repository.GetAttrsForTypeCode(typeCode);                
-                marshaller.Marshal(actualType, typeAttributes, actualToSerialise, targetStream);
+                marshaller.Marshal(actualType, typeAttributes, actual, targetStream);
             }
         }
 
@@ -1374,8 +1258,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                         result = new omg.org.CORBA.AnyTC();
                         break;
                     case omg.org.CORBA.TCKind.tk_array:
-                        result = new omg.org.CORBA.ArrayTC();
-                        break;
+                        throw new NotImplementedException("array not implemented");
                     case omg.org.CORBA.TCKind.tk_boolean:
                         result = new omg.org.CORBA.BooleanTC();
                         break;
@@ -1534,11 +1417,6 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             bool isObjRef = sourceStream.ReadBool();
             if (isObjRef) {
-                if (formal.Equals(ReflectionHelper.ObjectType)) {
-                    // if in interface only abstract interface base type is used, set formal now
-                    // to base type of all objref for deserialization
-                    formal = ReflectionHelper.MarshalByRefObjectType;
-                }
                 object result = m_objRefSer.Deserialise(formal, attributes, sourceStream);    
                 return result;
             } else {

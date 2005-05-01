@@ -411,40 +411,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
-        public void TestLongTypeDefAsAny() {
-            OrbServices orb = OrbServices.GetSingleton();
-            int arg = 74;
-            int result = (int)m_testService.RetrieveLongTypeDefAsAny(arg);
-            Assertion.AssertEquals("result of RetrieveLongTypeDefAsAny", arg, result);
-
-            int arg2 = 91;
-            omg.org.CORBA.TypeCode argTC = orb.create_tc_for(arg2);
-            omg.org.CORBA.TypeCode longTD_TC = orb.create_alias_tc("IDL:longTD:1.0", "longTD", argTC);
-            Any any = new Any(arg2, longTD_TC);
-            int result2 = m_testService.ExtractFromLongTypeDef(any);
-            Assertion.AssertEquals("result of ExtractFromLongTypeDef", arg2, result2);
-        }
-
-        [Test]
-        public void TestNullAsAny() {
-            object result = m_testService.EchoAny(null);
-            Assertion.AssertNull("result not null", result);
-        }
-
-        [Test]
-        public void TestNilReferenceAsAny() {
-            OrbServices orb = OrbServices.GetSingleton();
-            omg.org.CORBA.TypeCode nilRefTC = orb.create_tc_for_type(typeof(System.MarshalByRefObject));
-            Any nilRefAny = new Any(null, nilRefTC);
-            object result = m_testService.EchoAny(nilRefAny);
-            Assertion.AssertNull("result not null", result);
-
-            Any nilRefAny2 = new Any(null, orb.create_interface_tc(String.Empty, String.Empty));
-            object result2 = m_testService.EchoAny(nilRefAny2);
-            Assertion.AssertNull("result not null", result2);
-        }
-
-        [Test]
         public void TestNameserviceList() {
             NamingContext nameService = GetNameService();
 
@@ -464,60 +430,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Assertion.Assert("service not found", found);
         }
 
-        [Test]
-        public void TestOneDimIdlIntArray() {
-            int[] arg = new int[] { 1, 2, 3, 4, 5 };
-            int[] result = m_testService.EchoIntList5(arg);
-            Assertion.AssertEquals(arg.Length, result.Length);
-            for (int i = 0; i < arg.Length; i++) {
-                Assertion.AssertEquals(arg[i], result[i]);
-            }            
-        }
-
-        [Test]
-        public void TestOneDimIdlStringArray() {
-            string[] arg = new string[] { "1", "2", "3", "4", "5" };
-            string[] result = m_testService.EchoStringList5(arg);
-            Assertion.AssertEquals(arg.Length, result.Length);
-            for (int i = 0; i < arg.Length; i++) {
-                Assertion.AssertEquals(arg[i], result[i]);
-            }            
-        }
-
-        [Test]
-        public void TestTwoDimIdlIntArray() {
-            int[,] arg = new int[,] { {1, 2}, {3, 4} };
-            int[,] result = m_testService.EchoInt2Dim2x2(arg);
-            Assertion.AssertEquals(arg.GetLength(0), result.GetLength(0));
-            Assertion.AssertEquals(arg.GetLength(1), result.GetLength(1));
-            for (int i = 0; i < arg.GetLength(0); i++) {
-                for (int j = 0; j < arg.GetLength(1); j++) {
-                    Assertion.AssertEquals(arg[i,j], result[i,j]);
-                }
-            }            
-        }
-
-        [Test]
-        public void TestStructContainingArray() {
-            BlobData arg = new BlobData();
-            arg.ident = 1;
-            arg.data = new int[] { 1, 2, 3 };
-            BlobData result = m_testService.EchoBlobData(arg);    
-            Assertion.AssertEquals(arg.ident, result.ident);
-            Assertion.AssertEquals(arg.data.Length, result.data.Length);
-            for (int i = 0; i < arg.data.Length; i++) {
-                Assertion.AssertEquals(arg.data[i], result.data[i]);
-            }            
-        }
-        
-        [Test]
-        public void TestMBRTypesWithReservedNameCollisions() {
-            CCE._Assembly asm = m_testService.CreateAsm();
-            Assertion.AssertNotNull("asm not created", asm);
-
-/*            CCE.N_Assembly _asm = m_testService.Create_Asm();
-            Assertion.AssertNotNull("_asm not created", _asm); */
-        }
 
     }
 

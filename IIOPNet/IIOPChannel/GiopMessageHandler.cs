@@ -86,9 +86,25 @@ namespace Ch.Elca.Iiop.MessageHandling {
             Debug.WriteLine("receive reply message at client side");            
             CdrMessageInputStream msgInput = new CdrMessageInputStream(sourceStream);
             CdrInputStream msgBody = msgInput.GetMessageContentReadingStream();
+            GiopClientRequest request = new GiopClientRequest(requestMessage);
+            if (request.IsAsyncRequest) {
+                try {
+                    // with respec to interception, this is a new request -> call again send_request interception before reply
+                    request.PrepareSecondAscyncInterception();
+                    request.InterceptSendRequest();
+                } catch (Exception ex) {
+                    request.Reply = new ReturnMessage(ex, requestMessage);
+                    Exception newException = request.InterceptReceiveException(ex);
+                    if (newException == ex) {
+                        throw;
+                    } else {
+                        throw newException; // exeption has been changed by interception point
+                    }
+                }
+            }
             // deserialize message body
             GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
-            IMessage result = ser.DeserialiseReply(msgBody, msgInput.Header.Version, requestMessage,
+            IMessage result = ser.DeserialiseReply(msgBody, msgInput.Header.Version, request,
                                                    conDesc);
             if (!(result is LocationForwardMessage)) {
                 // a standard return message
@@ -101,14 +117,42 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                                                                                             
         }
         
+        /// <summary>
+        /// creates a return message for a return value and possible out/ref args among the sent arguments
+        /// </summary>
+        private ReturnMessage CreateReturnMsgForValues(object retVal, object[] reqArgs,
+                                                       IMethodCallMessage request) {
+            // find out args
+            MethodInfo targetMethod = (MethodInfo)request.MethodBase;
+            ParameterInfo[] parameters = targetMethod.GetParameters();
+
+            bool outArgFound = false;
+            ArrayList outArgsList = new ArrayList();
+            for (int i = 0; i < parameters.Length; i++) {
+                if (ParameterMarshaller.IsOutParam(parameters[i]) || 
+                    ParameterMarshaller.IsRefParam(parameters[i])) {
+                    outArgsList.Add(reqArgs[i]); // i-th argument is an out/ref param
+                    outArgFound = true;
+                } else {
+                    outArgsList.Add(null); // for an in param null must be added to out-args
+                }
+            }
+            
+            object[] outArgs = outArgsList.ToArray();
+            if ((!outArgFound) || (outArgs == null)) { 
+                outArgs = new object[0]; 
+            }
+            // create the return message
+            return new ReturnMessage(retVal, outArgs, outArgs.Length, null, request); 
+        }        
+        
         private IMessage ForwardRequest(IMethodCallMessage request,
                                         LocationForwardMessage target) {
             object[] reqArgs = new object[request.Args.Length];
             request.Args.CopyTo(reqArgs, 0);
             object retVal = request.MethodBase.Invoke(target.FwdToProxy, reqArgs);
-            return GiopMessageBodySerialiser.GetSingleton().CreateReturnMsgForValues(retVal, 
-                                                                                     reqArgs, 
-                                                                                     request);
+            return CreateReturnMsgForValues(retVal, reqArgs, 
+                                            request);
         }        
 
         /// <summary>reads an incoming Giop request-message from the Stream sourceStream</summary>
@@ -124,7 +168,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
 
         /// <summary>serialises an outgoing .NET request Message on client side</summary>
-        internal void SerialiseOutgoingRequestMessage(IMessage msg, Ior target, GiopConnectionDesc conDesc,
+        internal void SerialiseOutgoingRequestMessage(IMessage msg, IIorProfile target, GiopConnectionDesc conDesc,
                                                     Stream targetStream, uint requestId) {
             if (msg is IConstructionCallMessage) {
                 // not supported in CORBA, TBD: replace through do nothing instead of exception
@@ -138,10 +182,17 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 // serialize the message, this insert some data into msg, e.g. request-id
                 GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
                 msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = requestId; // set request-id
-                ser.SerialiseRequest(msg as IMethodCallMessage, 
+                msg.Properties[SimpleGiopMsg.TARGET_PROFILE_KEY] = target;
+                GiopClientRequest request = new GiopClientRequest((IMethodCallMessage)msg);
+                ser.SerialiseRequest(request, 
                                      msgOutput.GetMessageContentWritingStream(),
-                                     target, requestId, conDesc);
+                                     target, conDesc);
                 msgOutput.CloseStream();
+                if ((request.IsAsyncRequest) || (request.IsOneWayCall)) {
+                    // after successful serialisation, call for oneway and async requests receive other, 
+                    // see corba 2.6, page 21-12.
+                    request.InterceptReceiveOther();
+                }
             } else {
                 throw new NotImplementedException("handling for this type of .NET message is not implemented at the moment, type: " +
                                                   msg.GetType());
@@ -149,20 +200,22 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
 
         /// <summary>serialises an outgoing .NET reply Message on server side</summary>
-        internal void SerialiseOutgoingReplyMessage(IMessage msg, GiopVersion version, uint forRequstId,
-                                                   Stream targetStream, GiopConnectionDesc conDesc) {
-            if (msg is ReturnMessage) {
+        internal void SerialiseOutgoingReplyMessage(IMessage replyMsg, IMessage requestMsg, GiopVersion version,
+                                                    Stream targetStream, GiopConnectionDesc conDesc) {
+            if (replyMsg is ReturnMessage) {
                 // write a CORBA response message into the stream targetStream
                 GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.Reply);
                 CdrMessageOutputStream msgOutput = new CdrMessageOutputStream(targetStream, header);
+                GiopServerRequest request = new GiopServerRequest(requestMsg, 
+                                                                  (ReturnMessage)replyMsg);
                 // serialize the message
                 GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
-                ser.SerialiseReply((ReturnMessage)msg, msgOutput.GetMessageContentWritingStream(), 
-                                   version, forRequstId, conDesc);
+                ser.SerialiseReply(request, msgOutput.GetMessageContentWritingStream(), 
+                                   version, conDesc);
                 msgOutput.CloseStream(); // write to the stream
             } else {
                 throw new NotImplementedException("handling for this type of .NET message is not implemented at the moment, type: " +
-                                                  msg.GetType());
+                                                  replyMsg.GetType());
             }
         }
 
@@ -190,7 +243,30 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                      LocateStatus.OBJECT_HERE, null); // for the moment, do not try to find object, because forward is not possibly for IIOP.NET server
             msgOutput.CloseStream(); // write to the stream 
             return targetStream;
-        }                           
+        }            
+        
+        internal Stream PrepareMessageErrorMessage(GiopVersion version) {
+            Debug.WriteLine("create a message error message");
+            Stream targetStream = new MemoryStream();            
+            GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.MessageError);
+            header.WriteToStream(targetStream, 0);
+            targetStream.Seek(0, SeekOrigin.Begin);
+            return targetStream;
+        }
+        
+        /// <summary>
+        /// create a close connection message
+        /// </summary>
+        /// <param name="version"></param>
+        /// <returns></returns>
+        internal Stream PrepareMessageCloseMessage(GiopVersion version) {
+            Debug.WriteLine("create a close connection message");
+            Stream targetStream = new MemoryStream();            
+            GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.CloseConnection);
+            header.WriteToStream(targetStream, 0);
+            targetStream.Seek(0, SeekOrigin.Begin);
+            return targetStream;            
+        }
 
         #endregion IMethods
 
@@ -273,7 +349,12 @@ namespace Ch.Elca.Iiop.Tests {
         
         public object MethodSignature {
             get {
-                throw new NotImplementedException();
+                if (MethodBase != null) {
+                    return ReflectionHelper.GenerateSigForMethod(MethodBase);
+                } else {
+                    return null;
+                }
+                    
             }
         }
         
@@ -380,7 +461,7 @@ namespace Ch.Elca.Iiop.Tests {
             MemoryStream targetStream = new MemoryStream();
             
             uint reqId = 5;
-            handler.SerialiseOutgoingRequestMessage(msg, target, conDesc, targetStream, reqId);
+            handler.SerialiseOutgoingRequestMessage(msg, target.Profiles[0], conDesc, targetStream, reqId);
             
             // check to serialised stream
             targetStream.Seek(0, SeekOrigin.Begin);
@@ -435,17 +516,21 @@ namespace Ch.Elca.Iiop.Tests {
             MethodInfo methodToCall = typeof(TestService).GetMethod("Add");
             object[] args = new object[] { ((Int32) 1), ((Int32) 2) };
             string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
+            GiopVersion version = new GiopVersion(1, 2);
             TestMessage msg = new TestMessage(methodToCall, args, uri);
+            msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = (uint)5;
+            msg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY] = version;
+            msg.Properties[SimpleGiopMsg.CALLED_METHOD_KEY] = methodToCall;
             // create a connection context
             GiopConnectionDesc conDesc = new GiopConnectionDesc();
 
             // create the reply
-            ReturnMessage retMsg = new ReturnMessage((Int32) 3, new object[0], 0, null, msg);
+            ReturnMessage retMsg = new ReturnMessage((Int32) 3, new object[0], 0, null, msg);            
             
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
             MemoryStream targetStream = new MemoryStream();
-
-            handler.SerialiseOutgoingReplyMessage(retMsg, new GiopVersion(1, 2), 5, 
+            
+            handler.SerialiseOutgoingReplyMessage(retMsg, msg, version, 
                                                   targetStream, conDesc);
             
             // check to serialised stream
@@ -600,7 +685,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(0, result.OutArgCount);
         }                
                 
-        [Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
+        //[Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
         public void TestLocationForward() {
             IiopChannel chan = new IiopChannel(8090);
             ChannelServices.RegisterChannel(chan);
@@ -633,7 +718,7 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }
                 
-        [Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
+        //[Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
         public void TestLocationForwardOnIsA() {
             // tests location forward, if we forward on is_a call            
             IiopChannel chan = new IiopChannel(8090);

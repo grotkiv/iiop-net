@@ -27,26 +27,8 @@
 
 
 using System;
+using System.Runtime.Remoting.Messaging;
 using Ch.Elca.Iiop.Idl;
-using omg.org.CORBA;
-
-namespace CCE {
-
-    public interface Assembly {
-    }
-
-    [SupportedInterface(typeof(Assembly))]
-    public class AssemblyImpl : MarshalByRefObject, Assembly {
-    }
-
-    public interface _Assembly {
-    }
-
-    [SupportedInterface(typeof(_Assembly))]
-    public class _AssemblyImpl : MarshalByRefObject, _Assembly {
-    }
-
-}
 
 namespace Ch.Elca.Iiop.IntegrationTests {
 
@@ -95,23 +77,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         public TestSerializableClassE[] RecArrEntry;
     }
 
-    [IdlStruct]
-    public struct SSensi { 
-        public int ICode; 
-        public int IDev; 
-        [IdlSequence(0L)]
-        public long[] Sensibilites;
-    }
-
-
-    [IdlStruct]
-    public struct IdlArrayContainer {
-        [IdlArray(0L, 5)]
-        public int[] OneDimIntArray5;
-
-        [IdlArray(0L, 2)][IdlArrayDimension(0L, 1, 2)] 
-        public int[,] TwoDimIntArray2x2;
-    }
 
     public class Adder : MarshalByRefObject {
         public System.Int32 Add(System.Int32 sum1, System.Int32 sum2) {
@@ -129,15 +94,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             return arg;
         }
     }
-    
-    /// <summary>don't use supported interface here, to check if client is able to detect,
-    /// that the impl class is compatible with interface</summary>
-    public class TestUnknownEchoInterfaceImpl : MarshalByRefObject, TestEchoInterface {
-        public System.Int32 EchoInt(System.Int32 arg) {
-            return arg;
-        }
-    }
-
 
     public interface TestInterfaceA {
         System.String Msg {
@@ -285,25 +241,25 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             return arg;
         }
 
-        [return: IdlSequence(0L)]
-        public System.Int32[] EchoIdlLongSequence([IdlSequence(0L)] System.Int32[] arg) {
+        [return: IdlSequence(0)]
+        public System.Int32[] EchoIdlLongSequence([IdlSequence(0)] System.Int32[] arg) {
             return arg;
         }
 
-        [return: IdlSequence(0L, 10L)]
-        [return: IdlSequence(1L)]
-        public System.Int32[][] EchoIdlLongSequenceOfBoundedSequence([IdlSequence(0L, 10L)] [IdlSequence(1L)] System.Int32[][] arg) {
+        [return: IdlSequence(0, 10)]
+        [return: IdlSequence(1)]
+        public System.Int32[][] EchoIdlLongSequenceOfBoundedSequence([IdlSequence(0, 10)] [IdlSequence(1)] System.Int32[][] arg) {
             return arg;
         }
 
-        [return: IdlSequence(0L)]
-        [return: IdlSequence(1L)]
-        public System.Int32[][] EchoIdlLongSequenceOfSequence([IdlSequence(0L)] [IdlSequence(1L)] System.Int32[][] arg) {
+        [return: IdlSequence(0)]
+        [return: IdlSequence(1)]
+        public System.Int32[][] EchoIdlLongSequenceOfSequence([IdlSequence(0)] [IdlSequence(1)] System.Int32[][] arg) {
             return arg;
         }
 
-        [return: IdlSequence(0L)]
-        public System.Int32[] AppendToIdlLongSequence([IdlSequence(0L)] System.Int32[] arg, System.Int32 toAppend) {
+        [return: IdlSequence(0)]
+        public System.Int32[] AppendToIdlLongSequence([IdlSequence(0)] System.Int32[] arg, System.Int32 toAppend) {
             System.Int32[] result = new System.Int32[arg.Length + 1]; // arg is not null, because not allowed for idl seq
             Array.Copy(arg, 0, result, 0, arg.Length);
             result[arg.Length] = toAppend;
@@ -311,24 +267,24 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             
         }
 
-        [return: IdlSequence(0L)]
+        [return: IdlSequence(0)]
         [return: StringValue()]
         [return: WideChar(false)]
-        public System.String[] EchoIdlStringSequence([IdlSequence(0L)] [StringValue()] [WideChar(false)] System.String[] arg) {
+        public System.String[] EchoIdlStringSequence([IdlSequence(0)] [StringValue()] [WideChar(false)] System.String[] arg) {
             return arg;
         }
 
-        [return: IdlSequence(0L)]
+        [return: IdlSequence(0)]
         [return: StringValue()]
         [return: WideChar(true)]
-        public System.String[] EchoIdlWStringSequence([IdlSequence(0L)] [StringValue()] [WideChar(true)] System.String[] arg) {
+        public System.String[] EchoIdlWStringSequence([IdlSequence(0)] [StringValue()] [WideChar(true)] System.String[] arg) {
             return arg;
         }
 
-        [return: IdlSequence(0L)]
+        [return: IdlSequence(0)]
         [return: StringValue()]
         [return: WideChar(false)]
-        public System.String[] AppendToIdlStringSequence([IdlSequence(0L)] [StringValue()] [WideChar(false)] System.String[] arg, 
+        public System.String[] AppendToIdlStringSequence([IdlSequence(0)] [StringValue()] [WideChar(false)] System.String[] arg, 
                                                          [StringValue()] [WideChar(false)] System.String toAppend) {
             System.String[] result = new System.String[arg.Length + 1]; // arg is not null, because not allowed for idl seq
             Array.Copy(arg, 0, result, 0, arg.Length);
@@ -337,63 +293,8 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             
         }
 
-        [return: IdlArray(0L, 5)]
-        public System.Int32[] EchoIdlLongArrayFixedSize5([IdlArray(0L, 5)] System.Int32[] arg) {
-            return arg;
-        }
-
-        [return: IdlArray(0L, 5)]
-        [return: IdlArrayDimension(0L, 1, 3)]
-        public System.Int32[,] EchoIdlLongArray5times3([IdlArray(0L, 5)][IdlArrayDimension(0L, 1, 3)] System.Int32[,] arg) {
-            return arg;
-        }
-
-        public IdlArrayContainer EchoIdlArrayContainer(IdlArrayContainer arrayContainer) {
-            return arrayContainer;            
-        }
-
-        public object RetrieveIdlIntArrayAsAny([IdlArray(0L, 5)] int[] arg) {
-            // test with explicit typecode-creation
-            IOrbServices orbServices = OrbServices.GetSingleton();
-            omg.org.CORBA.TypeCode arrayTC = 
-                orbServices.create_array_tc(5, orbServices.create_tc_for_type(typeof(int)));
-            Any arrayAsAny = new Any(arg, arrayTC);
-            return arrayAsAny;
-        }
-
-        public object RetrieveIdlInt2DimArray2x2AsAny([IdlArray(0L, 2)][IdlArrayDimension(0L, 1, 2)] System.Int32[,] arg) {
-            // test with explicit typecode-creation
-            IOrbServices orbServices = OrbServices.GetSingleton();
-            omg.org.CORBA.TypeCode innerArrayTC = 
-                orbServices.create_array_tc(2, orbServices.create_tc_for_type(typeof(int)));
-            omg.org.CORBA.TypeCode arrayTC = 
-                orbServices.create_array_tc(2, innerArrayTC);
-            Any arrayAsAny = new Any(arg, arrayTC);
-            return arrayAsAny;
-        }
-
-        public object RetrieveIdlInt3DimArray2x2x3AsAny([IdlArray(0L, 2)][IdlArrayDimension(0L, 1, 2)][IdlArrayDimension(0L, 2, 3)] System.Int32[,,] arg) {
-            // test with explicit typecode-creation
-            IOrbServices orbServices = OrbServices.GetSingleton();
-            omg.org.CORBA.TypeCode arrayTC = 
-                orbServices.create_array_tc(3, orbServices.create_tc_for_type(typeof(int)));
-            arrayTC = orbServices.create_array_tc(2, arrayTC);
-            arrayTC = orbServices.create_array_tc(2, arrayTC);
-            Any arrayAsAny = new Any(arg, arrayTC);
-            return arrayAsAny;
-        }
-
         public Adder RetrieveAdder() {
             return new Adder();
-        }
-
-        public object RetrieveAdderAsAny() {
-            return RetrieveAdder();
-        }
-
-        [return: ObjectIdlTypeAttribute(IdlTypeObject.AbstractBase)]
-        public object RetrieveAdderForAbstractInterfaceBase() {
-            return RetrieveAdder();
         }
 
         public System.Int32 AddWithAdder(Adder adder, System.Int32 sum1, System.Int32 sum2) {
@@ -429,14 +330,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
         public TestEchoInterface RetrieveEchoInterfaceImplementor() {
             return new TestAbstrInterfaceImplByMarshalByRef();
-        }
-
-        public TestEchoInterface RetrieveUnknownEchoInterfaceImplementor() {
-            return new TestUnknownEchoInterfaceImpl();
-        }
-
-        public object RetrieveUnknownEchoInterfaceImplementorAsAny() {
-            return RetrieveUnknownEchoInterfaceImplementor();
         }
 
         public TestInterfaceA RetrieveTestInterfaceAImplementor(System.String initialMsg) {
@@ -560,6 +453,18 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             throw new NotSupportedException("test-ex");
         }
 
+        [ContextElement("element1")]
+        [return: StringValue()]
+        [return: WideChar(false)]
+        public string TestContextElementPassing() {
+            string result = "";
+            CorbaContextElement elem = CallContext.GetData("element1") as CorbaContextElement;
+            if (elem != null) {
+                result = elem.ElementValue;
+            }
+            return result;
+        }
+
         public bool TestPropWithGetUserException {
             get {
                 TestException testEx = new TestException();
@@ -573,25 +478,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
                 throw new omg.org.CORBA.INTERNAL(29, 
                                            omg.org.CORBA.CompletionStatus.Completed_Yes);
             }
-        }
-
-        public void TestDuplicateSeqOfSeqInOut([IdlSequence(0L)] ref SSensi[] arg) {
-            if (arg != null) {
-               SSensi[] result = new SSensi[arg.Length * 2];
-               for (int i = 0; i < arg.Length; i++) {
-                   result[i*2] = arg[i];
-                   result[i*2 + 1] = arg[i];
-               }
-               arg = result;
-            }
-        }
-
-        public CCE.Assembly CreateAsm() {
-            return new CCE.AssemblyImpl();
-        }
-
-        public CCE._Assembly Create_Asm() {
-            return new CCE._AssemblyImpl();
         }
         
         public override object InitializeLifetimeService() {
@@ -688,6 +574,28 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             this.code = code;
         }
 
+    }
+
+
+    [SupportedInterface(typeof(TestBoxedValuetypeService))]
+    public class TestBoxedValuetypeServiceImpl : MarshalByRefObject, TestBoxedValuetypeService {
+
+        
+        [return: BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_string:1.0")]
+        public string EchoBoxedString([BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_string:1.0")] string arg) {
+            return arg;
+        }
+
+        [return: BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_TestStruct:1.0")]
+        public Test EchoBoxedStruct([BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_TestStruct:1.0")] Test arg) {
+            return arg;
+        }
+        
+        public override object InitializeLifetimeService() {
+            // live forever
+            return null;
+        }
+        
     }
 
 }

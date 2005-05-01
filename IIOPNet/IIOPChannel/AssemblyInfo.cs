@@ -30,7 +30,6 @@
 using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Security.Permissions;
 
 //
 // General Information about an assembly is controlled through the following 
@@ -86,14 +85,4 @@ using System.Security.Permissions;
 //       documentation for more information on this.
 //
 [assembly: AssemblyDelaySign(false)]
-#if (!DISABLE_STRONG_NAME)
-[assembly: AssemblyKeyFile(@"..\Key.snk")]
-#endif
 [assembly: AssemblyKeyName("")]
-
-// needed CAS for IIOP.NET
-[assembly:ReflectionPermissionAttribute(SecurityAction.RequestMinimum, Unrestricted=true)] // refleciton 
-[assembly:SecurityPermissionAttribute(SecurityAction.RequestMinimum, Infrastructure=true)] // remoting infrastructure
-[assembly:SecurityPermissionAttribute(SecurityAction.RequestMinimum, RemotingConfiguration=true)] // remoting infrastructure
-
-// FileIOPermission, DnsPermission, SocketPermission also needed; should be configured

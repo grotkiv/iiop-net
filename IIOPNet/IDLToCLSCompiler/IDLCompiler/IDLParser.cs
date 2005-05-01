@@ -2251,12 +2251,8 @@ public class IDLParser{/*@bgen(jjtree)*/
             ASTdeclarator decl = (ASTdeclarator) declaratorNodes.jjtGetChild(i);
             if (decl.jjtGetChild(0) is ASTsimple_declarator) {
                 String ident = ((SimpleNodeWithIdent) decl.jjtGetChild(0)).getIdent();
-                currentScope.addTypeDef(ident);
-            } else if (decl.jjtGetChild(0) is ASTcomplex_declarator) {
-                /* complex_declarator contains an array_declarator */
-                String ident = ((SimpleNodeWithIdent) decl.jjtGetChild(0).jjtGetChild(0)).getIdent();
-                currentScope.addTypeDef(ident);
-            }
+                    currentScope.addTypeDef(ident);
+                    }
         }
     } catch (Exception jjte000) {
     if (jjtc000) {
@@ -4563,13 +4559,13 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_80() {
-    if (jj_scan_token(85)) return true;
+  private bool jj_3R_92() {
+    if (jj_3R_123()) return true;
     return false;
   }
 
-  private bool jj_3R_92() {
-    if (jj_3R_123()) return true;
+  private bool jj_3R_80() {
+    if (jj_scan_token(85)) return true;
     return false;
   }
 
@@ -4582,6 +4578,11 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_222() {
+    if (jj_3R_225()) return true;
+    return false;
+  }
+
   private bool jj_3R_79() {
     if (jj_scan_token(33)) return true;
     return false;
@@ -4590,11 +4591,6 @@ public class IDLParser{/*@bgen(jjtree)*/
   private bool jj_3R_139() {
     if (jj_scan_token(62)) return true;
     if (jj_3R_60()) return true;
-    return false;
-  }
-
-  private bool jj_3R_222() {
-    if (jj_3R_225()) return true;
     return false;
   }
 
@@ -4643,38 +4639,18 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_111() {
-    if (jj_scan_token(41)) return true;
-    return false;
-  }
-
   private bool jj_3R_220() {
     if (jj_3R_223()) return true;
     return false;
   }
 
+  private bool jj_3R_111() {
+    if (jj_scan_token(41)) return true;
+    return false;
+  }
+
   private bool jj_3_13() {
     if (jj_3R_41()) return true;
-    return false;
-  }
-
-  private bool jj_3R_78() {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_scan_token(93)) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(94)) return true;
-    }
-    return false;
-  }
-
-  private bool jj_3R_77() {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_scan_token(40)) {
-    jj_scanpos = xsp;
-    if (jj_3R_111()) return true;
-    }
     return false;
   }
 
@@ -4706,6 +4682,42 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_78() {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_scan_token(93)) {
+    jj_scanpos = xsp;
+    if (jj_scan_token(94)) return true;
+    }
+    return false;
+  }
+
+  private bool jj_3R_90() {
+    if (jj_3R_93()) return true;
+    return false;
+  }
+
+  private bool jj_3R_77() {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_scan_token(40)) {
+    jj_scanpos = xsp;
+    if (jj_3R_111()) return true;
+    }
+    return false;
+  }
+
+  private bool jj_3R_57() {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3R_90()) jj_scanpos = xsp;
+    if (jj_scan_token(16)) return true;
+    if (jj_3R_60()) return true;
+    xsp = jj_scanpos;
+    if (jj_3R_91()) jj_scanpos = xsp;
+    return false;
+  }
+
   private bool jj_3R_45() {
     Token xsp;
     xsp = jj_scanpos;
@@ -4721,30 +4733,9 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_90() {
-    if (jj_3R_93()) return true;
-    return false;
-  }
-
-  private bool jj_3R_57() {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3R_90()) jj_scanpos = xsp;
-    if (jj_scan_token(16)) return true;
-    if (jj_3R_60()) return true;
-    xsp = jj_scanpos;
-    if (jj_3R_91()) jj_scanpos = xsp;
-    return false;
-  }
-
   private bool jj_3R_71() {
     if (jj_scan_token(29)) return true;
     if (jj_3R_108()) return true;
-    return false;
-  }
-
-  private bool jj_3R_43() {
-    if (jj_scan_token(IDLParserConstants.WIDECHARACTER)) return true;
     return false;
   }
 
@@ -4763,6 +4754,11 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_43() {
+    if (jj_scan_token(IDLParserConstants.WIDECHARACTER)) return true;
+    return false;
+  }
+
   private bool jj_3R_138() {
     if (jj_scan_token(61)) return true;
     if (jj_3R_60()) return true;
@@ -4771,16 +4767,6 @@ public class IDLParser{/*@bgen(jjtree)*/
 
   private bool jj_3R_106() {
     if (jj_scan_token(45)) return true;
-    return false;
-  }
-
-  private bool jj_3R_224() {
-    if (jj_scan_token(IDLParserConstants.CHARACTER)) return true;
-    return false;
-  }
-
-  private bool jj_3R_204() {
-    if (jj_scan_token(60)) return true;
     return false;
   }
 
@@ -4807,6 +4793,16 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_224() {
+    if (jj_scan_token(IDLParserConstants.CHARACTER)) return true;
+    return false;
+  }
+
+  private bool jj_3R_204() {
+    if (jj_scan_token(60)) return true;
+    return false;
+  }
+
   private bool jj_3R_59() {
     if (jj_3R_93()) return true;
     return false;
@@ -4821,16 +4817,6 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_203() {
-    if (jj_scan_token(59)) return true;
-    return false;
-  }
-
-  private bool jj_3R_42() {
-    if (jj_scan_token(IDLParserConstants.WIDESTRING)) return true;
-    return false;
-  }
-
   private bool jj_3R_218() {
     if (jj_3R_219()) return true;
     return false;
@@ -4838,6 +4824,11 @@ public class IDLParser{/*@bgen(jjtree)*/
 
   private bool jj_3R_39() {
     if (jj_3R_69()) return true;
+    return false;
+  }
+
+  private bool jj_3R_203() {
+    if (jj_scan_token(59)) return true;
     return false;
   }
 
@@ -4859,18 +4850,23 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_42() {
+    if (jj_scan_token(IDLParserConstants.WIDESTRING)) return true;
+    return false;
+  }
+
   private bool jj_3R_176() {
     if (jj_scan_token(58)) return true;
     return false;
   }
 
-  private bool jj_3R_223() {
-    if (jj_scan_token(IDLParserConstants.STRING)) return true;
+  private bool jj_3R_212() {
+    if (jj_3R_217()) return true;
     return false;
   }
 
-  private bool jj_3R_212() {
-    if (jj_3R_217()) return true;
+  private bool jj_3R_223() {
+    if (jj_scan_token(IDLParserConstants.STRING)) return true;
     return false;
   }
 
@@ -4884,6 +4880,11 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_200() {
+    if (jj_3R_208()) return true;
+    return false;
+  }
+
   private bool jj_3R_171() {
     if (jj_scan_token(56)) return true;
     return false;
@@ -4894,16 +4895,16 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_200() {
-    if (jj_3R_208()) return true;
-    return false;
-  }
-
   private bool jj_3R_32() {
     if (jj_3R_57()) return true;
     if (jj_scan_token(14)) return true;
     if (jj_3R_58()) return true;
     if (jj_scan_token(15)) return true;
+    return false;
+  }
+
+  private bool jj_3R_184() {
+    if (jj_3R_200()) return true;
     return false;
   }
 
@@ -4917,20 +4918,8 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_184() {
-    if (jj_3R_200()) return true;
-    return false;
-  }
-
   private bool jj_3_6() {
     if (jj_3R_33()) return true;
-    return false;
-  }
-
-  private bool jj_3R_50() {
-    if (jj_scan_token(54)) return true;
-    if (jj_scan_token(52)) return true;
-    if (jj_scan_token(52)) return true;
     return false;
   }
 
@@ -4954,6 +4943,13 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_50() {
+    if (jj_scan_token(54)) return true;
+    if (jj_scan_token(52)) return true;
+    if (jj_scan_token(52)) return true;
+    return false;
+  }
+
   private bool jj_3R_109() {
     if (jj_scan_token(41)) return true;
     return false;
@@ -4961,6 +4957,11 @@ public class IDLParser{/*@bgen(jjtree)*/
 
   private bool jj_3R_73() {
     if (jj_scan_token(IDLParserConstants.OCTALINT)) return true;
+    return false;
+  }
+
+  private bool jj_3R_135() {
+    if (jj_3R_169()) return true;
     return false;
   }
 
@@ -4980,11 +4981,6 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_135() {
-    if (jj_3R_169()) return true;
-    return false;
-  }
-
   private bool jj_3R_41() {
     Token xsp;
     xsp = jj_scanpos;
@@ -5000,17 +4996,6 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_60() {
-    if (jj_scan_token(IDLParserConstants.ID)) return true;
-    return false;
-  }
-
-  private bool jj_3R_168() {
-    if (jj_scan_token(54)) return true;
-    if (jj_scan_token(53)) return true;
-    return false;
-  }
-
   private bool jj_3R_88() {
     if (jj_scan_token(13)) return true;
     if (jj_3R_60()) return true;
@@ -5022,8 +5007,14 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_205() {
-    if (jj_scan_token(84)) return true;
+  private bool jj_3R_60() {
+    if (jj_scan_token(IDLParserConstants.ID)) return true;
+    return false;
+  }
+
+  private bool jj_3R_168() {
+    if (jj_scan_token(54)) return true;
+    if (jj_scan_token(53)) return true;
     return false;
   }
 
@@ -5032,8 +5023,8 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_132() {
-    if (jj_3R_168()) return true;
+  private bool jj_3R_205() {
+    if (jj_scan_token(84)) return true;
     return false;
   }
 
@@ -5047,13 +5038,13 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3_25() {
-    if (jj_3R_51()) return true;
+  private bool jj_3R_149() {
+    if (jj_3R_107()) return true;
     return false;
   }
 
-  private bool jj_3R_149() {
-    if (jj_3R_107()) return true;
+  private bool jj_3R_132() {
+    if (jj_3R_168()) return true;
     return false;
   }
 
@@ -5062,13 +5053,38 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_148() {
+    if (jj_3R_175()) return true;
+    return false;
+  }
+
+  private bool jj_3_25() {
+    if (jj_3R_51()) return true;
+    return false;
+  }
+
+  private bool jj_3R_147() {
+    if (jj_3R_174()) return true;
+    return false;
+  }
+
+  private bool jj_3_3() {
+    if (jj_3R_30()) return true;
+    return false;
+  }
+
   private bool jj_3R_175() {
     if (jj_scan_token(83)) return true;
     return false;
   }
 
-  private bool jj_3R_148() {
-    if (jj_3R_175()) return true;
+  private bool jj_3R_146() {
+    if (jj_3R_173()) return true;
+    return false;
+  }
+
+  private bool jj_3R_54() {
+    if (jj_3R_87()) return true;
     return false;
   }
 
@@ -5090,26 +5106,6 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_147() {
-    if (jj_3R_174()) return true;
-    return false;
-  }
-
-  private bool jj_3_3() {
-    if (jj_3R_30()) return true;
-    return false;
-  }
-
-  private bool jj_3R_146() {
-    if (jj_3R_173()) return true;
-    return false;
-  }
-
-  private bool jj_3R_54() {
-    if (jj_3R_87()) return true;
-    return false;
-  }
-
   private bool jj_3R_53() {
     if (jj_3R_86()) return true;
     return false;
@@ -5122,12 +5118,6 @@ public class IDLParser{/*@bgen(jjtree)*/
 
   private bool jj_3R_96() {
     if (jj_3R_99()) return true;
-    return false;
-  }
-
-  private bool jj_3R_207() {
-    if (jj_scan_token(83)) return true;
-    if (jj_scan_token(68)) return true;
     return false;
   }
 
@@ -5171,14 +5161,20 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_48() {
-    if (jj_scan_token(52)) return true;
-    if (jj_scan_token(52)) return true;
+  private bool jj_3R_207() {
+    if (jj_scan_token(83)) return true;
+    if (jj_scan_token(68)) return true;
     return false;
   }
 
   private bool jj_3R_142() {
     if (jj_3R_170()) return true;
+    return false;
+  }
+
+  private bool jj_3R_48() {
+    if (jj_scan_token(52)) return true;
+    if (jj_scan_token(52)) return true;
     return false;
   }
 
@@ -5226,6 +5222,11 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_181() {
+    if (jj_scan_token(27)) return true;
+    return false;
+  }
+
   private bool jj_3R_49() {
     if (jj_scan_token(52)) return true;
     return false;
@@ -5241,8 +5242,13 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_181() {
-    if (jj_scan_token(27)) return true;
+  private bool jj_3_1() {
+    if (jj_3R_28()) return true;
+    return false;
+  }
+
+  private bool jj_3_2() {
+    if (jj_3R_29()) return true;
     return false;
   }
 
@@ -5272,16 +5278,6 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3_1() {
-    if (jj_3R_28()) return true;
-    return false;
-  }
-
-  private bool jj_3_2() {
-    if (jj_3R_29()) return true;
-    return false;
-  }
-
   private bool jj_3R_86() {
     if (jj_scan_token(32)) return true;
     if (jj_3R_121()) return true;
@@ -5293,13 +5289,13 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3_23() {
-    if (jj_3R_49()) return true;
+  private bool jj_3R_95() {
+    if (jj_3R_98()) return true;
     return false;
   }
 
-  private bool jj_3R_95() {
-    if (jj_3R_98()) return true;
+  private bool jj_3_23() {
+    if (jj_3R_49()) return true;
     return false;
   }
 
@@ -5362,11 +5358,6 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_114() {
-    if (jj_scan_token(51)) return true;
-    return false;
-  }
-
   private bool jj_3R_159() {
     Token xsp;
     xsp = jj_scanpos;
@@ -5382,8 +5373,8 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_113() {
-    if (jj_scan_token(50)) return true;
+  private bool jj_3R_114() {
+    if (jj_scan_token(51)) return true;
     return false;
   }
 
@@ -5398,23 +5389,13 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_113() {
+    if (jj_scan_token(50)) return true;
+    return false;
+  }
+
   private bool jj_3R_127() {
     if (jj_3R_159()) return true;
-    return false;
-  }
-
-  private bool jj_3R_202() {
-    if (jj_3R_209()) return true;
-    return false;
-  }
-
-  private bool jj_3R_187() {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3R_202()) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(78)) return true;
-    }
     return false;
   }
 
@@ -5436,6 +5417,21 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_202() {
+    if (jj_3R_209()) return true;
+    return false;
+  }
+
+  private bool jj_3R_187() {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3R_202()) {
+    jj_scanpos = xsp;
+    if (jj_scan_token(78)) return true;
+    }
+    return false;
+  }
+
   private bool jj_3R_83() {
     if (jj_3R_114()) return true;
     return false;
@@ -5443,6 +5439,11 @@ public class IDLParser{/*@bgen(jjtree)*/
 
   private bool jj_3R_82() {
     if (jj_3R_113()) return true;
+    return false;
+  }
+
+  private bool jj_3R_158() {
+    if (jj_3R_107()) return true;
     return false;
   }
 
@@ -5469,13 +5470,14 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_158() {
-    if (jj_3R_107()) return true;
+  private bool jj_3R_179() {
+    if (jj_scan_token(IDLParserConstants.PRAGMA)) return true;
     return false;
   }
 
-  private bool jj_3R_179() {
-    if (jj_scan_token(IDLParserConstants.PRAGMA)) return true;
+  private bool jj_3R_99() {
+    if (jj_scan_token(25)) return true;
+    if (jj_3R_151()) return true;
     return false;
   }
 
@@ -5489,22 +5491,11 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_99() {
-    if (jj_scan_token(25)) return true;
-    if (jj_3R_151()) return true;
-    return false;
-  }
-
   private bool jj_3R_178() {
     Token xsp;
     xsp = jj_scanpos;
     if (jj_3R_186()) jj_scanpos = xsp;
     if (jj_3R_187()) return true;
-    return false;
-  }
-
-  private bool jj_3R_141() {
-    if (jj_3R_60()) return true;
     return false;
   }
 
@@ -5519,6 +5510,11 @@ public class IDLParser{/*@bgen(jjtree)*/
 
   private bool jj_3R_63() {
     if (jj_3R_98()) return true;
+    return false;
+  }
+
+  private bool jj_3R_141() {
+    if (jj_3R_60()) return true;
     return false;
   }
 
@@ -5585,6 +5581,18 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_34() {
+    if (jj_3R_61()) return true;
+    if (jj_scan_token(14)) return true;
+    Token xsp;
+    while (true) {
+      xsp = jj_scanpos;
+      if (jj_3R_62()) { jj_scanpos = xsp; break; }
+    }
+    if (jj_scan_token(15)) return true;
+    return false;
+  }
+
   private bool jj_3R_165() {
     if (jj_3R_139()) return true;
     return false;
@@ -5605,18 +5613,6 @@ public class IDLParser{/*@bgen(jjtree)*/
     if (jj_3R_166()) return true;
     }
     }
-    return false;
-  }
-
-  private bool jj_3R_34() {
-    if (jj_3R_61()) return true;
-    if (jj_scan_token(14)) return true;
-    Token xsp;
-    while (true) {
-      xsp = jj_scanpos;
-      if (jj_3R_62()) { jj_scanpos = xsp; break; }
-    }
-    if (jj_scan_token(15)) return true;
     return false;
   }
 
@@ -5677,19 +5673,6 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_210() {
-    if (jj_scan_token(68)) return true;
-    return false;
-  }
-
-  private bool jj_3R_174() {
-    if (jj_scan_token(71)) return true;
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3R_211()) jj_scanpos = xsp;
-    return false;
-  }
-
   private bool jj_3R_35() {
     if (jj_scan_token(17)) return true;
     if (jj_scan_token(22)) return true;
@@ -5700,6 +5683,19 @@ public class IDLParser{/*@bgen(jjtree)*/
     xsp = jj_scanpos;
     if (jj_3R_64()) jj_scanpos = xsp;
     if (jj_scan_token(14)) return true;
+    return false;
+  }
+
+  private bool jj_3R_210() {
+    if (jj_scan_token(68)) return true;
+    return false;
+  }
+
+  private bool jj_3R_174() {
+    if (jj_scan_token(71)) return true;
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3R_211()) jj_scanpos = xsp;
     return false;
   }
 
@@ -5731,6 +5727,14 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_36() {
+    if (jj_scan_token(22)) return true;
+    if (jj_3R_60()) return true;
+    if (jj_3R_65()) return true;
+    if (jj_scan_token(12)) return true;
+    return false;
+  }
+
   private bool jj_3R_191() {
     if (jj_3R_172()) return true;
     return false;
@@ -5738,14 +5742,6 @@ public class IDLParser{/*@bgen(jjtree)*/
 
   private bool jj_3R_190() {
     if (jj_3R_171()) return true;
-    return false;
-  }
-
-  private bool jj_3R_36() {
-    if (jj_scan_token(22)) return true;
-    if (jj_3R_60()) return true;
-    if (jj_3R_65()) return true;
-    if (jj_scan_token(12)) return true;
     return false;
   }
 
@@ -5801,11 +5797,6 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_163() {
-    if (jj_3R_107()) return true;
-    return false;
-  }
-
   private bool jj_3R_66() {
     if (jj_scan_token(17)) return true;
     return false;
@@ -5818,6 +5809,11 @@ public class IDLParser{/*@bgen(jjtree)*/
     if (jj_scan_token(22)) return true;
     if (jj_3R_60()) return true;
     if (jj_scan_token(12)) return true;
+    return false;
+  }
+
+  private bool jj_3R_163() {
+    if (jj_3R_107()) return true;
     return false;
   }
 
@@ -5844,13 +5840,18 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_101() {
-    if (jj_3R_130()) return true;
+  private bool jj_3_10() {
+    if (jj_3R_37()) return true;
     return false;
   }
 
-  private bool jj_3_10() {
-    if (jj_3R_37()) return true;
+  private bool jj_3_9() {
+    if (jj_3R_36()) return true;
+    return false;
+  }
+
+  private bool jj_3R_101() {
+    if (jj_3R_130()) return true;
     return false;
   }
 
@@ -5872,11 +5873,6 @@ public class IDLParser{/*@bgen(jjtree)*/
 
   private bool jj_3R_100() {
     if (jj_3R_129()) return true;
-    return false;
-  }
-
-  private bool jj_3_9() {
-    if (jj_3R_36()) return true;
     return false;
   }
 
@@ -6000,26 +5996,8 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
-  private bool jj_3R_76() {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_scan_token(40)) {
-    jj_scanpos = xsp;
-    if (jj_3R_110()) return true;
-    }
-    return false;
-  }
-
   private bool jj_3R_156() {
     if (jj_3R_178()) return true;
-    return false;
-  }
-
-  private bool jj_3R_44() {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3R_76()) jj_scanpos = xsp;
-    if (jj_scan_token(IDLParserConstants.FIXED)) return true;
     return false;
   }
 
@@ -6034,6 +6012,16 @@ public class IDLParser{/*@bgen(jjtree)*/
     return false;
   }
 
+  private bool jj_3R_76() {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_scan_token(40)) {
+    jj_scanpos = xsp;
+    if (jj_3R_110()) return true;
+    }
+    return false;
+  }
+
   private bool jj_3R_154() {
     if (jj_3R_87()) return true;
     return false;
@@ -6041,6 +6029,14 @@ public class IDLParser{/*@bgen(jjtree)*/
 
   private bool jj_3R_227() {
     if (jj_scan_token(47)) return true;
+    return false;
+  }
+
+  private bool jj_3R_44() {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3R_76()) jj_scanpos = xsp;
+    if (jj_scan_token(IDLParserConstants.FIXED)) return true;
     return false;
   }
 

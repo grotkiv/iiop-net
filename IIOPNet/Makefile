@@ -1,5 +1,6 @@
 projects = IIOPChannel CLSToIDLGenerator
 
+
 build: build-base build-examples
 
 build-examples:
@@ -7,10 +8,7 @@ build-examples:
     $(MAKE) build
     cd ..
 
-key:
-    if not exist Key.snk sn -k Key.snk
-
-build-base: key
+build-base:
     cd IIOPChannel
     $(MAKE) build
     cd ..

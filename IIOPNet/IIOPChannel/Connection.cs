@@ -33,6 +33,7 @@ using System.IO;
 using System.Collections;
 using System.Threading;
 using System.Runtime.Remoting.Messaging;
+using System.Diagnostics;
 using Ch.Elca.Iiop.Services;
 
 namespace Ch.Elca.Iiop {
@@ -54,10 +55,8 @@ namespace Ch.Elca.Iiop {
 
         private int m_charSetChosen = CodeSetService.DEFAULT_CHAR_SET;
         private int m_wcharSetChosen = CodeSetService.DEFAULT_WCHAR_SET;
-        
-        private Hashtable m_items = new Hashtable();                
-        
-        private bool m_messagesExchanged = false;
+               
+        private bool m_codeSetNegotiated = false;
 
         #endregion IFields
         #region IConstructors
@@ -72,40 +71,38 @@ namespace Ch.Elca.Iiop {
             get {
                 return m_charSetChosen;
             }
-            set {
-                m_charSetChosen = value;
-            }
         }
 
         public int WCharSet {
             get {
                 return m_wcharSetChosen;
             }
-            set {
-                m_wcharSetChosen = value;
-            }
         }
-        
-        public IDictionary Items {
-            get {
-                return m_items;
-            }
-        }
+                                
+        #endregion IProperties
+        #region IMethods
         
         /// <summary>
-        /// Were any messages (request/reply) already exchanged
-        /// on this connection
+        /// is the codeset already negotiated?
         /// </summary>
-        public bool MessagesAlreadyExchanged {
-            get {
-                return m_messagesExchanged;    
-            }
-            set {
-                m_messagesExchanged = value;
-            }
+        public bool IsCodeSetNegotiated() {
+            return m_codeSetNegotiated;
+        }
+
+        /// <summary>
+        /// the codeset is already negotiated.
+        /// </summary>
+        public void SetCodeSetNegotiated() {
+            m_codeSetNegotiated = true;
         }
         
-        #endregion IProperties
+        public void SetNegotiatedCodeSets(int charSet, int wcharSet) {
+            m_charSetChosen = charSet;
+            m_wcharSetChosen = wcharSet;
+            SetCodeSetNegotiated();
+        }
+        
+        #endregion IMethods
 
     }
     
@@ -141,17 +138,27 @@ namespace Ch.Elca.Iiop {
 
         private string m_connectionKey;
                 
-        private IClientTransport m_clientTransport;
+        private GiopTransportMessageHandler m_transportHandler;
+        
+        private bool m_isBidir;
 
         #endregion IFields
         #region IConstructors
 
-        internal GiopClientConnection(string connectionKey, IClientTransport transport) {
-            m_connectionKey = connectionKey;
-            m_assocDesc = new GiopClientConnectionDesc();
-            m_clientTransport = transport;
+        /// <param name="connectionKey">the key describing the connection</param>
+        /// <param name="transport">an already connected client transport</param>
+        internal GiopClientConnection(string connectionKey, IClientTransport transport,
+                                      MessageTimeout requestTimeOut) {            
+            Initalize(connectionKey, new GiopTransportMessageHandler(transport, requestTimeOut), false);
         }
-
+        
+        /// <param name="connectionKey">the key describing the connection</param>
+        /// <param name="transport">an already connected client transport</param>
+        internal GiopClientConnection(string connectionKey, IClientTransport transport) : 
+            this(connectionKey, transport, MessageTimeout.Infinite) {
+        }        
+        
+        
         #endregion IConstructors
         #region IProperties
 
@@ -167,26 +174,38 @@ namespace Ch.Elca.Iiop {
             }
         }
 
-        internal IClientTransport ClientTransport {
+        internal GiopTransportMessageHandler TransportHandler {
             get {
-                return m_clientTransport;
+                return m_transportHandler;
             }
         }
 
         #endregion IProperties
         #region IMethods
 
-
-        internal void Connect() {
-            m_clientTransport.OpenConnection();
+        private void Initalize(string connectionKey, GiopTransportMessageHandler transportHandler,
+                               bool isBidir) {
+            m_connectionKey = connectionKey;
+            m_assocDesc = new GiopClientConnectionDesc();            
+            m_transportHandler = transportHandler;            
+            m_transportHandler.StartMessageReception(); // begin listening for messages
+            m_isBidir = isBidir;
         }
 
-        internal bool CheckConnected() {
-            return m_clientTransport.IsConnectionOpen();
+        internal bool CheckConnected() {            
+            return m_transportHandler.Transport.IsConnectionOpen();
         }
 
+        /// <summary>
+        /// closes the connection.
+        /// </summary>
+        /// <remarks>this method must only be called by the ConnectionManager.</remarks>
         internal void CloseConnection() {
-            m_clientTransport.CloseConnection();
+            try {
+                m_transportHandler.ForceCloseConnection();
+            } catch (Exception ex) {
+                Debug.WriteLine("exception while closing connection: " + ex);
+            }            
         }
 
         #endregion IMethods

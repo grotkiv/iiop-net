@@ -310,7 +310,7 @@ namespace Ch.Elca.Iiop.Idl {
         /// <param name="separator">separator between module parts, e.g. / or ::</param>        
         private static string MapNamespaceToIdl(Type forType, string separator, 
                                                 bool isMappedFromIdlToCls) {
-            return MapNamespaceNameToIdl(forType.Namespace, separator, isMappedFromIdlToCls);
+        	return MapNamespaceNameToIdl(forType.Namespace, separator, isMappedFromIdlToCls);
         }
         
         /// <summary>
@@ -364,68 +364,32 @@ namespace Ch.Elca.Iiop.Idl {
         /// return the fully qualified name of typedef for the idl sequence
         /// </summary>
         public static string GetFullyQualifiedIdlTypeDefAliasForSequenceType(Type seqType, int bound, AttributeExtCollection elemTypeAttributes) {
-            string namespaceName;
-            string elemTypeFullQualName;
-            string typedefName = GetTypeDefAliasForSequenceType(seqType, bound, elemTypeAttributes, out namespaceName, out elemTypeFullQualName);
-                        
+        	string namespaceName;
+        	string elemTypeFullQualName;
+        	string typedefName = GetTypeDefAliasForSequenceType(seqType, bound, elemTypeAttributes, out namespaceName, out elemTypeFullQualName);
+        	        	
             string result = MapNamespaceNameToIdl(namespaceName, "::", false);
             if (result.Length > 0) { 
                 result += "::"; 
             }
             result = "::" + result;
             result += typedefName;
-            return result;
-        }
-
-        /// <summary>
-        /// return the fully qualified name of typedef for the idl sequence
-        /// </summary>
-        public static string GetFullyQualifiedIdlTypeDefAliasForArrayType(Type arrayType, int[] dimensions, AttributeExtCollection elemTypeAttributes) {
-            string namespaceName;
-            string elemTypeFullQualName;
-            string typedefName = GetTypeDefAliasForArrayType(arrayType, dimensions, elemTypeAttributes, out namespaceName, out elemTypeFullQualName);
-                        
-            string result = MapNamespaceNameToIdl(namespaceName, "::", false);
-            if (result.Length > 0) { 
-                result += "::"; 
-            }
-            result = "::" + result;
-            result += typedefName;
-            return result;
+			return result;
         }
         
         /// <summary>
         /// return the short type name of typedef for the idl sequence
         /// </summary>
         public static string GetTypeDefAliasForSequenceType(Type seqType, int bound, AttributeExtCollection elemTypeAttributes, out string namespaceName, out string elemTypeFullQualName) {
-            elemTypeFullQualName = (string)ClsToIdlMapper.GetSingleton().MapClsType(seqType.GetElementType(), elemTypeAttributes,
-                                                                                    s_genIdlNameforClsTypeNoAnonSeq);
-            
-            string elemTypeNameId = elemTypeFullQualName.Replace(":", "_");
-            elemTypeNameId = elemTypeNameId.Replace(" ", "_");
-            string typedefName = "seqTd" + bound + "_" + elemTypeNameId;
-            
-            namespaceName = "org.omg.seqTypeDef";
-            return typedefName;
-        }
-
-        /// <summary>
-        /// return the short type name of typedef for the idl array
-        /// </summary>
-        public static string GetTypeDefAliasForArrayType(Type arrayType, int[] dimensions, AttributeExtCollection elemTypeAttributes, out string namespaceName, out string elemTypeFullQualName) {
-            elemTypeFullQualName = (string)ClsToIdlMapper.GetSingleton().MapClsType(arrayType.GetElementType(), elemTypeAttributes,
-                                                                                    s_genIdlNameforClsTypeNoAnonSeq);
-            
-            string elemTypeNameId = elemTypeFullQualName.Replace(":", "_");
-            elemTypeNameId = elemTypeNameId.Replace(" ", "_");
-            string dimensionRep = "";
-            for (int i = 0; i < dimensions.Length; i++) {
-                dimensionRep = dimensionRep + "_" + dimensions[i];
-            }
-            string typedefName = "arrayTd" +  dimensionRep + "_" + elemTypeNameId;
-            
-            namespaceName = "org.omg.arrayTypeDef";
-            return typedefName;
+        	elemTypeFullQualName = (string)ClsToIdlMapper.GetSingleton().MapClsType(seqType.GetElementType(), elemTypeAttributes,
+        																			s_genIdlNameforClsTypeNoAnonSeq);
+        	
+        	string elemTypeNameId = elemTypeFullQualName.Replace(":", "_");
+        	elemTypeNameId = elemTypeNameId.Replace(" ", "_");
+        	string typedefName = "seqTd" + bound + "_" + elemTypeNameId;
+        	
+        	namespaceName = "org.omg.seqTypeDef";
+        	return typedefName;
         }
         
         private static void InitMapClsToIdlSpecial() {
@@ -696,7 +660,7 @@ namespace Ch.Elca.Iiop.Idl {
         #region IConstructors
         
         public GenerationActionReference(bool useAnonymousSequences) {
-            m_useAnonymousSequences = useAnonymousSequences;    
+        	m_useAnonymousSequences = useAnonymousSequences;	
         }
         
         #endregion IConstructors
@@ -787,19 +751,15 @@ namespace Ch.Elca.Iiop.Idl {
             return IdlNaming.MapFullTypeNameToIdlScoped(dotNetType);
         }
         public object MapToIdlSequence(System.Type dotNetType, int bound, AttributeExtCollection allAttributes, AttributeExtCollection elemTypeAttributes) {
-            if (m_useAnonymousSequences) {
-                string refToElemType = (string)m_mapper.MapClsType(dotNetType.GetElementType(), elemTypeAttributes, this);
-                return "sequence<" + refToElemType + ">";
-            } else {
-                // use a typedef for non-anonymous sequence
-                return IdlNaming.GetFullyQualifiedIdlTypeDefAliasForSequenceType(dotNetType, bound, elemTypeAttributes);
-            }
+        	if (m_useAnonymousSequences) {
+	            string refToElemType = (string)m_mapper.MapClsType(dotNetType.GetElementType(), elemTypeAttributes, this);
+    	        return "sequence<" + refToElemType + ">";
+        	} else {
+        		// use a typedef for non-anonymous sequence
+        		return IdlNaming.GetFullyQualifiedIdlTypeDefAliasForSequenceType(dotNetType, bound, elemTypeAttributes);
+        	}
         }
-        public object MapToIdlArray(System.Type dotNetType, int[] dimensions, AttributeExtCollection allAttributes, AttributeExtCollection elemTypeAttributes) {
-            // use a typedef for arrays, because dimension is part of the name of the thing, the type is an array
-            return IdlNaming.GetFullyQualifiedIdlTypeDefAliasForArrayType(dotNetType, dimensions, elemTypeAttributes);
-        }
-        public object MapToIdlBoxedValueType(System.Type dotNetType, System.Type needsBoxingFrom) {
+        public object MapToIdlBoxedValueType(System.Type dotNetType, bool isAlreadyBoxed) {
             // the dotNetType is a subclass of BoxedValueBase representing the boxed value type
             return IdlNaming.MapFullTypeNameToIdlScoped(dotNetType);
         }
@@ -807,7 +767,7 @@ namespace Ch.Elca.Iiop.Idl {
             return "::CORBA::ValueBase";
         }
         public object MapToAbstractBase(System.Type dotNetType) {
-            return "::CORBA::AbstractBase";
+            return "::CORBA:AbstractBase";
         }
         
         public object MapToTypeDesc(System.Type dotNetType) {

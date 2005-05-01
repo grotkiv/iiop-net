@@ -17,12 +17,8 @@ class TestService_impl : virtual public POA_TestService,
 
 private:
   boundedLongSeq* m_intSeq;
-  PortableServer::POA_var m_rootPoa;
     
 public:
-
-  TestService_impl(PortableServer::POA_var rootPoa);
-
   CORBA::WChar EchoWChar(CORBA::WChar arg);
   CORBA::WChar* EchoWString(const CORBA::WChar* arg);
   ::TestUnion EchoTestUnion(const ::TestUnion& arg);
@@ -33,10 +29,7 @@ public:
   CORBA::Any* RetrieveStructWithTypedefMember(CORBA::Long elemVal);
   CORBA::Any* RetrieveTypedefedSeq(CORBA::Long nrOfElems, CORBA::Long memberVal);  
   CORBA::ULong ExtractFromULongAny(const CORBA::Any& arg);
-  CORBA::Long ExtractFromLongTypeDef(const CORBA::Any& arg);
   CORBA::Any* RetrieveULongAsAny(CORBA::ULong arg);
-  CORBA::Any* RetrieveLongTypeDefAsAny(CORBA::Long arg);
-
   CORBA::WChar* ExtractFromWStringAny(const CORBA::Any& arg);
   seq_of_octect_seq* ExtractFromOctetOfOctetSeqAny(const CORBA::Any& arg);
   ::wstringSeq* RetrieveWstringSeq(const CORBA::WChar * val, CORBA::Long nrOrElems);
@@ -52,30 +45,7 @@ public:
     CORBA::Octet octet(CORBA::Octet arg);
   boundedLongSeq* sequence();
   void sequence(const boundedLongSeq& _v);  
-
-  BlobData EchoBlobData(const BlobData& data);
-  intList_slice* EchoIntList5(const intList arg);
-  int2Dim_slice* EchoInt2Dim2x2(const int2Dim arg);
-  stringList_slice* EchoStringList5(const stringList arg);
-
-  CCE::Assembly_ptr CreateAsm();
-  
-
 };
-
-
-/*
- * Assembly implementation inherits the POA skeleton class
- */
-
-class Assembly_impl : virtual public POA_CCE::Assembly,
-                         public PortableServer::RefCountServantBase
-{
-};
-
-TestService_impl::TestService_impl(PortableServer::POA_var rootPoa) {
-    m_rootPoa = rootPoa;
-}
 
 CORBA::WChar 
 TestService_impl::EchoWChar(CORBA::WChar arg) 
@@ -126,28 +96,11 @@ TestService_impl::ExtractFromULongAny(const CORBA::Any& arg) {
     return result;    
 }
 
-CORBA::Long 
-TestService_impl::ExtractFromLongTypeDef(const CORBA::Any& arg) {
-    longTD extract;
-    arg >>= extract;
-    return (CORBA::Long)extract;
-}
-
-
 CORBA::Any*
 TestService_impl::RetrieveULongAsAny(CORBA::ULong arg) {
     CORBA::Any* resultAny = new CORBA::Any;
     *resultAny <<= arg;
     return resultAny;    
-}
-
-CORBA::Any* 
-TestService_impl::RetrieveLongTypeDefAsAny(CORBA::Long arg) {
-    CORBA::Any* resultAny = new CORBA::Any;    
-    longTD insert = (longTD)arg;
-    *resultAny <<= insert;  
-    resultAny->type(_tc_longTD);
-    return resultAny;
 }
 
 CORBA::WChar* 
@@ -275,40 +228,6 @@ TestService_impl::sequence(const boundedLongSeq& _v) {
 }
 
 
-BlobData
-TestService_impl::EchoBlobData(const BlobData& data) {
-   return data;
-}
-
-intList_slice* 
-TestService_impl::EchoIntList5(const intList arg) {
-    return intList_dup(arg);
-}
-
-int2Dim_slice* 
-TestService_impl::EchoInt2Dim2x2(const int2Dim arg) {
-    return int2Dim_dup(arg);
-}
-
-stringList_slice*
-TestService_impl::EchoStringList5(const stringList arg) {
-    return stringList_dup(arg);
-}
-
-CCE::Assembly_ptr 
-TestService_impl::CreateAsm() {
-
-    Assembly_impl * asmImpl = new Assembly_impl;
-
-    /*
-     * Activate the Servant
-     */
-
-    PortableServer::ObjectId_var oid = m_rootPoa->activate_object (asmImpl);
-    CORBA::Object_var ref = m_rootPoa->id_to_reference (oid.in());
-    return CCE::Assembly::_narrow(ref);
-}
-
 
 int
 main (int argc, char *argv[])
@@ -332,7 +251,7 @@ main (int argc, char *argv[])
    * Create a TestService object
    */
 
-  TestService_impl * test = new TestService_impl(poa);
+  TestService_impl * test = new TestService_impl;
 
   /*
    * Activate the Servant

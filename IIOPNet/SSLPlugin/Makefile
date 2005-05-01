@@ -1,4 +1,3 @@
-Key = ..\Key.snk
 IIOPCHANNEL = ..\IIOPChannel\bin\IIOPChannel.dll
 SSLLibrary = ..\thirdparty\SSL\bin\Org.Mentalis.Security
 BIN=bin\ 
@@ -18,7 +17,7 @@ $(BIN)Org.Mentalis.Security.dll:
     @if defined MENTALISSECURITYLIB copy /y $(MENTALISSECURITYLIB) $(BIN)Org.Mentalis.Security.dll
     
 
-build-lib: $(BIN)IIOPChannel.dll $(BIN)Org.Mentalis.Security.dll *.cs $(Key)
+build-lib: $(BIN)IIOPChannel.dll $(BIN)Org.Mentalis.Security.dll *.cs
     csc $(CSFLAGS) /t:library /r:$(BIN)Org.Mentalis.Security.dll /r:$(BIN)IIOPChannel.dll /out:$(BIN)SSLPlugin.dll *.cs
 
 clean:

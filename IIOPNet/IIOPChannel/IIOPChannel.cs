@@ -40,6 +40,7 @@ using System.Threading;
 using System.Text;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.CorbaObjRef;
+using omg.org.IOP;
 
 #if DEBUG_LOGFILE
 using System.IO;
@@ -140,6 +141,12 @@ namespace Ch.Elca.Iiop {
                         case IiopClientChannel.CLIENT_SEND_TIMEOUT_KEY:
                             clientProp[IiopClientChannel.CLIENT_SEND_TIMEOUT_KEY] = Convert.ToInt32(entry.Value);
                             break;
+                        case IiopClientChannel.CLIENT_REQUEST_TIMEOUT_KEY:
+                            clientProp[IiopClientChannel.CLIENT_REQUEST_TIMEOUT_KEY] = Convert.ToInt32(entry.Value);
+                            break;
+                        case IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY:   
+                            clientProp[IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY] = Convert.ToInt32(entry.Value);
+                            break;                             
                         case TRANSPORT_FACTORY_KEY:
                             serverProp[TRANSPORT_FACTORY_KEY] =
                                 entry.Value;
@@ -251,6 +258,18 @@ namespace Ch.Elca.Iiop {
         /// the send timeout in milliseconds
         /// </summary>
         public const string CLIENT_SEND_TIMEOUT_KEY = "clientSendTimeOut";
+
+        /// <summary>
+        /// the giop request timeout in milliseconds; default is infinite
+        /// </summary>
+        public const string CLIENT_REQUEST_TIMEOUT_KEY = "clientRequestTimeOut";
+
+        /// <summary>
+        /// the time in milliseconds a unused connection is kept alive on client side; default is 300000ms
+        /// </summary>
+        public const string CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY = "unusedConnectionKeepAlive";   
+    
+        private const int UNUSED_CLIENT_CONNECTION_TIMEOUT = 300000;
         
         #endregion Constants
         #region IFields
@@ -282,7 +301,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         public IiopClientChannel() {
-            InitChannel(new TcpTransportFactory());
+            InitChannel(new TcpTransportFactory(), MessageTimeout.Infinite, UNUSED_CLIENT_CONNECTION_TIMEOUT);
         }
         
         public IiopClientChannel(IDictionary properties) : 
@@ -300,6 +319,8 @@ namespace Ch.Elca.Iiop {
             IDictionary nonDefaultOptions = new Hashtable();
             int receiveTimeOut = 0;
             int sendTimeOut = 0;
+            MessageTimeout requestTimeOut = MessageTimeout.Infinite;
+            int unusedClientConnectionTimeout = UNUSED_CLIENT_CONNECTION_TIMEOUT;
             
             if (properties != null) {
                 foreach (DictionaryEntry entry in properties) {
@@ -321,6 +342,13 @@ namespace Ch.Elca.Iiop {
                         case IiopClientChannel.CLIENT_SEND_TIMEOUT_KEY:
                             sendTimeOut = Convert.ToInt32(entry.Value);
                             break;
+                        case IiopClientChannel.CLIENT_REQUEST_TIMEOUT_KEY:
+                            int requestTimeOutMilllis = Convert.ToInt32(entry.Value);
+                            requestTimeOut = new MessageTimeout(TimeSpan.FromMilliseconds(requestTimeOutMilllis));
+                            break;
+                        case IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY:
+                            unusedClientConnectionTimeout = Convert.ToInt32(entry.Value);
+                            break;
                         default: 
                             Debug.WriteLine("non-default property found for IIOPClient channel: " + entry.Key);
                             nonDefaultOptions[entry.Key] = entry.Value;
@@ -332,7 +360,8 @@ namespace Ch.Elca.Iiop {
             // handle the options now by transport factory
             clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
             clientTransportFactory.SetupClientOptions(nonDefaultOptions);
-            InitChannel(clientTransportFactory);
+            InitChannel(clientTransportFactory, requestTimeOut, 
+                        unusedClientConnectionTimeout);
         }
 
         #endregion IConstructors
@@ -371,10 +400,11 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>initalize this channel</summary>
-        private void InitChannel(IClientTransportFactory transportFactory) {
+        private void InitChannel(IClientTransportFactory transportFactory, MessageTimeout requestTimeOut,
+                                 int unusedClientConnectionTimeOut) {
             
-            m_conManager = new GiopClientConnectionManager(transportFactory);
-            
+            m_conManager = new GiopClientConnectionManager(transportFactory, requestTimeOut,
+                                                           unusedClientConnectionTimeOut);
             IiopClientTransportSinkProvider transportProvider =
                 new IiopClientTransportSinkProvider(m_conManager);
             if (m_providerChain != null) {
@@ -490,6 +520,8 @@ namespace Ch.Elca.Iiop {
         private IiopServerTransportSink m_transportSink;
         
         private IServerConnectionListener m_connectionListener;
+        
+        private IList /* GiopClientServerMessageHandler */ m_transportHandlers = new ArrayList(); // the active transport handlers
 
 
         #endregion IFields
@@ -663,7 +695,7 @@ namespace Ch.Elca.Iiop {
             return hostNameToUse;
         }
 
-        private void SetupChannelData(string hostName, int port, ITaggedComponent[] additionalComponents) {
+        private void SetupChannelData(string hostName, int port, TaggedComponent[] additionalComponents) {
             IiopChannelData newChannelData = new IiopChannelData(hostName, port);
             if ((additionalComponents != null) && (additionalComponents.Length > 0)){
                 newChannelData.AddAdditionalTaggedComponents(additionalComponents);
@@ -675,7 +707,7 @@ namespace Ch.Elca.Iiop {
         public void StartListening(object data) {
             // start Listening
             if (!m_connectionListener.IsListening()) {
-                ITaggedComponent[] additionalComponents;
+                TaggedComponent[] additionalComponents;
                 // use IPAddress.Any and not a specific ip-address, to allow connections to loopback and normal ip; but if forcedBind use the specified one
                 IPAddress bindTo = (m_forcedBind == null ? IPAddress.Any : m_forcedBind);
                 int listeningPort = m_connectionListener.StartListening(bindTo, m_port, out additionalComponents);
@@ -687,14 +719,33 @@ namespace Ch.Elca.Iiop {
         /// this method handles the incoming messages; it's called by the IServerListener
         /// </summary>
         private void ProcessClientMessages(IServerTransport transport) {
-            ServerRequestHandler handler =
-                new ServerRequestHandler(transport, m_transportSink);
-            handler.StartMsgHandling();
+            GiopClientServerMessageHandler handler = new GiopClientServerMessageHandler(transport, m_transportSink);
+            m_transportHandlers.Add(handler);
+            handler.StartMessageReception();            
         }
             
         public void StopListening(object data) {
-            if (m_connectionListener.IsListening()) {
-                m_connectionListener.StopListening();
+            if (m_connectionListener.IsListening()) {                                
+                try {
+                    m_connectionListener.StopListening();
+                } catch (Exception ex) {
+                    Debug.WriteLine("exception while stopping accept: " + ex);
+                }
+                try {
+                    foreach (GiopClientServerMessageHandler handler in m_transportHandlers) {
+                        try {
+                            try {
+                                handler.SendConnectionCloseMessage();
+                            } finally {
+                                handler.ForceCloseConnection();
+                            }
+                        } catch (Exception ex) {
+                            Debug.WriteLine("exception while trying to close connection: " + ex);
+                        }
+                    }
+                } finally {
+                    m_transportHandlers.Clear();                
+                }
             }
         }
 
@@ -730,7 +781,7 @@ namespace Ch.Elca.Iiop {
 
         #region SFields
         
-        private Type s_taggedComponentType = typeof(ITaggedComponent);
+        private Type s_taggedComponentType = typeof(TaggedComponent);
         
         #endregion SFields
         #region IFields
@@ -756,9 +807,9 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>allows to add additional tagged component to an IOR marshalled over this channel.</summary>
-        public ITaggedComponent[] AdditionalTaggedComponents {
+        public TaggedComponent[] AdditionalTaggedComponents {
             get {
-                return (ITaggedComponent[])m_additionTaggedComponents.ToArray(s_taggedComponentType);
+                return (TaggedComponent[])m_additionTaggedComponents.ToArray(s_taggedComponentType);
             }
         }
 
@@ -769,24 +820,24 @@ namespace Ch.Elca.Iiop {
             StringBuilder result = new StringBuilder();
             result.Append("IIOP-channel data, hostname: " + m_hostName +
                           ", port: " + m_port);
-            foreach (ITaggedComponent taggedComp in m_additionTaggedComponents) {
-                result.Append("; tagged component with id: " + taggedComp.Id);
+            foreach (TaggedComponent taggedComp in m_additionTaggedComponents) {
+                result.Append("; tagged component with id: " + taggedComp.tag);
             }
             return result.ToString();
         }
         
         /// <summary>add passed additional tagged component to all IOR for objects hosted by this appdomain.</summary>
-        public void AddAdditionalTaggedComponent(ITaggedComponent taggedComponent) {
+        public void AddAdditionalTaggedComponent(TaggedComponent taggedComponent) {
             m_additionTaggedComponents.Add(taggedComponent);
         }
         
         /// <summary>adds passed additional tagged components to all IOR for objects hosted by this appdomain.</summary>
-        public void AddAdditionalTaggedComponents(ITaggedComponent[] newTaggedComponents) {
+        public void AddAdditionalTaggedComponents(TaggedComponent[] newTaggedComponents) {
             m_additionTaggedComponents.AddRange(newTaggedComponents);
         }
         
         /// <summary>replaces the current additional tagged components by the new ones.</summary>
-        public void ReplaceAdditionalTaggedComponents(ITaggedComponent[] newTaggedComponents) {
+        public void ReplaceAdditionalTaggedComponents(TaggedComponent[] newTaggedComponents) {
             // now add additional components to the channel data:            
             m_additionTaggedComponents.Clear();
             if (newTaggedComponents != null) {

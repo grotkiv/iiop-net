@@ -94,23 +94,6 @@ namespace Ch.Elca.Iiop.Idl {
     }
 
 
-    /// <summary>implemeneted by attributes, which are associated to another attribute</summary>
-    public interface IAssociatedAttribute {
-
-        #region IProperties
-        
-        /// <summary>
-        /// the key number of the attribute, this one is associated to.
-        /// </summary>
-        long AssociatedToAttributeWithKey {
-            get;
-        }        
-        
-        #endregion IProperties        
-
-    }
-
-
     /// <summary>
     /// this attribute specifies the repository id used in the IDL.
     /// </summary>
@@ -134,7 +117,7 @@ namespace Ch.Elca.Iiop.Idl {
 
         public string Id {
             get { 
-                return m_id; 
+            	return m_id; 
             }
         }
 
@@ -179,7 +162,7 @@ namespace Ch.Elca.Iiop.Idl {
         
         public Type FromType {
             get { 
-                return m_type; 
+            	return m_type; 
             }
         }
 
@@ -221,7 +204,7 @@ namespace Ch.Elca.Iiop.Idl {
 
         public string ImplClass {
             get { 
-                return m_implClass; 
+            	return m_implClass; 
             }
         }
 
@@ -326,7 +309,7 @@ namespace Ch.Elca.Iiop.Idl {
         
         public string RepositoryId {
             get { 
-                return m_repositoryId; 
+            	return m_repositoryId; 
             }
         }
 
@@ -423,16 +406,16 @@ namespace Ch.Elca.Iiop.Idl {
         /// </summary>
         /// <returns>bounded or not</returns>
         public bool IsBounded() {
-            return IsBounded(m_bound);
+        	return IsBounded(m_bound);
         }
 
         #endregion IMethods
         #region SMethods
         
         public static long DetermineSequenceAttributeOrderNr(AttributeExtCollection elemTypeAttributes) {            
-            Attribute idlorderAttr = elemTypeAttributes.GetHighestOrderAttribute();
-            if (idlorderAttr != null) {
-                return ((IOrderedAttribute)idlorderAttr).OrderNr + 1;
+            Attribute idlSeqAttr = elemTypeAttributes.GetAttributeForType(ReflectionHelper.IdlSequenceAttributeType);
+            if (idlSeqAttr != null) {
+                return ((IdlSequenceAttribute)idlSeqAttr).OrderNr + 1;
             } else {
                 return 0;
             }
@@ -442,159 +425,10 @@ namespace Ch.Elca.Iiop.Idl {
         /// checks, if the bound does limit the sequence size or not; returns false for unbounded seqeuences
         /// </summary>
         public static bool IsBounded(long bound) {
-            return bound > 0;
+        	return bound > 0;
         }
         
         #endregion SMethods
-
-    }
-
-
-    /// <summary>
-    /// this attribute is used to indicate a mapping from an IDL array type (fixed size)
-    /// </summary>
-    /// <remarks>
-    /// IDL-arrays are mapped to .NET arrays. Because .NET arrays are not mapped to idl arrays, but instead
-    /// to boxed value types, this attribute is used to distingish these cases.
-    /// Together with the array attribute for the array, all attributes for the element type are also added.
-    /// For array of arrays, this means, that a array attribute is added for the array itself and also
-    /// for the inner array.
-    /// </remarks>
-    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property, 
-                    AllowMultiple = true)]
-    public sealed class IdlArrayAttribute : Attribute, IIdlAttribute, IOrderedAttribute {
-        
-        #region IFields
-        /// <summary>
-        /// the first array dimension
-        /// </summary>
-        private int m_firstDimensionSize;
-        
-        private long m_orderNr;        
-
-        #endregion IFields
-        #region IConsturctors
-
-        /// <summary>
-        /// constructor taking the order nr and the first dimension of the array
-        /// </summary>
-        /// <param name="firstDimension">the size of the first dimension of the array</param>
-        public IdlArrayAttribute(long orderNr, int firstDimensionSize) {
-            m_firstDimensionSize = firstDimensionSize;        
-            m_orderNr = orderNr;
-        }
-
-        #endregion IConstructors
-        #region IProperties
-
-        public int FirstDimensionSize {
-            get {
-                return m_firstDimensionSize;
-            }
-        }        
-        
-        public long OrderNr {
-            get {
-                return m_orderNr;
-            }
-        }
-
-        #endregion IProperties
-        #region IMethods
-
-        /// <summary>creates an attribute builder for this custom attribute</summary>
-        public CustomAttributeBuilder CreateAttributeBuilder() {
-            Type attrType = this.GetType();
-            ConstructorInfo attrConstr = attrType.GetConstructor(new Type[] { ReflectionHelper.Int64Type,
-                                                                              ReflectionHelper.Int32Type });
-            return new CustomAttributeBuilder(attrConstr, new Object[] { m_orderNr, m_firstDimensionSize } );
-        }
-
-        #endregion IMethods
-        #region SMethods
-        
-        public static long DetermineArrayAttributeOrderNr(AttributeExtCollection elemTypeAttributes) {            
-            Attribute idlorderAttr = elemTypeAttributes.GetHighestOrderAttribute();
-            if (idlorderAttr != null) {
-                return ((IOrderedAttribute)idlorderAttr).OrderNr + 1;
-            } else {
-                return 0;
-            }
-        }        
-        
-        #endregion SMethods
-
-    }
-
-    /// <summary>
-    /// this attribute is used to provide the size of a dimension for a fixed size idl array
-    /// </summary>
-    /// <remarks>
-    /// For multi dimension idl arrays, the higher dimension size can't be directly added to IdlArrayAttribute, 
-    /// because the constructor of .NET attributes may not take an array for CLS Compliance.
-    /// </remarks>
-    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property, 
-                    AllowMultiple = true)]
-    public sealed class IdlArrayDimensionAttribute : Attribute, IIdlAttribute, IAssociatedAttribute {
-
-        #region IFields
-
-        private long m_associatedTo;
-        private int m_dimensionSize;
-        private int m_dimensionNr;
-
-        #endregion IFields
-        #region IConstructors
-
-        public IdlArrayDimensionAttribute(long associatedTo, int dimensionNr, int dimensionSize) {
-            m_associatedTo = associatedTo;
-            m_dimensionNr = dimensionNr;
-            m_dimensionSize = dimensionSize;
-        }
-
-        #endregion IConstructors
-        #region IProperties
-        
-        /// <summary>
-        /// the key number of the attribute, this one is associated to.
-        /// </summary>
-        public long AssociatedToAttributeWithKey {
-            get {
-                return m_associatedTo;
-            }
-        }    
-
-        /// <summary>
-        /// the dimension, this attribute describes
-        /// </summary>
-        public int DimensionNr {
-            get {
-                return m_dimensionNr;
-            }
-        }
-
-        /// <summary>
-        /// the size of this dimension.
-        /// </summary>
-        public int DimensionSize {
-            get {
-                return m_dimensionSize;
-            }
-        }    
-        
-        #endregion IProperties
-        #region IMethods
-
-        /// <summary>creates an attribute builder for this custom attribute</summary>
-        public CustomAttributeBuilder CreateAttributeBuilder() {
-            Type attrType = this.GetType();
-            ConstructorInfo attrConstr = attrType.GetConstructor(new Type[] { ReflectionHelper.Int64Type,
-                                                                              ReflectionHelper.Int32Type,
-                                                                              ReflectionHelper.Int32Type });
-            return new CustomAttributeBuilder(attrConstr, new Object[] { m_associatedTo, m_dimensionNr, m_dimensionSize } );
-        }
-
-        #endregion IMethods    
 
     }
 
@@ -621,7 +455,7 @@ namespace Ch.Elca.Iiop.Idl {
 
         public IdlTypeInterface IdlType {
             get { 
-                return m_idlType; 
+            	return m_idlType; 
             }
         }
         
@@ -664,7 +498,7 @@ namespace Ch.Elca.Iiop.Idl {
         
         public IdlTypeObject IdlType {
             get { 
-                return m_idlType; 
+            	return m_idlType; 
             }
         }
         
@@ -844,6 +678,45 @@ namespace Ch.Elca.Iiop.Idl {
             Type attrType = this.GetType();
             ConstructorInfo attrConstr = attrType.GetConstructor(new Type[] { ReflectionHelper.TypeType } );
             CustomAttributeBuilder result = new CustomAttributeBuilder(attrConstr, new Object[] { m_exceptionType });
+            return result;
+        }
+
+        #endregion IMethods
+
+    }
+
+
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public sealed class ContextElementAttribute : Attribute, IIdlAttribute {
+
+        #region IFields
+
+        private string m_contextElementKey;
+
+        #endregion IFields
+        #region IConstructors
+
+        public ContextElementAttribute(string contextElementKey) {
+            m_contextElementKey = contextElementKey;
+        }
+
+        #endregion IConstructors
+        #region IProperties
+
+        public string ContextElementKey {
+            get {
+                return m_contextElementKey;
+            }
+        }
+
+        #endregion IProperties
+        #region IMethods
+
+        /// <summary>creates an attribute builder for this custom attribute</summary>
+        public CustomAttributeBuilder CreateAttributeBuilder() {
+            Type attrType = this.GetType();
+            ConstructorInfo attrConstr = attrType.GetConstructor(new Type[] { ReflectionHelper.StringType });
+            CustomAttributeBuilder result = new CustomAttributeBuilder(attrConstr, new Object[] { m_contextElementKey });
             return result;
         }
 

@@ -99,13 +99,6 @@ namespace Ch.Elca.Iiop.Idl {
         private static AssemblyCache s_asmCache = AssemblyCache.GetSingleton();
         private static TypeCache s_typeCache = new TypeCache();
 
-        // for efficiency reason: the evaluation of the following expressions is cached
-        private static Type s_repIdAttrType = typeof(RepositoryIDAttribute);
-        private static Type s_supInterfaceAttrType = typeof(SupportedInterfaceAttribute);
-
-
-
-
         #endregion SFields
         #region SMethods
 
@@ -119,48 +112,31 @@ namespace Ch.Elca.Iiop.Idl {
                 (repId == "IDL:omg.org/CORBA/Object:1.0")) {
                 return ReflectionHelper.MarshalByRefObjectType;
             }           
-            Type result = null;
-            string typeNameAssumeIdlMapped = GetTypeNameForId(repId, true);
-            if (typeNameAssumeIdlMapped != null) {
+            
+            string typeName = GetTypeNameForId(repId);
+            if (typeName != null) {
                 // now try to load the type:
-                // check, if type with correct repository id can be found, 
-                // if it's assumed, that repId represents a type, which was
-                // mapped from IDL to CLS
-                result = LoadType(typeNameAssumeIdlMapped);
-                bool isRepIdCorrect = false;
-                if (result != null) {
-                    try {
-                        isRepIdCorrect = GetRepositoryID(result) == repId;
-                    } catch (Exception) {
-                        // for types in construction, not supported -> ignore
-                    }
+                Type result = LoadType(typeName);
+                if ((result == null) && (repId.StartsWith("IDL"))) {
+                    // check, if type can be found, if it's assumed, that repId represents a type, which was
+                    // mapped from IDL to CLS and a name mapping special case prevented the type from being found.
+                    string alternativeTypeName = GetTypeNameForIDLId(repId, true);
+                    result = LoadType(alternativeTypeName);
                 }
-                if (result == null || !isRepIdCorrect) {
-                    // check, if type can be found, if a native CLS type mapped to idl is assumed.
-                    string typeNameAssumeCls = GetTypeNameForId(repId, false);
-                    if (typeNameAssumeCls != null) {
-                        result = LoadType(typeNameAssumeCls);
-                    }
-                }
+                return result;
+            } else {
+                return null;
             }
-            return result;
         }
 
         /// <summary>
         /// gets the fully qualified type name for the repository-id
         /// </summary>
         internal static string GetTypeNameForId(string repId) {
-            return GetTypeNameForId(repId, false);
-        }
-
-        /// <summary>
-        /// gets the fully qualified type name for the repository-id
-        /// </summary>
-        private static string GetTypeNameForId(string repId, bool assumeMappedFromIdl) {
             if (repId.StartsWith("RMI")) {
                 return GetTypeNameForRMIId(repId);
             } else if (repId.StartsWith("IDL")) {
-                return GetTypeNameForIDLId(repId, assumeMappedFromIdl);
+                return GetTypeNameForIDLId(repId, false);
             } else {
                 return null; // unknown
             }
@@ -314,12 +290,12 @@ namespace Ch.Elca.Iiop.Idl {
         /// <param name="type"></param>
         /// <returns></returns>
         public static string GetRepositoryID(Type type) {
-            object[] attr = type.GetCustomAttributes(s_repIdAttrType, true);    
+            object[] attr = type.GetCustomAttributes(ReflectionHelper.RepositoryIDAttributeType, true);    
             if (attr != null && attr.Length > 0) {
                 RepositoryIDAttribute repIDAttr = (RepositoryIDAttribute) attr[0];
                 return repIDAttr.Id;
             }
-            attr = type.GetCustomAttributes(s_supInterfaceAttrType, true);
+            attr = type.GetCustomAttributes(ReflectionHelper.SupportedInterfaceAttributeType, true);
             if (attr != null && attr.Length > 0) {
                 SupportedInterfaceAttribute repIDFrom = (SupportedInterfaceAttribute) attr[0];
                 Type fromType = repIDFrom.FromType;
@@ -346,7 +322,6 @@ namespace Ch.Elca.Iiop.Idl {
         /// <param name="clsTypeName">the fully qualified CLS type name</param>
         /// <returns></returns>
         public static Type LoadType(string clsTypeName) {
-            Debug.WriteLine("try to load type: " + clsTypeName);
             Type foundType = s_typeCache.GetType(clsTypeName);
             if (foundType != null) { 
                 return foundType; 
@@ -681,14 +656,9 @@ namespace Ch.Elca.Iiop.Idl {
             return result;            
         }
         
-        public object MapToIdlConcreteInterface(Type clsType) {           
-            ObjRefTC result;
-            if (!clsType.Equals(ReflectionHelper.MarshalByRefObjectType)) {
-                result = new ObjRefTC(Repository.GetRepositoryID(clsType),
-                                      IdlNaming.ReverseIdlToClsNameMapping(clsType.Name));
-            } else {
-                result = new ObjRefTC(String.Empty, String.Empty);
-            }
+        public object MapToIdlConcreteInterface(Type clsType) {
+            ObjRefTC result = new ObjRefTC(Repository.GetRepositoryID(clsType),
+                                           IdlNaming.ReverseIdlToClsNameMapping(clsType.Name));
             RegisterCreatedTypeCodeForType(clsType, AttributeExtCollection.EmptyCollection,
                                            result);
             return result;            
@@ -744,7 +714,7 @@ namespace Ch.Elca.Iiop.Idl {
                              baseTypeCode, ABSTRACT_VALUE_MOD);
             return result;
         }
-        private object MapToIdlBoxedValueType(Type clsType,
+        private object MapToIdlBoxedValueType(Type clsType, bool isAlreadyBoxed,
                                               bool boxInAny) {
             // dotNetType is subclass of BoxedValueBase
             if (!clsType.IsSubclassOf(ReflectionHelper.BoxedValueBaseType)) {
@@ -792,8 +762,8 @@ namespace Ch.Elca.Iiop.Idl {
                 return forBoxed;                
             }                                                              
         }
-        public object MapToIdlBoxedValueType(Type clsType, Type needsBoxingFrom) {
-            return MapToIdlBoxedValueType(clsType,
+        public object MapToIdlBoxedValueType(Type clsType, bool isAlreadyBoxed) {
+            return MapToIdlBoxedValueType(clsType, isAlreadyBoxed,
                                           MappingConfiguration.Instance.UseBoxedInAny);
         }
         public object MapToIdlSequence(Type clsType, int bound, AttributeExtCollection allAttributes, AttributeExtCollection elemTypeAttributes) {
@@ -801,18 +771,6 @@ namespace Ch.Elca.Iiop.Idl {
             omg.org.CORBA.TypeCode elementTC = CreateOrGetTypeCodeForType(clsType.GetElementType(),
                                                    elemTypeAttributes);
             return new SequenceTC(elementTC, bound);
-        }        
-        public object MapToIdlArray(Type clsType, int[] dimensions, AttributeExtCollection allAttributes, AttributeExtCollection elemTypeAttributes) {
-            // array should not contain itself! -> do not register typecode            
-            // get the typecode for the array element type
-            omg.org.CORBA.TypeCode elementTC = CreateOrGetTypeCodeForType(clsType.GetElementType(),
-                                                   elemTypeAttributes);
-            // for multidim arrays, nest array tcs
-            ArrayTC arrayTC = new ArrayTC(elementTC, dimensions[dimensions.Length - 1]); // the innermost array tc for the rightmost dimension
-            for (int i = dimensions.Length - 2; i >= 0; i--) {
-                arrayTC = new ArrayTC(arrayTC, dimensions[i]);    
-            }
-            return arrayTC;
         }
         public object MapToIdlAny(Type clsType) {
             return new AnyTC();
@@ -827,7 +785,7 @@ namespace Ch.Elca.Iiop.Idl {
         }
         public object MapToWStringValue(Type clsType) {
             if (MappingConfiguration.Instance.UseBoxedInAny) {
-                return MapToIdlBoxedValueType(clsType, true);
+                return MapToIdlBoxedValueType(clsType, false, true);
             } else {
                 // don't use boxed form
                 return new WStringTC(0);
@@ -835,14 +793,14 @@ namespace Ch.Elca.Iiop.Idl {
         }
         public object MapToStringValue(Type clsType) {
             if (MappingConfiguration.Instance.UseBoxedInAny) {
-                return MapToIdlBoxedValueType(clsType, true);
+                return MapToIdlBoxedValueType(clsType, false, true);
             } else {                
                 // don't use boxed form
                 return new StringTC(0);
             }
         }
         public object MapException(Type clsType) {
-            // TODO: check this, generic user exception handling ...
+        	// TODO: check this, generic user exception handling ...
             ExceptTC result = new ExceptTC();
             RegisterCreatedTypeCodeForType(clsType, AttributeExtCollection.EmptyCollection,
                                            result);

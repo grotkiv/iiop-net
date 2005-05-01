@@ -368,13 +368,12 @@ namespace omg.org.CORBA {
         internal override Type GetClsForTypeCode() {
             Type result = Repository.GetTypeForId(m_id);
             if (result == null) {
-                // doesn't make sense to create a type, because interface methods not present in typecode
-                return GetUnknownInterfaceType();
+                // create the type represented by this typeCode
+                string typeName = Repository.GetTypeNameForId(m_id);
+                result = TypeFromTypeCodeRuntimeGenerator.GetSingleton().CreateOrGetType(typeName, this);
             }
             return result;
         }
-
-        protected abstract Type GetUnknownInterfaceType();
 
         #endregion IMethods
 
@@ -391,14 +390,6 @@ namespace omg.org.CORBA {
         public ObjRefTC(string repositoryID, string name) : base(repositoryID, name, TCKind.tk_objref) { }
 
         #endregion IConstructors
-        #region IMethods
-
-        protected override Type GetUnknownInterfaceType() {
-            return ReflectionHelper.MarshalByRefObjectType;
-        }
-
-        #endregion IMethods
-
     }
 
     internal class AbstractIfTC : InterfaceTC {
@@ -412,24 +403,6 @@ namespace omg.org.CORBA {
         public AbstractIfTC(string repositoryID, string name) : base(repositoryID, name, TCKind.tk_abstract_interface) { }        
 
         #endregion IConstructors
-        #region IMethods
-
-        protected override Type GetUnknownInterfaceType() {
-            return ReflectionHelper.ObjectType;
-        }
-
-        internal override AttributeExtCollection GetClsAttributesForTypeCode() {
-            return new AttributeExtCollection(new Attribute[] { 
-                                                new ObjectIdlTypeAttribute(IdlTypeObject.AbstractBase) });
-        }
-
-        internal override CustomAttributeBuilder[] GetAttributes() {
-            return new CustomAttributeBuilder[] { 
-                new ObjectIdlTypeAttribute(IdlTypeObject.AbstractBase).CreateAttributeBuilder() };
-        }
-
-        #endregion IMethods
-
     }
 
     internal class LocalIfTC : InterfaceTC {
@@ -443,15 +416,6 @@ namespace omg.org.CORBA {
         public LocalIfTC(string repositoryID, string name) : base(repositoryID, name, TCKind.tk_local_interface) { }
 
         #endregion IConstructors
-        #region IMethods
-
-        protected override Type GetUnknownInterfaceType() {
-            // this operation is currently not possible for a local interface
-            throw new BAD_OPERATION(479, CompletionStatus.Completed_MayBe);
-        }
-
-        #endregion IMethods
-
     }
 
     internal class NullTC : TypeCodeImpl {
@@ -660,12 +624,6 @@ namespace omg.org.CORBA {
         #region IConstructors
         
         public AliasTC() : base(TCKind.tk_alias) { }
-
-        public AliasTC(string repositoryID, string name, TypeCode aliased) : base(TCKind.tk_alias) {
-            m_id = repositoryID;
-            m_name = name;
-            m_aliased = aliased;
-        }
         
         #endregion IConstructors
         #region IMethods
@@ -1182,134 +1140,6 @@ namespace omg.org.CORBA {
             CustomAttributeBuilder[] result = new CustomAttributeBuilder[elemAttrBuilders.Length + 1];
             result[0] = CreateSequenceAttribute().CreateAttributeBuilder();
             elemAttrBuilders.CopyTo((Array)result, 1);
-            return result;
-        }
-
-        #endregion IMethods
-
-    }
-
-    internal class ArrayTC : TypeCodeImpl {
-        
-        #region IFields
-
-        private int m_length;
-        private TypeCode m_innerDimension;
-
-        #endregion IFields
-        #region IConstructors
-        
-        /// <summary>constructor used during deserialisation; call ReadFromStream afterwards</summary>
-        internal ArrayTC() : base(TCKind.tk_array) {
-        }     
-
-
-        /// <summary>constructs the typecode for the current dimension by taking the next dimension typecode
-        /// and the length of the current dimension; the innermost dimension tc contains the element type</summary>
-        public ArrayTC(TypeCode innerDimension, int length) : base(TCKind.tk_array) {
-            Initalize(innerDimension, length);
-        }
-
-        #endregion IConstructors
-        #region IMethods
-        
-        private void Initalize(TypeCode innerDimension, int length) {
-            m_innerDimension = innerDimension;    
-            m_length = length;            
-        }
-
-        public override int length() {
-            return m_length;
-        }
-    
-        public override TypeCode content_type() {
-            return m_innerDimension;
-        }
-
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
-            CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
-            TypeCodeSerializer ser = new TypeCodeSerializer();
-            m_innerDimension = (TypeCode) ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                          new AttributeExtCollection(new Attribute[0]), encap);
-            m_length = (int)encap.ReadULong();
-        }
-
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
-            CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
-            TypeCodeSerializer ser = new TypeCodeSerializer();
-            ser.Serialise(ReflectionHelper.CorbaTypeCodeType, m_innerDimension, 
-                          new AttributeExtCollection(new Attribute[0]), encap);
-            encap.WriteULong((uint)m_length);
-            encap.WriteToTargetStream();
-        }
-
-        internal override Type GetClsForTypeCode() {
-            Type elemType = ((TypeCodeImpl)m_innerDimension).GetClsForTypeCode();
-            Type arrayType;
-            // handle types in creation correctly (use module and not assembly to get type)
-            Module declModule = elemType.Module;
-            string arrayTypeName = elemType.FullName;
-            // not nice, better solution ?
-            if ((m_innerDimension is ArrayTC) && (elemType.FullName.EndsWith("]"))) {
-                // inner dimension is a ArrayTC means, we need to add another dimension to the array
-                arrayTypeName = arrayTypeName.Insert(arrayTypeName.Length - 1, ","); // insert a , for next dimension
-            } else {
-                arrayTypeName = arrayTypeName + "[]"; // first dimension
-            }
-            arrayType = declModule.GetType(arrayTypeName); 
-            return arrayType;
-        }
-
-        private int[] ExtractCombinedDimensions(ref AttributeExtCollection attrColl, IdlArrayAttribute innerAttribute) {
-            attrColl = attrColl.RemoveAttribute(innerAttribute);
-            IList dimensionAttributes;
-            attrColl = attrColl.RemoveAssociatedAttributes(innerAttribute.OrderNr, out dimensionAttributes);                
-            int[] dimensions = new int[2 + dimensionAttributes.Count]; // 1 for this dimension, 1 for the old first dimension + those for the dimensionAttributes
-            dimensions[0] = m_length;
-            dimensions[1] = innerAttribute.FirstDimensionSize;
-            for (int i = 0; i < dimensionAttributes.Count; i++) {
-                dimensions[((IdlArrayDimensionAttribute)dimensionAttributes[i]).DimensionNr + 1] = 
-                    ((IdlArrayDimensionAttribute)dimensionAttributes[i]).DimensionSize; // shift rigth
-            }
-            return dimensions;
-        }
-        
-        private AttributeExtCollection GetAttributesForDimension() {
-            AttributeExtCollection attrColl = ((TypeCodeImpl)m_innerDimension).GetClsAttributesForTypeCode();
-            IdlArrayAttribute potentialOldArrayAttribute = attrColl.GetHighestOrderAttribute() as IdlArrayAttribute;
-            int[] dimensions;
-            long orderNr;
-            if (potentialOldArrayAttribute != null) {           
-                dimensions = ExtractCombinedDimensions(ref attrColl, potentialOldArrayAttribute);
-                orderNr = potentialOldArrayAttribute.OrderNr;
-            } else {
-                dimensions = new int[] { m_length };
-                orderNr = IdlArrayAttribute.DetermineArrayAttributeOrderNr(attrColl);
-            }
-            // now add attributes for dimensions
-            IdlArrayAttribute newAttribute = new IdlArrayAttribute(orderNr, dimensions[0]);
-            attrColl = attrColl.MergeAttribute(newAttribute);
-            for (int i = 1; i < dimensions.Length; i++) {
-                attrColl = attrColl.MergeAttribute(new IdlArrayDimensionAttribute(orderNr, i, dimensions[i]));
-            }
-            return attrColl;
-        }
-        
-        internal override AttributeExtCollection GetClsAttributesForTypeCode() {
-            return GetAttributesForDimension();
-        }
-
-        internal override CustomAttributeBuilder[] GetAttributes() {
-            AttributeExtCollection allAttributes = GetAttributesForDimension();
-            CustomAttributeBuilder[] result = new CustomAttributeBuilder[allAttributes.Count];
-            for (int i = 0; i < allAttributes.Count; i++) {
-                if (!(allAttributes[i] is IIdlAttribute)) {
-                    // should not occur
-                    throw new INTERNAL(6571, CompletionStatus.Completed_MayBe);
-                }
-                result[i] = ((IIdlAttribute)allAttributes[i]).CreateAttributeBuilder();
-            }
             return result;
         }
 
