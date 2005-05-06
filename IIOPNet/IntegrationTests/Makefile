@@ -18,6 +18,12 @@ build: nunit-var junit-var
     cd Multithread
     $(MAKE) build
     cd ..
+    cd Callback
+    $(MAKE) build
+    cd ..
+    cd BidirGiop
+    $(MAKE) build
+    cd ..
     cd JavaRMIIIOP
     $(MAKE) build
     cd ..
@@ -85,6 +91,12 @@ test: nunit-var junit-var
     cd Direct
     $(MAKE) test
     cd ..
+    cd Callback
+    $(MAKE) test
+    cd ..
+    cd BidirGiop
+    $(MAKE) test
+    cd ..
     cd Multithread
     $(MAKE) test
     cd ..
@@ -142,6 +154,12 @@ clean:
         cd Direct
     $(MAKE) clean
         cd ..
+    cd Callback
+    $(MAKE) clean
+    cd ..
+    cd BidirGiop
+    $(MAKE) clean
+    cd ..
         cd Multithread
         $(MAKE) clean
         cd ..
