@@ -409,6 +409,30 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             }                        
         }
         
+        /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.GetEndPointKeyForBidirEndpoint(object)"/></summary>
+        public string GetEndPointKeyForBidirEndpoint(object endPoint) {
+            if (endPoint is omg.org.IIOP.ListenPoint) {
+                return "iiop-ssl://"+((omg.org.IIOP.ListenPoint)endPoint).ListenHost + ":" + 
+                                 ((omg.org.IIOP.ListenPoint)endPoint).ListenPort;
+            } else {
+                return null;
+            }
+        }
+
+        /// <summary><see cref="Ch.Elca.Iiop.IServerTransportFactory.GetListenPoints(object)"/></summary>        
+        public object[] GetListenPoints(Ch.Elca.Iiop.IiopChannelData chanData) {            
+            ArrayList listenpoints = new ArrayList();            
+            for (int i = 0; i < chanData.AdditionalTaggedComponents.Length; i++) {
+                if (chanData.AdditionalTaggedComponents[i].tag == TAG_SSL_SEC_TRANS.ConstVal) {
+                    SSLComponentData sslComp = 
+                        (SSLComponentData)TaggedComponent.DeserialiseComponentData(chanData.AdditionalTaggedComponents[i],
+                                                                                   SSLComponentData.ClassType);                    
+                    listenpoints.Add(new omg.org.IIOP.ListenPoint(chanData.HostName, sslComp.Port));
+                }
+            }
+            return listenpoints.ToArray();
+        }        
+        
         /// <summary><see cref="Ch.Elca.Iiop.IServerTransportFactory.CreateConnectionListener"/></summary>
         public IServerConnectionListener CreateConnectionListener(ClientAccepted clientAcceptCallBack) {
             IServerConnectionListener result = new SslConnectionListener(m_server_required_opts, m_server_supported_opts,

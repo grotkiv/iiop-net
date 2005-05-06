@@ -113,14 +113,18 @@ namespace Ch.Elca.Iiop.MessageHandling {
         private IMessage m_replyMessage;
         
         private ClientRequestInterceptionFlow m_interceptionFlow;
-        private ClientRequestInfoImpl m_clientRequestInfo;        
+        private ClientRequestInfoImpl m_clientRequestInfo;   
+        
+        private GiopClientConnectionDesc m_conDesc;
         
         #endregion IFields
         #region IConstructors
          
-        internal GiopClientRequest(IMethodCallMessage requestMsg) {
+        internal GiopClientRequest(IMethodCallMessage requestMsg, GiopClientConnectionDesc conDesc,
+                                   IInterceptionOption[] interceptionOptions) {
             m_requestMessage = requestMsg;
-            IntializeForInterception();
+            m_conDesc = conDesc;
+            IntializeForInterception(interceptionOptions);
         }
         
         #endregion IConstructors
@@ -313,18 +317,27 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 return piCurrent;
             }
         }
+
+        /// <summary>
+        /// the connection description.
+        /// </summary>
+        internal GiopClientConnectionDesc ConnectionDesc {
+            get {
+                return m_conDesc;
+            }
+        }
                 
         #endregion IProperties
         #region IMethods
                 
-        private void IntializeForInterception() {            
+        private void IntializeForInterception(IInterceptionOption[] interceptionOptions) {
             // flow lifetime is bound to message lifetime, GiopClientRequest is only a wrapper around message and
             // can be recreated during message lifetime.
             m_interceptionFlow =
                 (ClientRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
             if (m_interceptionFlow ==  null) {
                 ClientRequestInterceptor[] interceptors = 
-                    OrbServices.GetSingleton().InterceptorManager.ClientRequestInterceptors;
+                    OrbServices.GetSingleton().InterceptorManager.GetClientRequestInterceptors(interceptionOptions);
                 if (interceptors.Length == 0) {
                     m_interceptionFlow = new ClientRequestInterceptionFlow();
                 } else {
@@ -435,17 +448,21 @@ namespace Ch.Elca.Iiop.MessageHandling {
         private ServerRequestInterceptionFlow m_interceptionFlow;
         private ServerRequestInfoImpl m_serverRequestInfo;                
         
+        private GiopConnectionDesc m_conDesc;
+        
         #endregion IFields
         #region IConstructors
     
         /// <summary>
         /// constructor for the in direction.
         /// </summary>
-        internal GiopServerRequest() {
+        internal GiopServerRequest(GiopConnectionDesc conDesc,
+                                   IInterceptionOption[] interceptionOptions) {
             m_requestMessage = new SimpleGiopMsg();
             m_requestCallMessage = null; // not yet created; will be created from requestMessage later.
             m_replyMessage = null; // not yet available
-            InitalizeForInterception();
+            m_conDesc = conDesc;
+            InitalizeForInterception(interceptionOptions);
         }
         
         /// <summary>
@@ -453,13 +470,14 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// </summary>
         /// <param name="request">the request message, may be null</param>
         /// <param name="reply">the reply message</param>
-        internal GiopServerRequest(IMessage request, ReturnMessage reply) {
+        internal GiopServerRequest(IMessage request, ReturnMessage reply, GiopConnectionDesc conDesc,
+                                   IInterceptionOption[] interceptionOptions) {
             if (request is IMethodCallMessage) {                
                 m_requestCallMessage = (IMethodCallMessage)request;
             }
             m_requestMessage = request;
             m_replyMessage = reply;
-            InitalizeForInterception();
+            InitalizeForInterception(interceptionOptions);
         }
         
         #endregion IConstructors
@@ -895,18 +913,26 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 return piCurrent;
             }
         }                
-
+        
+        /// <summary>
+        /// the connection description.
+        /// </summary>
+        internal GiopConnectionDesc ConnectionDesc {
+            get {
+                return m_conDesc;
+            }
+        }
         
         #endregion IProperties
         #region IMethods
         
-        private void InitalizeForInterception() {
+        private void InitalizeForInterception(IInterceptionOption[] interceptionOptions) {
             // flow lifetime is bound to message lifetime, GiopServerRequest is only a wrapper around message and
             // can be recreated during message lifetime.
             m_interceptionFlow = (ServerRequestInterceptionFlow)SimpleGiopMsg.GetInterceptionFlow(m_requestMessage);
             if (m_interceptionFlow ==  null) {
                 ServerRequestInterceptor[] interceptors = 
-                    OrbServices.GetSingleton().InterceptorManager.ServerRequestInterceptors;
+                    OrbServices.GetSingleton().InterceptorManager.GetServerRequestInterceptors(interceptionOptions);
                 if (interceptors.Length == 0) {
                     m_interceptionFlow = new ServerRequestInterceptionFlow();
                 } else {                    

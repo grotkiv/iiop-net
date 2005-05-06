@@ -359,7 +359,7 @@ namespace Ch.Elca.Iiop.Util {
         }
         
         private static void AddProfileComponentsFromIorInterceptors(InternetIiopProfile profile) {
-            IORInterceptor[] interceptors = OrbServices.GetSingleton().InterceptorManager.IorInterceptors;
+            IORInterceptor[] interceptors = OrbServices.GetSingleton().InterceptorManager.GetIorInterceptors();
             if (interceptors.Length > 0) {
                 IORInfo info = new IORInfoImpl(profile);
                 for (int i = 0; i < interceptors.Length; i++) {
