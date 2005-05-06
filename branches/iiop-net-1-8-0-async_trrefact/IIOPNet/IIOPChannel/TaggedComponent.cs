@@ -151,7 +151,7 @@ namespace omg.org.IOP {
         }
         
         /// <summary>deserialise the component data of the given type; encoded as cdr encapsulation.</summary>        
-        internal static object DeserialiseComponentData(TaggedComponent component, Type componentDataType) {
+        public static object DeserialiseComponentData(TaggedComponent component, Type componentDataType) {
             CdrEncapsulationInputStream encap = new CdrEncapsulationInputStream(component.component_data);
             Marshaller marshaller = Marshaller.GetSingleton();
             return marshaller.Unmarshal(componentDataType, AttributeExtCollection.EmptyCollection, 
