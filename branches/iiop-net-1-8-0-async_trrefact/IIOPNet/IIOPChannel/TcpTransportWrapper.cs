@@ -319,6 +319,23 @@ namespace Ch.Elca.Iiop {
             }
         }
         
+        /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.GetEndPointKeyForBidirEndpoint(object)"/></summary>
+        public string GetEndPointKeyForBidirEndpoint(object endPoint) {
+            if (endPoint is omg.org.IIOP.ListenPoint) {
+                return "iiop://"+((omg.org.IIOP.ListenPoint)endPoint).ListenHost + ":" + 
+                                 ((omg.org.IIOP.ListenPoint)endPoint).ListenPort;
+            } else {
+                return null;
+            }
+        }
+
+        /// <summary><see cref="Ch.Elca.Iiop.IServerTransportFactory.GetListenPoints(object)"/></summary>        
+        public object[] GetListenPoints(IiopChannelData chanData) {
+            object[] result = new object[] { new omg.org.IIOP.ListenPoint(chanData.HostName,
+                                                                          (short)((ushort)chanData.Port)) };
+            return result;
+        }
+        
         /// <summary><see cref="Ch.Elca.Iiop.IServerTransportFactory.CreateConnectionListener"/></summary>
         public IServerConnectionListener CreateConnectionListener(ClientAccepted clientAcceptCallBack) {
             IServerConnectionListener result = new TcpConnectionListener();

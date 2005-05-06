@@ -563,9 +563,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <param name="version"></param>
         /// <returns></returns>
         internal IMessage DeserialiseRequest(CdrInputStream cdrStream, GiopVersion version,
-                                           GiopConnectionDesc conDesc) {            
+                                             GiopConnectionDesc conDesc, IInterceptionOption[] interceptionOptions) {
             MethodCall methodCallInfo = null;            
-            GiopServerRequest serverRequest = new GiopServerRequest();
+            GiopServerRequest serverRequest = new GiopServerRequest(conDesc, interceptionOptions);
             serverRequest.Version = version;
             try {
                 ServiceContextList cntxColl = null;

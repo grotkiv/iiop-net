@@ -174,7 +174,7 @@ namespace Ch.Elca.Iiop.Interception {
                 throw new NotImplementedException();
             }
         }
-        
+                
         #endregion IProperties       
         #region IMethods
         
@@ -275,6 +275,15 @@ namespace Ch.Elca.Iiop.Interception {
                 throw new NotImplementedException();
             }
         }
+        
+        /// <summary>
+        /// the connection description.
+        /// </summary>
+        internal GiopClientConnectionDesc ConnectionDesc {
+            get {
+                return m_clientRequest.ConnectionDesc;
+            }
+        }        
         
         #endregion IProperties
         #region IMethods
@@ -377,7 +386,16 @@ namespace Ch.Elca.Iiop.Interception {
                 throw new NotImplementedException();
             }
         }                                
-                
+
+        /// <summary>
+        /// the connection description.
+        /// </summary>
+        internal GiopConnectionDesc ConnectionDesc {
+            get {
+                return m_serverRequest.ConnectionDesc;
+            }
+        }                
+        
         #endregion IProperties
         #region IMethods
         

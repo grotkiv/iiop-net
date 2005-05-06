@@ -38,6 +38,7 @@ using Ch.Elca.Iiop.MessageHandling;
 using Ch.Elca.Iiop.Services;
 using Ch.Elca.Iiop.CorbaObjRef;
 using Ch.Elca.Iiop.Util;
+using Ch.Elca.Iiop.Interception;
 using omg.org.CORBA;
 
 namespace Ch.Elca.Iiop {
@@ -82,13 +83,15 @@ namespace Ch.Elca.Iiop {
         private IClientChannelSink m_nextSink;
         
         private GiopClientConnectionManager m_conManager;
+        
+        private IInterceptionOption[] m_interceptionOptions;
 
         #endregion IFields
         #region IConstructors
 
         /// <param name="nextSink">the next sink in the channel. Precondition: in this sink chain, a
         /// IiopClientTransportSink must be present.</param>
-        internal IiopClientFormatterSink(IClientChannelSink nextSink) {
+        internal IiopClientFormatterSink(IClientChannelSink nextSink, IInterceptionOption[] interceptionOptions) {
             m_nextSink = nextSink;            
             
             // serach for IiopTransport:
@@ -102,7 +105,7 @@ namespace Ch.Elca.Iiop {
             if (m_conManager == null) {
                 throw new ArgumentException("nextSink: no path to the IiopTransportSink found");
             }
-            
+            m_interceptionOptions = interceptionOptions;            
         }
 
         #endregion IConstructors
@@ -130,7 +133,7 @@ namespace Ch.Elca.Iiop {
         #region IMethods
         
         /// <summary>serialises the .NET msg to a GIOP-message</summary>
-        private void SerialiseRequest(IMessage msg, IIorProfile target, GiopConnectionDesc conDesc,
+        private void SerialiseRequest(IMessage msg, IIorProfile target, GiopClientConnectionDesc conDesc,
                                       uint reqId,
                                       out ITransportHeaders headers, out Stream stream) {
             headers = new TransportHeaders();
@@ -142,7 +145,7 @@ namespace Ch.Elca.Iiop {
                 stream = new MemoryStream(); // create a new stream
             }
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            handler.SerialiseOutgoingRequestMessage(msg, target, conDesc, stream, reqId);
+            handler.SerialiseOutgoingRequestMessage(msg, target, conDesc, stream, reqId, m_interceptionOptions);
         }
 
         /// <summary>deserialises an IIOP-msg from the response stream</summary>
@@ -150,14 +153,14 @@ namespace Ch.Elca.Iiop {
         internal IMessage DeserialiseResponse(Stream responseStream, 
                                               ITransportHeaders headers,
                                               IMessage requestMsg,
-                                              GiopConnectionDesc conDesc) {
+                                              GiopClientConnectionDesc conDesc) {
             
             IMessage result;
             try {
                 GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
                 result = handler.ParseIncomingReplyMessage(responseStream, 
                                                            (IMethodCallMessage) requestMsg,
-                                                           conDesc);
+                                                           conDesc, m_interceptionOptions);
             } finally {
                 responseStream.Close(); // stream not needed any more
                 m_conManager.ReleaseConnectionFor(requestMsg); // release the connection, because this interaction is complete            
@@ -291,7 +294,7 @@ namespace Ch.Elca.Iiop {
             // client side formatter is the last sink in the chain accessing the serialised message, therefore this method is called on the return path
             AsyncProcessingData asyncData = (AsyncProcessingData) state; // retrieve the request msg stored on the channelSinkStack
             IMessage requestMsg = asyncData.RequestMsg; 
-            GiopConnectionDesc conDesc = asyncData.ConDesc;
+            GiopClientConnectionDesc conDesc = (GiopClientConnectionDesc)asyncData.ConDesc;
             try {
                 IMessage responseMsg = DeserialiseResponse(stream, headers,
                                                            requestMsg, conDesc);
@@ -322,12 +325,15 @@ namespace Ch.Elca.Iiop {
         private IServerChannelSink m_nextSink;
 
         private IDictionary m_properties = new Hashtable();
+        
+        private IInterceptionOption[] m_interceptionOptions;
 
         #endregion IFields
         #region IConstructors
 
-        public IiopServerFormatterSink(IServerChannelSink nextSink) {
+        internal IiopServerFormatterSink(IServerChannelSink nextSink, IInterceptionOption[] interceptionOptions) {
             m_nextSink = nextSink;
+            m_interceptionOptions = interceptionOptions;
         }
 
         #endregion IConstructors
@@ -356,7 +362,7 @@ namespace Ch.Elca.Iiop {
             try {
                 GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
                 IMessage result = handler.ParseIncomingRequestMessage(requestStream, 
-                                                                      conDesc);
+                                                                      conDesc, m_interceptionOptions);
                 return result;
             } finally {
                 requestStream.Close(); // not needed any more
@@ -380,7 +386,8 @@ namespace Ch.Elca.Iiop {
                 stream = new MemoryStream(); // create a new stream
             }
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            handler.SerialiseOutgoingReplyMessage(responseMsg, requestMsg, version, stream, conDesc);
+            handler.SerialiseOutgoingReplyMessage(responseMsg, requestMsg, version, stream, conDesc,
+                                                  m_interceptionOptions);
         }
 
         /// <summary>serialises an Exception</summary>
@@ -510,6 +517,8 @@ namespace Ch.Elca.Iiop {
         /// <summary>the next provider in the provider chain</summary>
         private IClientChannelSinkProvider m_nextProvider; // next provider is set during channel creating with the set method on the property      
 
+        private IInterceptionOption[] m_interceptionOptions = InterceptorManager.EmptyInterceptorOptions;        
+        
         #endregion IFields
         #region IConstructors
         
@@ -550,11 +559,15 @@ namespace Ch.Elca.Iiop {
                 nextSink = m_nextProvider.CreateSink(channel, url, remoteChannelData);
             }
             
-            return new IiopClientFormatterSink(nextSink);
+            return new IiopClientFormatterSink(nextSink, m_interceptionOptions);
         }
 
         #endregion
 
+        internal void SetInterceptionOptions(IInterceptionOption[] interceptionOptions) {
+            m_interceptionOptions = interceptionOptions;
+        }        
+        
         #endregion IMethods
 
     }
@@ -567,6 +580,8 @@ namespace Ch.Elca.Iiop {
         #region IFields
         
         private IServerChannelSinkProvider m_nextProvider; // is set during channel creation with the set accessor of the property
+        
+        private IInterceptionOption[] m_interceptionOptions = InterceptorManager.EmptyInterceptorOptions;
 
         #endregion IFields
         #region IConstructors
@@ -608,7 +623,7 @@ namespace Ch.Elca.Iiop {
             if (m_nextProvider != null) {
                 next = m_nextProvider.CreateSink(channel); // create the rest of the sink chain
             }
-            return new IiopServerFormatterSink(next); // create the formatter
+            return new IiopServerFormatterSink(next, m_interceptionOptions); // create the formatter
         }
         
         public void GetChannelData(IChannelDataStore channelData) {
@@ -616,6 +631,10 @@ namespace Ch.Elca.Iiop {
         }
 
         #endregion
+        
+        internal void SetInterceptionOptions(IInterceptionOption[] interceptionOptions) {
+            m_interceptionOptions = interceptionOptions;
+        }
 
         #endregion IMethods
 

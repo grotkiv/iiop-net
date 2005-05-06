@@ -1027,7 +1027,7 @@ namespace Ch.Elca.Iiop {
         
         private IGiopRequestMessageReceiver m_receiver;
         // the connection desc for the handled connection.
-        private GiopConnectionDesc m_conDesc = new GiopConnectionDesc();
+        private GiopConnectionDesc m_conDesc;
         
         /// <summary>
         /// the buffered requests.
@@ -1052,37 +1052,56 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         /// <summary>creates a giop transport message handler, which accept request messages by delegating to receiver</summary>
-        internal GiopClientServerMessageHandler(ITransport transport, IGiopRequestMessageReceiver receiver) : base(transport) {
-            Initalize(receiver);
-        }
-        
-        /// <summary>creates a giop transport message handler, which accept request messages by delegating to receiver</summary>
-        internal GiopClientServerMessageHandler(ITransport transport, MessageTimeout timeout, IGiopRequestMessageReceiver receiver) : base(transport, timeout) {
+        internal GiopClientServerMessageHandler(ITransport transport, IGiopRequestMessageReceiver receiver, GiopConnectionDesc conDesc) : base(transport) {
+            m_conDesc = conDesc;
             Initalize(receiver);
         }        
+        
+        /// <summary>creates a giop transport message handler, which accept request messages by delegating to receiver</summary>
+        internal GiopClientServerMessageHandler(ITransport transport, MessageTimeout timeout, GiopConnectionDesc conDesc) : base(transport, timeout) {
+            m_conDesc = conDesc;
+            Initalize(null);
+        }                
         
         #endregion IConstructors
         #region IMethods
         
         private void Initalize(IGiopRequestMessageReceiver receiver) {
-            if (receiver == null) {
-                throw new BAD_PARAM(167, CompletionStatus.Completed_No);
-            }
             m_receiver = receiver;
         }
         
-        protected override void EnqueueRequestMessage(Stream requestStream) {
+        /// <summary>
+        /// allows to install a receiver when ready to process messages.
+        /// </summary>        
+        /// <remarks>used for bidirectional communication.</remarks>
+        internal void InstallReceiver(IGiopRequestMessageReceiver receiver) {
             lock(this) {
-                RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.Request);
-                m_requestQueue.Enqueue(req);
+                if (m_receiver == null) {
+                    m_receiver = receiver;
+                }
+            }
+        }
+                
+        protected override void EnqueueRequestMessage(Stream requestStream) {            
+            lock(this) {
+                if (m_receiver != null) {
+                    RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.Request);
+                    m_requestQueue.Enqueue(req);
+                } else {
+                    base.EnqueueRequestMessage(requestStream);
+                }
             }
         }
 
         protected override void EnqueueLocateRequestMessage(Stream requestStream) {
             lock(this) {
-                // process in a separate thread to allow reading of next message in parallel.
-                RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.LocateRequest);
-                m_requestQueue.Enqueue(req);
+                if (m_receiver != null) {
+                    // process in a separate thread to allow reading of next message in parallel.
+                    RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.LocateRequest);
+                    m_requestQueue.Enqueue(req);
+                } else {
+                    base.EnqueueLocateRequestMessage(requestStream);
+                }
             }
         }
         

@@ -49,6 +49,8 @@ namespace Ch.Elca.Iiop.Interception {
 	    private static ServerRequestInterceptor[] s_emptyServerRequestInterceptors = new ServerRequestInterceptor[0];
 	    private static IORInterceptor[] s_emptyIorInterceptors = new IORInterceptor[0];
 	    
+	    internal static IInterceptionOption[] EmptyInterceptorOptions = new IInterceptionOption[0];
+	    
 	    #endregion SFields
 	    #region IFields
 	    
@@ -90,52 +92,70 @@ namespace Ch.Elca.Iiop.Interception {
 	                return m_interceptionRegistrationComplete;
 	            }
 	        }
-	    }
+	    }	        
+	    
+	    #endregion IProperties
+	    #region IMethods
 	    
 	    /// <summary>
 	    /// the active client request interceptors
 	    /// </summary>
-	    internal ClientRequestInterceptor[] ClientRequestInterceptors {
-	        get {
-	            if (m_interceptionRegistrationComplete) {
-	                return m_clientRequestInterceptorsInitalized;
-	            } else {
-	                // registration incomplete.
-	                return s_emptyClientRequestInterceptors;
-	            }
+	    internal ClientRequestInterceptor[] GetClientRequestInterceptors(params IInterceptionOption[] options) {
+	        ClientRequestInterceptor[] result;
+	        if (m_interceptionRegistrationComplete) {
+	            result = m_clientRequestInterceptorsInitalized;
+	        } else {
+	            // registration incomplete.
+	            result = s_emptyClientRequestInterceptors;
 	        }
+	        if (options.Length > 0) {
+	            ClientRequestInterceptor[] oldResult = result;
+	            result = new ClientRequestInterceptor[oldResult.Length + options.Length];
+	            for (int i = 0; i < oldResult.Length; i++) {
+	                result[i] = oldResult[i];	                
+	            }
+	            for (int i = 0; i < options.Length; i++) {
+	                result[oldResult.Length + i] = options[i].GetClientRequestInterceptor(m_orb);
+	            }	           
+	        }	        
+	        return result;
 	    }
 
 	    /// <summary>
 	    /// the active server request interceptors
 	    /// </summary>	    
-	    internal ServerRequestInterceptor[] ServerRequestInterceptors {
-	        get {
-	            if (m_interceptionRegistrationComplete) {
-	                return m_serverRequestInterceptorsInitalized;
-	            } else {
-	                // registration incomplete.
-	                return s_emptyServerRequestInterceptors;
-	            }
+	    internal ServerRequestInterceptor[] GetServerRequestInterceptors(params IInterceptionOption[] options) {
+	        ServerRequestInterceptor[] result;
+	        if (m_interceptionRegistrationComplete) {
+	            result = m_serverRequestInterceptorsInitalized;
+	        } else {
+	            // registration incomplete.
+	            result = s_emptyServerRequestInterceptors;
 	        }
-	    }
+	        if (options.Length > 0) {
+	            ServerRequestInterceptor[] oldResult = result;
+	            result = new ServerRequestInterceptor[oldResult.Length + options.Length];
+	            for (int i = 0; i < oldResult.Length; i++) {
+	                result[i] = oldResult[i];	                
+	            }
+	            for (int i = 0; i < options.Length; i++) {
+	                result[oldResult.Length + i] = options[i].GetServerRequestInterceptor(m_orb);
+	            }	           
+	        }
+	        return result;
+	    }	    	    
 
 	    /// <summary>
 	    /// the active ior interceptors
 	    /// </summary>	    	    
-	    internal IORInterceptor[] IorInterceptors {
-	        get {
-	            if (m_interceptionRegistrationComplete) {
-	                return m_iorInterceptorsInitalized;
-	            } else {
-	                // registration incomplete.
-	                return s_emptyIorInterceptors;
-	            }
+	    internal IORInterceptor[] GetIorInterceptors() {
+	        if (m_interceptionRegistrationComplete) {
+	            return m_iorInterceptorsInitalized;
+	        } else {
+	            // registration incomplete.
+	            return s_emptyIorInterceptors;
 	        }
-	    }	    
-	    
-	    #endregion IProperties
-	    #region IMethods
+	    }
 	    
 	    /// <summary>
 	    /// complete the registration of interceptors.
@@ -322,5 +342,22 @@ namespace Ch.Elca.Iiop.Interception {
 	    
 	}
 	
+    
+    /// <summary>
+    /// interface for specifying interceptors, which are activated optionally by the IIOP.NET infrastructure
+    /// </summary>
+    internal interface IInterceptionOption {
+        
+        /// <summary>
+        /// returns the optional interceptor or null, if not present for this option.
+        /// </summary>
+        ServerRequestInterceptor GetServerRequestInterceptor(OrbServices orb);
+        
+        /// <summary>
+        /// returns the optional interceptor or null, if not present for this option.
+        /// </summary>
+        ClientRequestInterceptor GetClientRequestInterceptor(OrbServices orb);
+        
+    }
 	
 }

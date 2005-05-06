@@ -48,21 +48,19 @@ namespace Ch.Elca.Iiop {
         #region Types
         
         /// <summary>Encapsulates a connections, used for connection management</summary>
-        private class ConnectionDescription {
+        protected class ConnectionDescription {
             
             #region IFields
 
             private GiopClientConnection m_connection;
-            private DateTime m_lastUsed;
-            private bool m_isAllowedToBeClosed;
+            private DateTime m_lastUsed;            
             private bool m_isInUse;            
 
             #endregion IFields
             #region IConstructors
 
-            public ConnectionDescription(GiopClientConnection connection, bool isAllowedToBeClosed) {
+            public ConnectionDescription(GiopClientConnection connection) {
                 m_lastUsed = DateTime.Now;
-                m_isAllowedToBeClosed = isAllowedToBeClosed;
                 m_connection = connection;                
             }
 
@@ -86,7 +84,7 @@ namespace Ch.Elca.Iiop {
             /// </summary>
             public bool IsAllowedToBeClosed {
                 get {
-                    return m_isAllowedToBeClosed;
+                    return m_connection.CanCloseConnection();
                 }
             }
             
@@ -131,7 +129,7 @@ namespace Ch.Elca.Iiop {
         #endregion Types
         #region IFields
         
-        private IClientTransportFactory m_transportFactory;
+        protected IClientTransportFactory m_transportFactory;
 
         /// <summary>contains all connections opened by the client; key is the target of the connection; 
         /// value is the ConnectionDesc instance</summary>
@@ -196,7 +194,7 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>checks, if availabe connections contain one, which is usable</summary>
         /// <returns>the connection, if found, otherwise null.</returns>
-        private ConnectionDescription GetFromAvailable(string connectionKey) {
+        protected virtual ConnectionDescription GetFromAvailable(string connectionKey) {
             ConnectionDescription result = null;
             ConnectionDescription con = (ConnectionDescription)m_allClientConnections[connectionKey];
             if (con != null) {
@@ -236,11 +234,15 @@ namespace Ch.Elca.Iiop {
             // should returns an open connection (if not closed meanwhile)
             transport.OpenConnection();
             result = new ConnectionDescription(
-                         new GiopClientConnection(targetKey, transport, m_requestTimeOut),
-                         true);
+                         CreateClientConnection(targetKey, transport, m_requestTimeOut));
             m_allClientConnections[targetKey] = result;
             return result;
-        }        
+        }      
+        
+        protected virtual GiopClientConnection CreateClientConnection(string targetKey, IClientTransport transport,
+                                                              MessageTimeout requestTimeOut) {
+            return new GiopClientInitiatedConnection(targetKey, transport, requestTimeOut, this, false);
+        }
         
         /// <summary>allocation a connection for the message.</summary>
         internal GiopClientConnectionDesc AllocateConnectionFor(IMessage msg, IIorProfile target) {
@@ -334,11 +336,173 @@ namespace Ch.Elca.Iiop {
             }
             m_allClientConnections.Clear();
         }
+        
+        /// <summary>
+        /// supports this connection manager bidir connections.
+        /// </summary>        
+        internal virtual bool SupportBiDir() {
+            return false;
+        }
                 
         #endregion IMethods
         
     }
 
+    
+    /// <summary>
+    /// A connection manager, which is suitable for bidirectional channels.
+    /// This connection manager handles two cases:
+    /// - it manages bidir connections for callbacks (1)
+    /// - it allows to setup client initiated connections for receiving callbacks. (2)
+    /// </summary>
+    internal class GiopBidirectionalConnectionManager : GiopClientConnectionManager {
+        
+        #region IFields
+        
+        /// <summary>contains all bidir connections (from this instance (server) to client); 
+        /// key is the target of the connection; 
+        /// value is the ConnectionDesc instance</summary>
+        private Hashtable m_bidirConnections /* target, ConnectionDescription */ = new Hashtable();
+        
+        private object[] m_ownListenPoints = new object[0];
+        
+        private IGiopRequestMessageReceiver m_receptionHandler = null;
+
+        #endregion IFields
+        #region IConstructors
+        
+        internal GiopBidirectionalConnectionManager(IClientTransportFactory transportFactory, MessageTimeout requestTimeOut,
+                                                    int unusedKeepAliveTime) : base(transportFactory, requestTimeOut, unusedKeepAliveTime) {
+        }
+        
+        internal GiopBidirectionalConnectionManager(IClientTransportFactory transportFactory, int unusedKeepAliveTime) :
+            this(transportFactory, MessageTimeout.Infinite, unusedKeepAliveTime) {
+        }
+        
+        #endregion IConstructors
+        #region IMethods
+        
+        #region UseCaseConForCallBack
+        
+        /// <summary>
+        /// see <see cref="Ch.Elca.Iiop.GiopClientConnectionManager.GetFromAvailable"></see>
+        /// </summary>
+        /// <remarks>for use case (1)</remarks>
+        protected override ConnectionDescription GetFromAvailable(string connectionKey) {            
+            ConnectionDescription con;
+            lock(this) {
+                con = (ConnectionDescription)m_bidirConnections[connectionKey];
+            }
+            if ((con != null) &&
+                (con.Connection.Desc.ReqNumberGen.IsAbleToGenerateNext())) {
+                return con;
+            } else {
+                return base.GetFromAvailable(connectionKey);
+            }
+
+        }
+        
+        
+        /// <summary>registeres connections from received listen points. Those connections
+        /// can be used for callbacks.</summary>
+        /// <remarks>for use case (1)</remarks>
+        internal void RegisterBidirectionalConnection(GiopConnectionDesc receivedOnDesc, 
+                                                      Array receivedListenPoints) {
+            // ask transport factory to create the connection key for the listenPoints
+            for (int i = 0; i < receivedListenPoints.Length; i++) {
+                string conKey = 
+                    m_transportFactory.GetEndPointKeyForBidirEndpoint(receivedListenPoints.GetValue(i));
+                if (conKey != null) {
+                    GiopBidirInitiatedConnection connection =
+                        new GiopBidirInitiatedConnection(conKey, receivedOnDesc.TransportHandler,
+                                                         this);
+                    lock(this) {
+                        m_bidirConnections[conKey] =
+                            new ConnectionDescription(connection);
+                    }
+                }
+            }            
+        }
+        
+        /// <summary>
+        /// remove all bidirectional connections. This should be called, when the server channel stops listening.
+        /// </summary>
+        /// <remarks>for use case (1)</remarks>
+        internal void RemoveAll() {
+            lock(this) {
+                m_bidirConnections.Clear();
+            }
+        }
+        
+        #endregion UseCaseConForCallBack
+        #region UseCaseConInitiatedSupportingReceiveBidir
+        
+        /// <summary>
+        /// see <see cref="Ch.Elca.Iiop.GiopClientConnectionManager.CreateClientConnection"></see>
+        /// </summary>
+        /// <remarks>for use case (2)</remarks>
+        protected override GiopClientConnection CreateClientConnection(string targetKey, IClientTransport transport,
+                                                                       MessageTimeout requestTimeOut) {
+            return new GiopClientInitiatedConnection(targetKey, transport, requestTimeOut, this, true);
+        }        
+        
+        /// <summary>sets the listen points, which can be sent to the other side for connecting back to
+        /// this side endpoints.</summary>
+        /// <remarks>for use case (2)</remarks>
+        internal void SetOwnListenPoints(object[] ownListenPoints) {
+            lock(this) {
+                m_ownListenPoints = ownListenPoints;
+            }
+        }
+
+        /// <summary>
+        /// gets the own listen points, which can be sent to the other side for connecting back to this
+        /// side endpoints.
+        /// </summary>
+        /// <remarks>for use case (2)</remarks>        
+        internal object[] GetOwnListenPoints() {
+            lock(this) {
+                return m_ownListenPoints;
+            }
+        }
+        
+        /// <summary>the server channel entry point, which should be invoked, if a request is
+        /// received on a bidir connection on the client side.</summary>
+        /// <remarks>for use case (2)</remarks>
+        internal void RegisterMessageReceptionHandler(IGiopRequestMessageReceiver receptionHandler) {
+            m_receptionHandler = receptionHandler;
+        }
+        
+        /// <summary>configures a client initiated connection to receive callbacks.</summary>
+        /// <remarks>for use case (2)</remarks>
+        internal void SetupConnectionForBidirReception(GiopClientConnectionDesc conDesc) {
+            if (m_receptionHandler != null) {                
+                if ((conDesc.Connection is GiopClientInitiatedConnection) && 
+                    (conDesc.Connection.TransportHandler is GiopClientServerMessageHandler)) {
+                    GiopClientServerMessageHandler handler = 
+                        (GiopClientServerMessageHandler)conDesc.Connection.TransportHandler;                    
+                    handler.InstallReceiver(m_receptionHandler); // set, if not yet set.
+                } else {
+                    throw new INTERNAL(545, CompletionStatus.Completed_MayBe);
+                }                
+            }  else {
+                throw new INTERNAL(544, CompletionStatus.Completed_MayBe);
+            }
+        }
+        
+        #endregion UseCaseConInitiatedSupportingReceiveBidir        
+        
+        /// <summary>
+        /// supports this connection manager bidir connections.
+        /// </summary>        
+        internal override bool SupportBiDir() {
+            return true;
+        }        
+        
+        #endregion IMethods
+
+        
+    }
 
 
 }

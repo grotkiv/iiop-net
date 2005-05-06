@@ -128,6 +128,12 @@ namespace Ch.Elca.Iiop {
         /// then the transport can be used to connect to both.</summary>
         string GetEndpointKey(IIorProfile target);
         
+        /// <summary>
+        /// creates a key identifying an endpoint received over a bidir connection; if two keys for two IORs are equal, 
+        /// then the transport can be used to connect to both.
+        /// </summary>
+        string GetEndPointKeyForBidirEndpoint(object endPoint);
+        
         /// <summary>returns true, if this transport factory can create a transport for the given IOR, otherwise false</summary>
         bool CanCreateTranporForIor(Ior target);
         
@@ -159,6 +165,12 @@ namespace Ch.Elca.Iiop {
         /// extract options, which are specific to the transport factory
         /// </summary>        
         void SetupServerOptions(IDictionary options);
+        
+        /// <summary>
+        /// creates an array of listen points for the given channel data. This listen points are
+        /// sent to a foreign instance as endpoints for bidirectional connections.
+        /// </summary>
+        object[] GetListenPoints(IiopChannelData chanData);
     }
     
     /// <summary>creates client and server transports</summary>
