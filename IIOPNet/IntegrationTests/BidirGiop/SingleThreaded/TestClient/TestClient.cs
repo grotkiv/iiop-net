@@ -57,10 +57,14 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         [SetUp]
         public void SetupEnvironment() {
             // register the channel
-            IDictionary props = new Hashtable();
-            props[IiopServerChannel.PORT_KEY] = 0;
-            props[IiopChannel.BIDIR_KEY] = true;
-            m_channel = new IiopChannel(props);
+            if (m_channel == null) {
+                // the remote proxy for this url is bound to a certain sink chain for some time ->
+                // don't recreate channel; otherwise, is no more bidirectional for another run.
+                IDictionary props = new Hashtable();
+                props[IiopServerChannel.PORT_KEY] = 0;
+                props[IiopChannel.BIDIR_KEY] = true;
+                m_channel = new IiopChannel(props);
+            }
             ChannelServices.RegisterChannel(m_channel);
             // get the reference to the test-service
             m_testService = (TestService)RemotingServices.Connect(typeof(TestService), "corbaloc:iiop:1.2@localhost:8087/test");
