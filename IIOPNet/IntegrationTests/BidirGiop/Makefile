@@ -3,6 +3,9 @@ build: nunit-var
     cd SingleThreaded
     $(MAKE) build
     cd ..
+    cd OmniOrbServer
+    $(MAKE) build
+    cd ..
 
 
 nunit-var:        
@@ -13,8 +16,15 @@ test: nunit-var
     cd SingleThreaded
     $(MAKE) test
     cd ..
+    cd OmniOrbServer
+    $(MAKE) test
+    cd ..
+
    
 clean:
     cd SingleThreaded
+    $(MAKE) clean
+    cd ..
+    cd OmniOrbServer
     $(MAKE) clean
     cd ..
