@@ -41,10 +41,11 @@ namespace omg.org.IIOP {
     
         #region IFields
         
-        public short port;
         [StringValue()]
         [WideChar(false)]
         public string host;
+        
+        public short port;
         
         #endregion IFields
         #region IConstructors
