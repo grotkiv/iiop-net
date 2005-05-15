@@ -6,6 +6,10 @@ build: nunit-var
     cd OmniOrbServer
     $(MAKE) build
     cd ..
+    cd JacOrbClient
+    $(MAKE) build
+    cd ..
+
 
 
 nunit-var:        
@@ -19,6 +23,10 @@ test: nunit-var
     cd OmniOrbServer
     $(MAKE) test
     cd ..
+    cd JacOrbClient
+    $(MAKE) test
+    cd ..
+
 
    
 clean:
@@ -28,3 +36,7 @@ clean:
     cd OmniOrbServer
     $(MAKE) clean
     cd ..
+    cd JacOrbClient
+    $(MAKE) clean
+    cd ..
+
