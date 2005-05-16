@@ -233,6 +233,35 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         }
         
         #endregion IProperties
+        #region IMethods
+        
+        /// <summary>
+        /// creates a tagged profile from this profile.
+        /// </summary>
+        TaggedProfile CreateTaggedProfile();
+        
+        /// <summary>
+        /// deserialise the component data for the contained component with the specified id; if component
+        /// is not present, returns null.
+        /// </summary>
+        object GetTaggedComponentData(int tag, Type componentType);
+                
+        /// <summary>
+        /// returns true, if at least one tagged component with the given tag is present.
+        /// </summary>
+        bool ContainsTaggedComponent(int tag);
+        
+        /// <summary>
+        /// returns one tagged component with the given tag, if present. Otherwise throws exception.
+        /// </summary>
+        TaggedComponent GetTaggedComponent(int tag);
+        
+        /// <summary>
+        /// returns all tagged components with the given tag. If not present, returns an empty array.
+        /// </summary>
+        TaggedComponent[] GetTaggedComponents(int tag);
+        
+        #endregion IMethods
         
     }
     
@@ -675,6 +704,30 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(2, iiopProf.Version.Minor);
             oid = new byte[] { 0x53, 0x61, 0x79, 0x48, 0x65, 0x6C, 0x6C, 0x6F };
             CheckIorKey(oid, iiopProf.ObjectKey);
+            
+            iorString = "IOR:0000000000000024524d493a48656c6c6f496e746572666163653a3030303030303030303030303030303000000000010000000000000050000102000000000c31302e34302e32302e3531008f9500000000000853617948656C6C6F0000000100000001000000200000000000010001000000020501000100010020000101090000000100010100";
+            ior = new Ior(iorString);
+            Assertion.Assert("nr of profiles", ior.Profiles.Length > 0);
+            Assertion.AssertEquals("first profile type", TAG_INTERNET_IOP.ConstVal, ior.Profiles[0].ProfileId);
+            iiopProf = (IInternetIiopProfile)ior.Profiles[0];
+            Assertion.AssertEquals("10.40.20.51", iiopProf.HostName);
+            Assertion.AssertEquals(36757, iiopProf.Port);
+            Assertion.AssertEquals(1, iiopProf.Version.Major);
+            Assertion.AssertEquals(2, iiopProf.Version.Minor);
+            oid = new byte[] { 0x53, 0x61, 0x79, 0x48, 0x65, 0x6C, 0x6C, 0x6F };
+            CheckIorKey(oid, iiopProf.ObjectKey);            
+            
+            iorString = "IOR:0000000000000024524d493a48656c6c6f496e746572666163653a3030303030303030303030303030303000000000010000000000000050000102000000000c31302e34302e32302e353100ffff00000000000853617948656C6C6F0000000100000001000000200000000000010001000000020501000100010020000101090000000100010100";
+            ior = new Ior(iorString);
+            Assertion.Assert("nr of profiles", ior.Profiles.Length > 0);
+            Assertion.AssertEquals("first profile type", TAG_INTERNET_IOP.ConstVal, ior.Profiles[0].ProfileId);
+            iiopProf = (IInternetIiopProfile)ior.Profiles[0];
+            Assertion.AssertEquals("10.40.20.51", iiopProf.HostName);
+            Assertion.AssertEquals(65535, iiopProf.Port);
+            Assertion.AssertEquals(1, iiopProf.Version.Major);
+            Assertion.AssertEquals(2, iiopProf.Version.Minor);
+            oid = new byte[] { 0x53, 0x61, 0x79, 0x48, 0x65, 0x6C, 0x6C, 0x6F };
+            CheckIorKey(oid, iiopProf.ObjectKey);                        
         }
         
         private void CheckIorKey(byte[] expected, byte[] actual) {
