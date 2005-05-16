@@ -286,18 +286,6 @@ namespace Ch.Elca.Iiop.MessageHandling {
     /// </summary>
     internal class GiopMessageBodySerialiser {
 
-        #region SFields
-
-        private static GiopMessageBodySerialiser s_singleton = new GiopMessageBodySerialiser();               
-        
-        #endregion SFields
-        #region SMethods
-
-        public static GiopMessageBodySerialiser GetSingleton() {
-            return s_singleton;
-        }
-
-        #endregion SMethods
         #region IFields
 
         private MarshallerForType m_contextSeqMarshaller;
@@ -305,7 +293,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion IFields
         #region IConstructors
 
-        private GiopMessageBodySerialiser() {            
+        internal GiopMessageBodySerialiser() {            
             m_contextSeqMarshaller = new MarshallerForType(typeof(string[]), 
                                         new AttributeExtCollection(new Attribute[] { new IdlSequenceAttribute(0L),
                                                                                      new StringValueAttribute(),
@@ -378,13 +366,13 @@ namespace Ch.Elca.Iiop.MessageHandling {
         }
 
         protected void AlignBodyIfNeeded(CdrInputStream cdrStream, GiopVersion version) {
-            if ((version.Major == 1) && (version.Minor >= 2)) {
+            if (!version.IsBeforeGiop1_2()) {
                 cdrStream.ForceReadAlign(Aligns.Align8);
             } // force an align on 8 for GIOP-version >= 1.2
         }
 
         protected void AlignBodyIfNeeded(CdrOutputStream cdrStream, GiopVersion version) {
-            if ((version.Major == 1) && (version.Minor >= 2)) { 
+            if (!version.IsBeforeGiop1_2()) {
                 cdrStream.ForceWriteAlign(Aligns.Align8); 
             } // force an align on 8 for GIOP-version >= 1.2
         }
@@ -442,7 +430,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
 
         private void WriteTarget(CdrOutputStream cdrStream, 
                                  byte[] objectKey, GiopVersion version) {
-            if (!((version.Major == 1) && (version.Minor <= 1))) {
+            if (!version.IsBeforeGiop1_2()) {
                 // for GIOP >= 1.2
                 ushort targetAdrType = 0;
                 cdrStream.WriteUShort(targetAdrType); // object key adressing
@@ -738,7 +726,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                     Trace.WriteLine("sending normal response to client");
                     targetStream.WriteULong(0); // reply status ok
                     
-                    if (!((version.Major == 1) && (version.Minor <= 1))) { // for GIOP 1.2 and later, service context is here
+                    if (!version.IsBeforeGiop1_2()) { // for GIOP 1.2 and later, service context is here
                         SerialiseContext(targetStream, cntxColl); // serialize the context
                     }
                     // serialize a response to a successful request
@@ -757,7 +745,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                         exceptionToSend = new INTERNAL(204, CompletionStatus.Completed_Yes);
                     }
                     
-                    if (!((version.Major == 1) && (version.Minor <= 1))) { // for GIOP 1.2 and later, service context is here
+                    if (!version.IsBeforeGiop1_2()) { // for GIOP 1.2 and later, service context is here
                         SerialiseContext(targetStream, cntxColl); // serialize the context
                     }
                     AlignBodyIfNeeded(targetStream, version);
@@ -1035,7 +1023,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestSameServiceIdMultiple() {
             // checks if service contexts with the same id, doesn't throw an exception
             // checks, that the first service context is considered, others are thrown away
-            GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();    
+            GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser();
             MemoryStream stream = new MemoryStream();
             CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(stream, 0, new GiopVersion(1,2));
             cdrOut.WriteULong(2); // nr of contexts

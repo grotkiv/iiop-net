@@ -52,15 +52,21 @@ namespace Ch.Elca.Iiop.MessageHandling {
     /// This class is a helper class for the formatter
     /// </remarks>
     internal class GiopMessageHandler {
-
+        
         #region SFields
 
         private static GiopMessageHandler s_handler = new GiopMessageHandler();
 
         #endregion SFields
+        #region IFields
+        
+        private GiopMessageBodySerialiser m_ser;
+        
+        #endregion IFields
         #region IConstructors
 
         private GiopMessageHandler() {
+            m_ser = new GiopMessageBodySerialiser();
         }
 
         #endregion IConstructors
@@ -103,10 +109,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
                     }
                 }
             }
-            // deserialize message body
-            GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
-            IMessage result = ser.DeserialiseReply(msgBody, msgInput.Header.Version, request,
-                                                   conDesc);
+            // deserialize message body            
+            IMessage result = m_ser.DeserialiseReply(msgBody, msgInput.Header.Version, request,
+                                                     conDesc);
             if (!(result is LocationForwardMessage)) {
                 // a standard return message
                 return result;
@@ -163,9 +168,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
             CdrMessageInputStream msgInput = new CdrMessageInputStream(sourceStream);
             CdrInputStream msgBody = msgInput.GetMessageContentReadingStream();
             // deserialize the message body (the GIOP-request id is included in this message)
-            GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
-            return ser.DeserialiseRequest(msgBody, msgInput.Header.Version,
-                                          conDesc, interceptionOptions);
+            return m_ser.DeserialiseRequest(msgBody, msgInput.Header.Version,
+                                            conDesc, interceptionOptions);
         }
 
         /// <summary>serialises an outgoing .NET request Message on client side</summary>
@@ -181,13 +185,12 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                                    0, GiopMsgTypes.Request);
                 CdrMessageOutputStream msgOutput = new CdrMessageOutputStream(targetStream, header);
                 // serialize the message, this insert some data into msg, e.g. request-id
-                GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
                 msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = requestId; // set request-id
                 msg.Properties[SimpleGiopMsg.TARGET_PROFILE_KEY] = target;
                 GiopClientRequest request = new GiopClientRequest((IMethodCallMessage)msg, conDesc, interceptionOptions);
-                ser.SerialiseRequest(request, 
-                                     msgOutput.GetMessageContentWritingStream(),
-                                     target, conDesc);
+                m_ser.SerialiseRequest(request, 
+                                       msgOutput.GetMessageContentWritingStream(),
+                                       target, conDesc);
                 msgOutput.CloseStream();
                 if ((request.IsAsyncRequest) || (request.IsOneWayCall)) {
                     // after successful serialisation, call for oneway and async requests receive other, 
@@ -212,9 +215,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                                                   (ReturnMessage)replyMsg, conDesc, 
                                                                   interceptionOptions);
                 // serialize the message
-                GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
-                ser.SerialiseReply(request, msgOutput.GetMessageContentWritingStream(), 
-                                   version, conDesc);
+                m_ser.SerialiseReply(request, msgOutput.GetMessageContentWritingStream(), 
+                                     version, conDesc);
                 msgOutput.CloseStream(); // write to the stream
             } else {
                 throw new NotImplementedException("handling for this type of .NET message is not implemented at the moment, type: " +
@@ -232,18 +234,17 @@ namespace Ch.Elca.Iiop.MessageHandling {
             CdrMessageInputStream msgInput = new CdrMessageInputStream(sourceStream);
             CdrInputStream msgBody = msgInput.GetMessageContentReadingStream();
             // deserialize message body
-            GiopMessageBodySerialiser ser = GiopMessageBodySerialiser.GetSingleton();
             
             uint forRequestId;
-            string targetUri = ser.DeserialiseLocateRequest(msgBody, msgInput.Header.Version, out forRequestId);
+            string targetUri = m_ser.DeserialiseLocateRequest(msgBody, msgInput.Header.Version, out forRequestId);
             Debug.WriteLine("locate request for target-uri: " + targetUri);
             Stream targetStream = new MemoryStream();
             GiopVersion version = msgInput.Header.Version;
             GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.LocateReply);
             CdrMessageOutputStream msgOutput = new CdrMessageOutputStream(targetStream, header);
             // serialize the message
-            ser.SerialiseLocateReply(msgOutput.GetMessageContentWritingStream(), version, forRequestId, 
-                                     LocateStatus.OBJECT_HERE, null); // for the moment, do not try to find object, because forward is not possibly for IIOP.NET server
+            m_ser.SerialiseLocateReply(msgOutput.GetMessageContentWritingStream(), version, forRequestId, 
+                                       LocateStatus.OBJECT_HERE, null); // for the moment, do not try to find object, because forward is not possibly for IIOP.NET server
             msgOutput.CloseStream(); // write to the stream 
             return targetStream;
         }            
