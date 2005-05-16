@@ -255,7 +255,7 @@ namespace Ch.Elca.Iiop.Interception {
         /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.effective_target"></see></summary>
         public TaggedProfile effective_profile {
             get {
-                IorProfile selectedProfile = m_clientRequest.SelectedProfile;
+                IIorProfile selectedProfile = m_clientRequest.SelectedProfile;
                 return selectedProfile.CreateTaggedProfile();
             }
         }        
@@ -290,7 +290,7 @@ namespace Ch.Elca.Iiop.Interception {
                 
         /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.get_effective_component"></see></summary>
         public TaggedComponent get_effective_component(int id) {
-            IorProfile selectedProfile = m_clientRequest.SelectedProfile;
+            IIorProfile selectedProfile = m_clientRequest.SelectedProfile;
             if (selectedProfile.ContainsTaggedComponent(id)) {
                 return selectedProfile.GetTaggedComponent(id);                
             }            
@@ -300,7 +300,7 @@ namespace Ch.Elca.Iiop.Interception {
         /// <summary><see cref="omg.org.PortableInterceptor.ClientRequestInfo.get_effective_components"></see></summary>
         [return: IdlSequence(0L)]
         public TaggedComponent[] get_effective_components(int id) {
-            IorProfile selectedProfile = m_clientRequest.SelectedProfile;            
+            IIorProfile selectedProfile = m_clientRequest.SelectedProfile;            
             if (selectedProfile.ContainsTaggedComponent(id)) {
                 return selectedProfile.GetTaggedComponents(id);
             }            

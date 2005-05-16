@@ -206,9 +206,9 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>
         /// the profile selected for the connection.
         /// </summary>
-        internal Ch.Elca.Iiop.CorbaObjRef.IorProfile SelectedProfile {
+        internal Ch.Elca.Iiop.CorbaObjRef.IIorProfile SelectedProfile {
             get {
-                return (Ch.Elca.Iiop.CorbaObjRef.IorProfile)
+                return (Ch.Elca.Iiop.CorbaObjRef.IIorProfile)
                     m_requestMessage.Properties[SimpleGiopMsg.TARGET_PROFILE_KEY];
             }
         }
