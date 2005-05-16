@@ -30,7 +30,7 @@ compile-java: *.java
 
 start-client: junit-jar JacORBHome
     @echo "JacORB client IntegrationTest"
-    $(JACORB_HOME)\bin\jaco -DORBInitRef.NameService=corbaloc::127.0.0.1:8087/NameService -cp .;%JUNIT_HOME%\junit.jar TestClient
+    $(JACORB_HOME)\bin\jaco -cp .;%JUNIT_HOME%\junit.jar TestClient
 
 clean:
     if exist IDL\nul rmdir /q /s IDL
