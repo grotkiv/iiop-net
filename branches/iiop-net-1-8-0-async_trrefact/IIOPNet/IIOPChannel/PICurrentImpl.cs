@@ -48,9 +48,7 @@ namespace Ch.Elca.Iiop.Interception {
         
         #endregion Constants
         #region SFields
-        
-        private static PICurrentManager s_instance = new PICurrentManager();
-        
+               
         [ThreadStatic]
         private static PICurrentImpl t_threadScopePICurrent;
         
@@ -62,20 +60,10 @@ namespace Ch.Elca.Iiop.Interception {
         #endregion IFields
         #region IConstructors
         
-        private PICurrentManager() {            
+        internal PICurrentManager() {            
         }
         
         #endregion IConstructors
-        #region SProperties
-        
-        /// <summary>the singleton instance</summary>
-        internal static PICurrentManager Instance {
-            get {
-                return s_instance;
-            }
-        }
-        
-        #endregion SProperties
         #region IMethods
         
         private int GetNrOfSlotsAllocated() {

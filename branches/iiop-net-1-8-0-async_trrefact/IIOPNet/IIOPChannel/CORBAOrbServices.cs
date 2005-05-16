@@ -139,9 +139,9 @@ namespace omg.org.CORBA {
 		
 		private OrbServices() {			
 		    m_orbInitalizers = new ArrayList();
-		    m_interceptorManager = new InterceptorManager(this);
 		    m_codecFactory = new CodecFactoryImpl();
-		    m_piCurrentManager = PICurrentManager.Instance;
+		    m_piCurrentManager = new PICurrentManager();
+		    m_interceptorManager = new InterceptorManager(this);		    		    
 		}
 		
 		#endregion IConstructors
