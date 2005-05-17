@@ -121,10 +121,10 @@ namespace Ch.Elca.Iiop {
     /// <remarks>the methods of this interface are called in a ThreadPool thread</remarks>
     internal interface IGiopRequestMessageReceiver {
                 
-        void ProcessRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler,
+        void ProcessRequest(Stream requestStream, GiopTransportMessageHandler transportHandler,
                             GiopConnectionDesc conDesc);
         
-        void ProcessLocateRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler,
+        void ProcessLocateRequest(Stream requestStream, GiopTransportMessageHandler transportHandler,
                                   GiopConnectionDesc conDesc);
         
     }        
@@ -544,6 +544,8 @@ namespace Ch.Elca.Iiop {
         private MessageReceiveTask m_messageReceiveTask;
         private MessageSendTask m_messageSendTask;
         
+        private GiopReceivedRequestMessageDispatcher m_reiceivedRequestDispatcher;
+        
         #endregion IFields
         #region IConstructors
         
@@ -572,6 +574,7 @@ namespace Ch.Elca.Iiop {
             m_transport = transport;            
             m_timeout = timeout;            
             m_writeLock = new AutoResetEvent(true);
+            m_reiceivedRequestDispatcher = null;
             m_messageSendTask = new MessageSendTask(m_transport, this);
         }    
                 
@@ -921,18 +924,45 @@ namespace Ch.Elca.Iiop {
             AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
         }
         
+        
+        /// <summary>
+        /// allows to install a receiver when ready to process messages.
+        /// </summary>        
+        /// <remarks>used for bidirectional communication.</remarks>
+        internal void InstallReceiver(IGiopRequestMessageReceiver receiver, GiopConnectionDesc receiverConDesc) {
+            lock(this) {
+                if (m_reiceivedRequestDispatcher == null) {
+                    m_reiceivedRequestDispatcher = 
+                        new GiopReceivedRequestMessageDispatcher(receiver, this, receiverConDesc);
+                }
+            }
+        }
+
+        
         /// <summary>
         /// adds this request to the currently pending ones.
         /// </summary>
-        protected virtual void EnqueueRequestMessage(Stream requestStream) {
-            SendErrorResponseMessage(); // not supported by non-bidirectional handler
+        private void EnqueueRequestMessage(Stream requestStream) {
+            lock(this) {
+                if (m_reiceivedRequestDispatcher == null) {
+                    SendErrorResponseMessage(); // can't be handled, no dispatcher
+                    return;
+                }
+            }
+            m_reiceivedRequestDispatcher.EnqueueRequestMessage(requestStream);
         }
 
         /// <summary>
         /// adds this request to the currently pending ones.
         /// </summary>
-        protected virtual void EnqueueLocateRequestMessage(Stream requestStream) {
-            SendErrorResponseMessage(); // not supported by non-bidirectional handler
+        private void EnqueueLocateRequestMessage(Stream requestStream) {
+            lock(this) {
+                if (m_reiceivedRequestDispatcher == null) {
+                    SendErrorResponseMessage(); // can't be handled, no dispatcher
+                    return;
+                }
+            }
+            m_reiceivedRequestDispatcher.EnqueueLocateRequestMessage(requestStream);
         }
         
         /// <summary>
@@ -940,8 +970,13 @@ namespace Ch.Elca.Iiop {
         /// the caller is promoted to the requests processor. When the queue gets emtpy again, the caller is 
         /// released. When the next requests arrives, a new thread is promoted to request processor.
         /// </summary>
-        protected virtual void ProcessQueuedRequests() {
-            // nothing to do, because a request is never enqueued. This method will be overriden in subclass.
+        private void ProcessQueuedRequests() {
+            lock(this) {                
+                if (m_reiceivedRequestDispatcher == null) {
+                    return;
+                }
+            }
+            m_reiceivedRequestDispatcher.ProcessQueuedRequests();
         }
         
         /// <summary>
@@ -985,9 +1020,9 @@ namespace Ch.Elca.Iiop {
     
     
     /// <summary>
-    /// a message handler, which can handle client and server messages
+    /// stores and dispatches reveiced giop requests (Request, LocateRequest).
     /// </summary>
-    public class GiopClientServerMessageHandler : GiopTransportMessageHandler {
+    public class GiopReceivedRequestMessageDispatcher {
         
         #region Types
         
@@ -1031,6 +1066,8 @@ namespace Ch.Elca.Iiop {
         // the connection desc for the handled connection.
         private GiopConnectionDesc m_conDesc;
         
+        private GiopTransportMessageHandler m_msgHandler;
+        
         /// <summary>
         /// the buffered requests.
         /// </summary>
@@ -1045,67 +1082,50 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         /// <summary>creates a giop transport message handler, which accept request messages by delegating to receiver</summary>
-        internal GiopClientServerMessageHandler(ITransport transport, IGiopRequestMessageReceiver receiver, GiopConnectionDesc conDesc) : base(transport) {
+        internal GiopReceivedRequestMessageDispatcher(IGiopRequestMessageReceiver receiver, GiopTransportMessageHandler msgHandler,
+                                                      GiopConnectionDesc conDesc) {
             m_conDesc = conDesc;
-            Initalize(receiver);
+            if (receiver != null) {
+                m_receiver = receiver;
+            } else {
+                throw new BAD_PARAM(400, CompletionStatus.Completed_MayBe);
+            }
+            m_msgHandler = msgHandler;
         }        
-        
-        /// <summary>creates a giop transport message handler, which accept request messages by delegating to receiver</summary>
-        internal GiopClientServerMessageHandler(ITransport transport, MessageTimeout timeout, GiopConnectionDesc conDesc) : base(transport, timeout) {
-            m_conDesc = conDesc;
-            Initalize(null);
-        }                
-        
+                
         #endregion IConstructors
         #region IMethods
-        
-        private void Initalize(IGiopRequestMessageReceiver receiver) {
-            m_receiver = receiver;
-        }
-        
+                               
         /// <summary>
-        /// allows to install a receiver when ready to process messages.
+        /// enqueues a request message for dispatching.
         /// </summary>        
-        /// <remarks>used for bidirectional communication.</remarks>
-        internal void InstallReceiver(IGiopRequestMessageReceiver receiver) {
+        internal void EnqueueRequestMessage(Stream requestStream) {
             lock(this) {
-                if (m_receiver == null) {
-                    m_receiver = receiver;
-                }
-            }
-        }
-                
-        protected override void EnqueueRequestMessage(Stream requestStream) {            
-            lock(this) {
-                if (m_receiver != null) {
-                    RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.Request);
-                    m_requestQueue.Enqueue(req);
-                } else {
-                    base.EnqueueRequestMessage(requestStream);
-                }
+                RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.Request);
+                m_requestQueue.Enqueue(req);
             }
         }
 
-        protected override void EnqueueLocateRequestMessage(Stream requestStream) {
+        /// <summary>
+        /// enqueues a locate request message for dispatching.
+        /// </summary>                
+        internal void EnqueueLocateRequestMessage(Stream requestStream) {
             lock(this) {
-                if (m_receiver != null) {
-                    // process in a separate thread to allow reading of next message in parallel.
-                    RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.LocateRequest);
-                    m_requestQueue.Enqueue(req);
-                } else {
-                    base.EnqueueLocateRequestMessage(requestStream);
-                }
+                RequestToProcess req = new RequestToProcess(requestStream, RequestToProcessType.LocateRequest);
+                m_requestQueue.Enqueue(req);
             }
         }
         
-        protected override void ProcessQueuedRequests() {
+        internal void ProcessQueuedRequests() {
             lock(this) {
                 if (!m_processing) {
-                    // start processing
+                    // start processing: promote this thread to request processor.
                     m_processing = true;
-                    Process(); // promote this thread to request processor, because currently nobody processing.
+                } else {
+                    return; // already processing -> return
                 }
             }
+            Process(); // promote this thread to request processor, because currently nobody processing.
         }        
                         
         /// <summary>
@@ -1134,9 +1154,9 @@ namespace Ch.Elca.Iiop {
             } catch (Exception) {
                 // unexpected exception -> processing problem on this connection, close connection...
                 try {
-                    SendConnectionCloseMessage();
+                    m_msgHandler.SendConnectionCloseMessage();
                 } finally {
-                    ForceCloseConnection();
+                    m_msgHandler.ForceCloseConnection();
                 }
                 // after this, no new thread should be started to process next requests, because
                 // connection closed -> don't set m_processing to false here
@@ -1146,10 +1166,10 @@ namespace Ch.Elca.Iiop {
         private void ProcessRequest(RequestToProcess req) {
             switch (req.Type) {
                 case RequestToProcessType.Request:
-                    m_receiver.ProcessRequest(req.MessageStream, this, m_conDesc);
+                    m_receiver.ProcessRequest(req.MessageStream, m_msgHandler, m_conDesc);
                     break;
                 case RequestToProcessType.LocateRequest:
-                    m_receiver.ProcessLocateRequest(req.MessageStream, this, m_conDesc);
+                    m_receiver.ProcessLocateRequest(req.MessageStream, m_msgHandler, m_conDesc);
                     break;
                 default:
                     Trace.WriteLine("unknown request type in Process: " + req.Type);

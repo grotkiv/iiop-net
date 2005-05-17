@@ -477,11 +477,10 @@ namespace Ch.Elca.Iiop {
         /// <remarks>for use case (2)</remarks>
         internal void SetupConnectionForBidirReception(GiopClientConnectionDesc conDesc) {
             if (m_receptionHandler != null) {                
-                if ((conDesc.Connection is GiopClientInitiatedConnection) && 
-                    (conDesc.Connection.TransportHandler is GiopClientServerMessageHandler)) {
-                    GiopClientServerMessageHandler handler = 
-                        (GiopClientServerMessageHandler)conDesc.Connection.TransportHandler;                    
-                    handler.InstallReceiver(m_receptionHandler); // set, if not yet set.
+                if (conDesc.Connection is GiopClientInitiatedConnection) {
+                    GiopTransportMessageHandler handler = 
+                        conDesc.Connection.TransportHandler;
+                    handler.InstallReceiver(m_receptionHandler, conDesc); // set, if not yet set.
                 } else {
                     throw new INTERNAL(545, CompletionStatus.Completed_MayBe);
                 }                

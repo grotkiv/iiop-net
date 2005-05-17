@@ -64,8 +64,10 @@ namespace Ch.Elca.Iiop {
         #endregion IFields
         #region IConstructors
 
-        internal GiopConnectionDesc(GiopClientConnectionManager conManager) {
+        internal GiopConnectionDesc(GiopClientConnectionManager conManager,
+                                   GiopTransportMessageHandler transportHandler) {
             m_conManager = conManager;
+            m_transportHandler = transportHandler;
         }
 
         #endregion IConstructors
@@ -127,11 +129,7 @@ namespace Ch.Elca.Iiop {
             m_wcharSetChosen = wcharSet;
             SetCodeSetNegotiated();
         }
-        
-        internal void SetTransportHandler(GiopTransportMessageHandler transportHandler) {
-            m_transportHandler = transportHandler;
-        }
-        
+                
         #endregion IMethods
 
     }
@@ -142,7 +140,8 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         internal GiopClientConnectionDesc(GiopClientConnectionManager conManager, GiopClientConnection connection,
-                                          GiopRequestNumberGenerator reqNumberGen) : base(conManager) {
+                                          GiopRequestNumberGenerator reqNumberGen, 
+                                          GiopTransportMessageHandler transportHandler) : base(conManager, transportHandler) {
             m_reqNumGen = reqNumberGen;
             m_connection = connection;            
         }
@@ -224,8 +223,6 @@ namespace Ch.Elca.Iiop {
             m_connectionKey = connectionKey;
             m_assocDesc = assocDesc;            
             m_transportHandler = transportHandler;            
-            m_assocDesc.SetTransportHandler(m_transportHandler);
-            m_transportHandler.StartMessageReception(); // begin listening for messages
         }
 
         internal bool CheckConnected() {            
@@ -268,12 +265,11 @@ namespace Ch.Elca.Iiop {
                                                bool supportBidir) {            
             GiopRequestNumberGenerator reqNumberGen =
                 (!supportBidir ? new GiopRequestNumberGenerator() : new GiopRequestNumberGenerator(true));
-            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(conManager, this, reqNumberGen);
             GiopTransportMessageHandler handler =
-                 (!supportBidir ? 
-                      new GiopTransportMessageHandler(transport, requestTimeOut) :
-                      new GiopClientServerMessageHandler(transport, requestTimeOut, conDesc));            
+                      new GiopTransportMessageHandler(transport, requestTimeOut);
+            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(conManager, this, reqNumberGen, handler);
             Initalize(connectionKey, handler, conDesc);
+            handler.StartMessageReception(); // begin listening for messages
         }                
         
         #endregion IConstructors
@@ -314,7 +310,8 @@ namespace Ch.Elca.Iiop {
                                               GiopClientConnectionManager conManager) {
             GiopRequestNumberGenerator reqNumberGen = 
                     new GiopRequestNumberGenerator(false); // not connection originator -> create non-even req. numbers
-            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(conManager, this, reqNumberGen);            
+            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(conManager, this, reqNumberGen,
+                                                                            transportHandler);
             Initalize(connectionKey, transportHandler, conDesc);
         }                                
         

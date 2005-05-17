@@ -223,7 +223,7 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         /// <param name="requestStream">the request stream</param>
         /// <remarks>is called by GiopTransportMessageHandler</remarks>
-        public void ProcessRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler,
+        public void ProcessRequest(Stream requestStream, GiopTransportMessageHandler transportHandler,
                                    GiopConnectionDesc conDesc) {
             Trace.WriteLine("Process request");
 #if DEBUG
@@ -281,7 +281,7 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         /// <param name="requestStream">the request stream</param>
         /// <remarks>is called by GiopTransportMessageHandler</remarks>
-        public void ProcessLocateRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler,
+        public void ProcessLocateRequest(Stream requestStream, GiopTransportMessageHandler transportHandler,
                                          GiopConnectionDesc conDesc) {
             Trace.WriteLine("Process Locate request");
 #if DEBUG
@@ -314,8 +314,8 @@ namespace Ch.Elca.Iiop {
 
         public void AsyncProcessResponse(IServerResponseChannelSinkStack sinkStack, object state, 
                                          IMessage msg, ITransportHeaders headers, Stream stream) {
-            GiopClientServerMessageHandler giopTransportMsgHandler =
-                 (GiopClientServerMessageHandler) state;            
+            GiopTransportMessageHandler giopTransportMsgHandler =
+                 (GiopTransportMessageHandler) state;            
             giopTransportMsgHandler.SendResponse(stream); // send the response
         }
 
