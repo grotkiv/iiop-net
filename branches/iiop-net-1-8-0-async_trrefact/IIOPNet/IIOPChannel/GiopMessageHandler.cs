@@ -460,7 +460,7 @@ namespace Ch.Elca.Iiop.Tests {
             TestMessage msg = new TestMessage(methodToCall, args, uri);
             // prepare connection context
             GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, 
-                                                                            new GiopRequestNumberGenerator());
+                                                                            new GiopRequestNumberGenerator(), null);
 
             // serialise            
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
@@ -529,7 +529,7 @@ namespace Ch.Elca.Iiop.Tests {
             msg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY] = version;
             msg.Properties[SimpleGiopMsg.CALLED_METHOD_KEY] = methodToCall;
             // create a connection context
-            GiopConnectionDesc conDesc = new GiopConnectionDesc(null);
+            GiopConnectionDesc conDesc = new GiopConnectionDesc(null, null);
 
             // create the reply
             ReturnMessage retMsg = new ReturnMessage((Int32) 3, new object[0], 0, null, msg);            
@@ -616,7 +616,7 @@ namespace Ch.Elca.Iiop.Tests {
             cdrOut.WriteLong(arg2);
 
             // create a connection context: this is needed for request deserialisation
-            GiopConnectionDesc conDesc = new GiopConnectionDesc(null);
+            GiopConnectionDesc conDesc = new GiopConnectionDesc(null, null);
 
             // go to stream begin
             sourceStream.Seek(0, SeekOrigin.Begin);
@@ -660,7 +660,7 @@ namespace Ch.Elca.Iiop.Tests {
             string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
             TestMessage requestMsg = new TestMessage(methodToCall, args, uri);
             // prepare connection desc
-            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, new GiopRequestNumberGenerator());
+            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, new GiopRequestNumberGenerator(), null);
             // create the reply
             MemoryStream sourceStream = new MemoryStream();
             CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(sourceStream, 0, new GiopVersion(1, 2));
@@ -707,7 +707,7 @@ namespace Ch.Elca.Iiop.Tests {
             string origUrl = "iiop://localhost:8090/testuri"; // Giop 1.2 will be used because no version spec in uri
             TestMessage requestMsg = new TestMessage(methodToCall, args, origUrl);
             // prepare connection desc
-            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, new GiopRequestNumberGenerator());
+            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, new GiopRequestNumberGenerator(), null);
             
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,
@@ -741,7 +741,7 @@ namespace Ch.Elca.Iiop.Tests {
             string origUrl = "iiop://localhost:8090/testuri"; // Giop 1.2 will be used because no version spec in uri
             TestMessage requestMsg = new TestMessage(methodToCall, args, origUrl);
             // prepare connection desc
-            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, new GiopRequestNumberGenerator());
+            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, new GiopRequestNumberGenerator(), null);
             
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,

@@ -816,9 +816,9 @@ namespace Ch.Elca.Iiop {
         /// this method handles the incoming messages; it's called by the IServerListener
         /// </summary>
         private void ProcessClientMessages(IServerTransport transport) {
-            GiopConnectionDesc conDesc = new GiopConnectionDesc(m_bidirConnectionManager);
-            GiopClientServerMessageHandler handler = new GiopClientServerMessageHandler(transport, m_transportSink, conDesc);
-            conDesc.SetTransportHandler(handler);
+            GiopTransportMessageHandler handler = new GiopTransportMessageHandler(transport);
+            GiopConnectionDesc conDesc = new GiopConnectionDesc(m_bidirConnectionManager, handler);            
+            handler.InstallReceiver(m_transportSink, conDesc);
             m_transportHandlers.Add(handler);
             handler.StartMessageReception();            
         }
@@ -838,7 +838,7 @@ namespace Ch.Elca.Iiop {
                     Debug.WriteLine("exception while stopping accept: " + ex);
                 }
                 try {
-                    foreach (GiopClientServerMessageHandler handler in m_transportHandlers) {
+                    foreach (GiopTransportMessageHandler handler in m_transportHandlers) {
                         try {
                             try {
                                 handler.SendConnectionCloseMessage();
