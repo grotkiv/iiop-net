@@ -223,7 +223,8 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         /// <param name="requestStream">the request stream</param>
         /// <remarks>is called by GiopTransportMessageHandler</remarks>
-        public void ProcessRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler) {
+        public void ProcessRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler,
+                                   GiopConnectionDesc conDesc) {
             Trace.WriteLine("Process request");
 #if DEBUG
             requestStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
@@ -243,7 +244,7 @@ namespace Ch.Elca.Iiop {
             sinkStack.Push(this, transportHandler);
             // empty transport headers for this protocol
             ITransportHeaders requestHeaders = new TransportHeaders();
-            requestHeaders[GiopConnectionDesc.SERVER_TR_HEADER_KEY] = transportHandler.ConnectionDesc;
+            requestHeaders[GiopConnectionDesc.SERVER_TR_HEADER_KEY] = conDesc;
             requestHeaders[CommonTransportKeys.IPAddress] = transportHandler.GetPeerAddress();
             
             // next sink will process the request-message
@@ -280,7 +281,8 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         /// <param name="requestStream">the request stream</param>
         /// <remarks>is called by GiopTransportMessageHandler</remarks>
-        public void ProcessLocateRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler) {
+        public void ProcessLocateRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler,
+                                         GiopConnectionDesc conDesc) {
             Trace.WriteLine("Process Locate request");
 #if DEBUG
             requestStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
