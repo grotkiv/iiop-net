@@ -117,20 +117,7 @@ namespace Ch.Elca.Iiop.Services {
 
         #endregion IConstructors
         #region SMethods
-                
-        /// <summary>
-        /// returns the code set component data or null if not found
-        /// </summary>
-        internal static object /* CodeSetComponentData */ FindCodeSetComponent(IIorProfile[] profiles) {
-            foreach (IorProfile profile in profiles) {                
-                object result = FindCodeSetComponent(profile);
-                if (result != null) {
-                    return (CodeSetComponentData)result;
-                }
-            }
-            return null;
-        }        
-        
+                       
         /// <summary>
         /// returns the code set component data or null if not found
         /// </summary>
