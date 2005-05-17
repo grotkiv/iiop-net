@@ -121,9 +121,11 @@ namespace Ch.Elca.Iiop {
     /// <remarks>the methods of this interface are called in a ThreadPool thread</remarks>
     internal interface IGiopRequestMessageReceiver {
                 
-        void ProcessRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler);
+        void ProcessRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler,
+                            GiopConnectionDesc conDesc);
         
-        void ProcessLocateRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler);
+        void ProcessLocateRequest(Stream requestStream, GiopClientServerMessageHandler transportHandler,
+                                  GiopConnectionDesc conDesc);
         
     }        
     
@@ -1040,15 +1042,6 @@ namespace Ch.Elca.Iiop {
         private bool m_processing = false;        
         
         #endregion IFields
-        #region IProperties
-        
-        internal GiopConnectionDesc ConnectionDesc {
-            get {
-                return m_conDesc;
-            }
-        }
-        
-        #endregion IProperties
         #region IConstructors
         
         /// <summary>creates a giop transport message handler, which accept request messages by delegating to receiver</summary>
@@ -1153,10 +1146,10 @@ namespace Ch.Elca.Iiop {
         private void ProcessRequest(RequestToProcess req) {
             switch (req.Type) {
                 case RequestToProcessType.Request:
-                    m_receiver.ProcessRequest(req.MessageStream, this);
+                    m_receiver.ProcessRequest(req.MessageStream, this, m_conDesc);
                     break;
                 case RequestToProcessType.LocateRequest:
-                    m_receiver.ProcessLocateRequest(req.MessageStream, this);
+                    m_receiver.ProcessLocateRequest(req.MessageStream, this, m_conDesc);
                     break;
                 default:
                     Trace.WriteLine("unknown request type in Process: " + req.Type);
