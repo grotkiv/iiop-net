@@ -823,18 +823,13 @@ namespace Ch.Elca.Iiop {
             
         public void StopListening(object data) {
             if (m_connectionListener.IsListening()) {                                
-                if (m_bidirConnectionManager != null) {
-                    try {
-                        m_bidirConnectionManager.RemoveAll(); // no more connections to this endpoint should be used for callbacks
-                    } catch (Exception ex) {
-                        Debug.WriteLine("exception while trying to remove registered bidir connections: " + ex);
-                    }
-                }
+                // don't accept new connections any more.
                 try {
                     m_connectionListener.StopListening();
                 } catch (Exception ex) {
                     Debug.WriteLine("exception while stopping accept: " + ex);
                 }
+                // close connections to this server endpoint
                 try {
                     foreach (GiopTransportMessageHandler handler in m_transportHandlers) {
                         try {
@@ -850,6 +845,23 @@ namespace Ch.Elca.Iiop {
                 } finally {
                     m_transportHandlers.Clear();                
                 }
+                // bidir connection data no longer usable/used -> clean up at the end
+                if (m_bidirConnectionManager != null) {
+                    try {
+                        // for bidir use case (1), no more connections initiated by a client to this server endpoint
+                        // should be used for callbacks
+                        m_bidirConnectionManager.RemoveAllBidirInitiated();
+                    } catch (Exception ex) {
+                        Debug.WriteLine("exception while trying to remove registered bidir connections: " + ex);
+                    }
+                    try {
+                        // for bidir use case (2), don't send any more listen points to server, because no longer listening -> 
+                        // server can't connect back using the bidir connections registered
+                        m_bidirConnectionManager.SetOwnListenPoints(new object[0]);
+                    } catch (Exception ex) {
+                        Debug.WriteLine("exception while trying to remove registered bidir connections: " + ex);
+                    }
+                }                
             }
         }
 

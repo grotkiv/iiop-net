@@ -426,7 +426,7 @@ namespace Ch.Elca.Iiop {
         /// remove all bidirectional connections. This should be called, when the server channel stops listening.
         /// </summary>
         /// <remarks>for use case (1)</remarks>
-        internal void RemoveAll() {
+        internal void RemoveAllBidirInitiated() {
             lock(this) {
                 m_bidirConnections.Clear();
             }
