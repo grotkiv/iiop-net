@@ -390,10 +390,10 @@ namespace Ch.Elca.Iiop {
             }
             if ((con != null) &&
                 (con.Connection.Desc.ReqNumberGen.IsAbleToGenerateNext())) {
-                Trace.WriteLine("GetConnection to {0}; using bidirectional connection", connectionKey);
+                Trace.WriteLine(String.Format("GetConnection to {0}; using bidirectional connection", connectionKey));
                 return con;
             } else {
-                Trace.WriteLine("GetConnection to {0}; create new connection", connectionKey);
+                Trace.WriteLine(String.Format("GetConnection to {0}; create new connection", connectionKey));
                 return base.GetFromAvailable(connectionKey);
             }
 
@@ -414,7 +414,7 @@ namespace Ch.Elca.Iiop {
                         new GiopBidirInitiatedConnection(conKey, receivedOnDesc.TransportHandler,
                                                          this);
                     lock(this) {
-                        Trace.WriteLine("register bidirectional connection to {0}", conKey);
+                        Trace.WriteLine(String.Format("register bidirectional connection to {0}", conKey));
                         m_bidirConnections[conKey] =
                             new ConnectionDescription(connection);
                     }
