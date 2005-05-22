@@ -291,7 +291,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         
         #region SFields
         
-        private readonly static TaggedComponent s_defaultCodeSetTaggedComponent = 
+        private readonly static object s_defaultCodeSetTaggedComponent = 
             TaggedComponent.CreateTaggedComponent(TAG_CODE_SETS.ConstVal, 
                                                   new Services.CodeSetComponentData(Services.CodeSetService.DEFAULT_CHAR_SET,
                                                                            new int[] { Services.CodeSetService.ISO646IEC_SINGLE },
@@ -404,7 +404,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         /// returns the codeset tagged component, which should be added to the profiles by default.
         /// </summary>        
         protected static TaggedComponent GetDefaultCodeSetTaggedComponent() {
-            return s_defaultCodeSetTaggedComponent;
+            return (TaggedComponent)s_defaultCodeSetTaggedComponent;
         }
         
         #endregion SMethods
