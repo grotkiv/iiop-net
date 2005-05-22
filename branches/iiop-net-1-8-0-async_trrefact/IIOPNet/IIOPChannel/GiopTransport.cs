@@ -665,7 +665,7 @@ namespace Ch.Elca.Iiop {
         internal void CancelWaitForResponseMessage(uint requestId) {
             lock (m_waitingForResponse.SyncRoot) {
                 // deregister waiter
-                m_waitingForResponse[requestId] = null;
+                m_waitingForResponse.Remove(requestId);
             }
         }        
         
@@ -744,7 +744,7 @@ namespace Ch.Elca.Iiop {
             lock (m_waitingForResponse.SyncRoot) {
                 // create and register wait handle
                 waiter = new SynchronousResponseWaiter(this);
-                if (m_waitingForResponse[requestId] == null) {
+                if (!m_waitingForResponse.Contains(requestId)) {
                     m_waitingForResponse[requestId] = waiter;
                 } else {
                     throw new omg.org.CORBA.INTERNAL(40, CompletionStatus.Completed_No);
@@ -764,9 +764,7 @@ namespace Ch.Elca.Iiop {
                     throw new INTERNAL(41, CompletionStatus.Completed_MayBe);
                 }
             } else {
-                lock (m_waitingForResponse.SyncRoot) {
-                    m_waitingForResponse[requestId] = null;
-                }                
+                CancelWaitForResponseMessage(requestId);
                 CloseConnectionAfterTimeout();
                 throw new omg.org.CORBA.TIMEOUT(31, CompletionStatus.Completed_MayBe);
             }            
@@ -789,7 +787,7 @@ namespace Ch.Elca.Iiop {
                 // create and register wait handle                
                 waiter = new AsynchronousResponseWaiter(this, requestId, callback, clientSinkStack, connection,
                                                         m_timeout);
-                if (m_waitingForResponse[requestId] == null) {
+                if (!m_waitingForResponse.Contains(requestId)) {
                     m_waitingForResponse[requestId] = waiter;
                 } else {
                     throw new omg.org.CORBA.INTERNAL(40, CompletionStatus.Completed_No);
@@ -860,7 +858,7 @@ namespace Ch.Elca.Iiop {
                         uint replyForRequestId = ExtractRequestIdFromReplyMessage(messageStream);
                         IResponseWaiter waiter = (IResponseWaiter)m_waitingForResponse[replyForRequestId];
                         if (waiter != null) {
-                            m_waitingForResponse[replyForRequestId] = null;
+                            m_waitingForResponse.Remove(replyForRequestId);
                             waiter.Response = messageStream;
                             waiter.Notify();
                         }
