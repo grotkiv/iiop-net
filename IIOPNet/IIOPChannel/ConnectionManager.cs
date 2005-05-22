@@ -410,13 +410,21 @@ namespace Ch.Elca.Iiop {
                 string conKey = 
                     m_transportFactory.GetEndPointKeyForBidirEndpoint(receivedListenPoints.GetValue(i));
                 if (conKey != null) {
-                    GiopBidirInitiatedConnection connection =
-                        new GiopBidirInitiatedConnection(conKey, receivedOnDesc.TransportHandler,
-                                                         this);
                     lock(this) {
-                        Trace.WriteLine(String.Format("register bidirectional connection to {0}", conKey));
-                        m_bidirConnections[conKey] =
-                            new ConnectionDescription(connection);
+                        ConnectionDescription conDesc = (ConnectionDescription)m_bidirConnections[conKey];
+                        if ((conDesc == null) || 
+                            ((conDesc != null) && 
+                             (conDesc.Connection.Desc.TransportHandler != receivedOnDesc.TransportHandler))) {
+                            // new / different connection for listen-point
+                            GiopBidirInitiatedConnection connection =
+                                new GiopBidirInitiatedConnection(conKey, receivedOnDesc.TransportHandler,
+                                                                 this);                    
+                            Trace.WriteLine(String.Format("register bidirectional connection to {0}", conKey));
+                            m_bidirConnections[conKey] =
+                                new ConnectionDescription(connection);
+                        } else {
+                            Trace.WriteLine(String.Format("received listen points for already registered bidirectional connection to {0}", conKey));
+                        }
                     }
                 }
             }            
