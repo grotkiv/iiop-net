@@ -289,6 +289,16 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     [CLSCompliant(false)]
     internal abstract class IorProfile : IIorProfile {
         
+        #region SFields
+        
+        private readonly static TaggedComponent s_defaultCodeSetTaggedComponent = 
+            TaggedComponent.CreateTaggedComponent(TAG_CODE_SETS.ConstVal, 
+                                                  new Services.CodeSetComponentData(Services.CodeSetService.DEFAULT_CHAR_SET,
+                                                                           new int[] { Services.CodeSetService.ISO646IEC_SINGLE },
+                                                                           Services.CodeSetService.DEFAULT_WCHAR_SET,
+                                                                           new int[] { Services.CodeSetService.ISO646IEC_MULTI }));
+        
+        #endregion SFields
         #region IFields
 
         protected GiopVersion m_giopVersion;
@@ -388,6 +398,16 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         public abstract TaggedProfile CreateTaggedProfile();
         
         #endregion IMethods
+        #region SMethods
+        
+        /// <summary>
+        /// returns the codeset tagged component, which should be added to the profiles by default.
+        /// </summary>        
+        protected static TaggedComponent GetDefaultCodeSetTaggedComponent() {
+            return s_defaultCodeSetTaggedComponent;
+        }
+        
+        #endregion SMethods
     
     }
 
@@ -409,7 +429,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             m_hostName = hostName;
             m_port = port;
             // default codesetComponent
-            TaggedComponents.AddComponent(Services.CodeSetService.DEFAULT_CODESET_TAGGED_COMPONENT);            
+            TaggedComponents.AddComponent(IorProfile.GetDefaultCodeSetTaggedComponent());
         }
 
         /// <summary>
@@ -528,7 +548,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 
         public MultipleComponentsProfile() : base(new GiopVersion(1,2), null) {
             // default codesetComponent
-            TaggedComponents.AddComponent(Services.CodeSetService.DEFAULT_CODESET_TAGGED_COMPONENT);        
+            TaggedComponents.AddComponent(IorProfile.GetDefaultCodeSetTaggedComponent());        
         }
 
         /// <summary>
