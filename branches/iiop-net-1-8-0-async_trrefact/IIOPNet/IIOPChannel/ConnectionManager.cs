@@ -33,6 +33,7 @@ using System.Net.Sockets;
 using System.Collections;
 using System.Threading;
 using System.Runtime.Remoting.Messaging;
+using System.Diagnostics;
 using omg.org.CORBA;
 
 using Ch.Elca.Iiop.Services;
@@ -389,8 +390,10 @@ namespace Ch.Elca.Iiop {
             }
             if ((con != null) &&
                 (con.Connection.Desc.ReqNumberGen.IsAbleToGenerateNext())) {
+                Trace.WriteLine("GetConnection to {0}; using bidirectional connection", connectionKey);
                 return con;
             } else {
+                Trace.WriteLine("GetConnection to {0}; no bidirectional connection available", connectionKey);
                 return base.GetFromAvailable(connectionKey);
             }
 
