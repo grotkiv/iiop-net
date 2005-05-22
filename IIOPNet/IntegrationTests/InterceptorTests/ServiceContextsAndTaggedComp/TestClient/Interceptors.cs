@@ -162,6 +162,10 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             }
         }
 
+        public void send_poll(ClientRequestInfo ri) {
+            // never called by IIOP.NET
+        }
+
         public void receive_reply(ClientRequestInfo ri) {
             if (MustNonInterceptCall(ri)) {
                 return;

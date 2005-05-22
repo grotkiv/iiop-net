@@ -103,6 +103,10 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             }
         }
 
+        public void send_poll(ClientRequestInfo ri) {
+            // never called by IIOP.NET
+        }
+
         public void receive_reply(ClientRequestInfo ri) {
             m_inPathResult = InPathResult.Reply;
             if (m_throwExceptionInPath != null) {
