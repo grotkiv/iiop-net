@@ -433,14 +433,15 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>
-        /// Configures the installed IIOPServerSideFormatterProivder
+        /// Configures the installed IIOPClientSideFormatterProivder
         /// </summary>
         /// <param name="interceptionOptions"></param>
-        private void InstallInterceptionOptions(IInterceptionOption[] interceptionOptions) {
+        private void ConfigureSinkProviderChain(GiopClientConnectionManager conManager,
+                                                IInterceptionOption[] interceptionOptions) {
             IClientChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopClientFormatterSinkProvider) {
-                    ((IiopClientFormatterSinkProvider)prov).SetInterceptionOptions(interceptionOptions);
+                    ((IiopClientFormatterSinkProvider)prov).Configure(conManager, interceptionOptions);
                     break;
                 }
                 prov = prov.Next;
@@ -471,7 +472,7 @@ namespace Ch.Elca.Iiop {
                 formatterProv.Next = transportProvider;
                 m_providerChain = formatterProv;
             }
-            InstallInterceptionOptions(interceptionOptions);
+            ConfigureSinkProviderChain(m_conManager, interceptionOptions);
         }
 
         #region Implementation of IChannelSender
@@ -717,13 +718,12 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>
         /// Configures the installed IIOPServerSideFormatterProivder
-        /// </summary>
-        /// <param name="interceptionOptions"></param>
-        private void InstallInterceptionOptions(IInterceptionOption[] interceptionOptions) {
+        /// </summary>        
+        private void ConfigureSinkProviderChain(IInterceptionOption[] interceptionOptions) {
             IServerChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopServerFormatterSinkProvider) {
-                    ((IiopServerFormatterSinkProvider)prov).SetInterceptionOptions(interceptionOptions);
+                    ((IiopServerFormatterSinkProvider)prov).Configure(interceptionOptions);
                     break;
                 }
                 prov = prov.Next;
@@ -735,9 +735,7 @@ namespace Ch.Elca.Iiop {
             if (m_port < 0) {
                 throw new ArgumentException("illegal port to listen on: " + m_port); 
             }
-            if (interceptionOptions.Length > 0) {
-                InstallInterceptionOptions(interceptionOptions);
-            }
+            ConfigureSinkProviderChain(interceptionOptions);
             m_transportFactory = transportFactory;
             m_hostNameToUse = DetermineMachineNameToUse();
             SetupChannelData(m_hostNameToUse, m_port, null);

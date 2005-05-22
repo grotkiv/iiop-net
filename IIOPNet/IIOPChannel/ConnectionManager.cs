@@ -244,8 +244,9 @@ namespace Ch.Elca.Iiop {
             return new GiopClientInitiatedConnection(targetKey, transport, requestTimeOut, this, false);
         }
         
-        /// <summary>allocation a connection for the message.</summary>
-        internal GiopClientConnectionDesc AllocateConnectionFor(IMessage msg, IIorProfile target) {
+        /// <summary>allocation a connection and reqNr on connection for the message.</summary>
+        internal GiopClientConnectionDesc AllocateConnectionFor(IMessage msg, IIorProfile target,
+                                                                out uint requestNr) {
             ConnectionDescription result = null;
             
             if (target != null) {
@@ -262,6 +263,7 @@ namespace Ch.Elca.Iiop {
                     }
                     result.IsInUse = true;
                     m_allocatedConnections[msg] = result;
+                    requestNr = result.Connection.Desc.ReqNumberGen.GenerateRequestId();
                 }
             } else {
                 // should not occur
@@ -296,15 +298,7 @@ namespace Ch.Elca.Iiop {
     	        return ((ConnectionDescription) m_allocatedConnections[forMessage]).Connection;
     		}
     	}
-
-        
-        /// <summary>generates the request id to use for the given message</summary>
-        internal uint GenerateRequestId(IMessage msg, GiopClientConnectionDesc allocatedCon) {
-            lock(this) {
-                return allocatedCon.ReqNumberGen.GenerateRequestId();
-            }
-        }
-                
+                        
         private void DestroyUnusedConnections(Object state) {
             lock(this) {
                 ArrayList toClose = new ArrayList();

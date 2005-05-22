@@ -81,14 +81,6 @@ namespace Ch.Elca.Iiop {
             }
         }
         
-        /// <summary>the connection manager to use for this channel; 
-        /// manages all connections opened by this channel.</summary>
-        internal GiopClientConnectionManager ConnectionManager {
-            get {
-                return m_conManager;
-            }
-        }
-
         public System.Collections.IDictionary Properties {
             get {
                 return m_properties;

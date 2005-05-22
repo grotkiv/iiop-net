@@ -89,22 +89,12 @@ namespace Ch.Elca.Iiop {
         #endregion IFields
         #region IConstructors
 
-        /// <param name="nextSink">the next sink in the channel. Precondition: in this sink chain, a
+        /// <param name="nextSink">the next sink in the channel. In this sink chain, a
         /// IiopClientTransportSink must be present.</param>
-        internal IiopClientFormatterSink(IClientChannelSink nextSink, IInterceptionOption[] interceptionOptions) {
+        internal IiopClientFormatterSink(IClientChannelSink nextSink, GiopClientConnectionManager conManager,
+                                         IInterceptionOption[] interceptionOptions) {
             m_nextSink = nextSink;            
-            
-            // serach for IiopTransport:
-            IClientChannelSink transportSink = nextSink;
-            while (nextSink != null) {
-                if (nextSink is IiopClientTransportSink) {
-                    m_conManager = ((IiopClientTransportSink)nextSink).ConnectionManager;
-                }
-                nextSink = nextSink.NextChannelSink;
-            }
-            if (m_conManager == null) {
-                throw new ArgumentException("nextSink: no path to the IiopTransportSink found");
-            }
+            m_conManager = conManager;
             m_interceptionOptions = interceptionOptions;            
         }
 
@@ -170,12 +160,13 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>allocates a connection and adds 
         /// the connectionDesc to the message</summary>
-        private GiopClientConnectionDesc AllocateConnection(IMessage msg, Ior target, out IIorProfile selectedProfile) {
+        private GiopClientConnectionDesc AllocateConnection(IMessage msg, Ior target, out IIorProfile selectedProfile,
+                                                            out uint reqId) {
             for (int i = 0; i < target.Profiles.Length; i++) {
                 if (m_conManager.CanConnectWithProfile(target.Profiles[i])) {
                     selectedProfile = target.Profiles[i];
                     try {
-                        return m_conManager.AllocateConnectionFor(msg, selectedProfile);
+                        return m_conManager.AllocateConnectionFor(msg, selectedProfile, out reqId);
                     } catch (Exception ex) {
                         Trace.WriteLine("exception while trying to connect to target: " + ex);
                         continue; // try next profile
@@ -199,19 +190,15 @@ namespace Ch.Elca.Iiop {
             }
             return target;
         }
-        
-        private uint GetRequestNumberFor(IMessage msg, GiopClientConnectionDesc conDesc) {            
-            uint result = m_conManager.GenerateRequestId(msg, conDesc);
-            return result;
-        }
-    
+            
         #region Implementation of IMessageSink
         public IMessage SyncProcessMessage(IMessage msg) {
             // allocate (reserve) connection
             Ior target = DetermineTarget(msg);
             IIorProfile selectedProfile;
-            GiopClientConnectionDesc conDesc = AllocateConnection(msg, target, out selectedProfile);
-            uint reqId = GetRequestNumberFor(msg, conDesc);
+            uint reqId;
+            GiopClientConnectionDesc conDesc = AllocateConnection(msg, target, out selectedProfile, out reqId);
+            
             // serialise
             IMessage result;
             try {
@@ -240,8 +227,9 @@ namespace Ch.Elca.Iiop {
             // allocate (reserve) connection
             Ior target = DetermineTarget(msg);
             IIorProfile selectedProfile;
-            GiopClientConnectionDesc conDesc = AllocateConnection(msg, target, out selectedProfile);
-            uint reqId = GetRequestNumberFor(msg, conDesc);                        
+            uint reqId;
+            GiopClientConnectionDesc conDesc = AllocateConnection(msg, target, out selectedProfile, out reqId);
+            
             try {
                 SimpleGiopMsg.SetMessageAsyncRequest(msg); // mark message as async, needed for portable interceptors
                 ITransportHeaders requestHeaders;
@@ -517,7 +505,12 @@ namespace Ch.Elca.Iiop {
         /// <summary>the next provider in the provider chain</summary>
         private IClientChannelSinkProvider m_nextProvider; // next provider is set during channel creating with the set method on the property      
 
-        private IInterceptionOption[] m_interceptionOptions = InterceptorManager.EmptyInterceptorOptions;        
+        /// <summary>
+        /// the client side connection Manager
+        /// </summary>
+        private GiopClientConnectionManager m_conManager;
+        
+        private IInterceptionOption[] m_interceptionOptions = InterceptorManager.EmptyInterceptorOptions;
         
         #endregion IFields
         #region IConstructors
@@ -559,12 +552,13 @@ namespace Ch.Elca.Iiop {
                 nextSink = m_nextProvider.CreateSink(channel, url, remoteChannelData);
             }
             
-            return new IiopClientFormatterSink(nextSink, m_interceptionOptions);
+            return new IiopClientFormatterSink(nextSink, m_conManager, m_interceptionOptions);
         }
 
         #endregion
 
-        internal void SetInterceptionOptions(IInterceptionOption[] interceptionOptions) {
+        internal void Configure(GiopClientConnectionManager conManager, IInterceptionOption[] interceptionOptions) {
+            m_conManager = conManager;
             m_interceptionOptions = interceptionOptions;
         }        
         
@@ -632,7 +626,7 @@ namespace Ch.Elca.Iiop {
 
         #endregion
         
-        internal void SetInterceptionOptions(IInterceptionOption[] interceptionOptions) {
+        internal void Configure(IInterceptionOption[] interceptionOptions) {
             m_interceptionOptions = interceptionOptions;
         }
 
