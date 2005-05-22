@@ -105,6 +105,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             }
         }
 
+        public void send_poll(ClientRequestInfo ri) {
+        }
+
         public void receive_reply(ClientRequestInfo ri) {
             try {
                 ServiceContext context = ri.get_reply_service_context(1000);

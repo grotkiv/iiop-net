@@ -307,6 +307,13 @@ namespace omg.org.PortableInterceptor {
         // TODO: forwardrequest description        
         void send_request(ClientRequestInfo ri);
         
+        /// <summary>
+        /// This interception point allows an Interceptor to query information during a 
+        /// TII polling get reply sequency.
+        /// </summary>
+        /// <remarks>this interception point is never called by IIOP.NET</remarks>
+        void send_poll(ClientRequestInfo ri);
+        
         // not supported, because no locate request message may be sent
         // void send_poll(ClientRequestInfo ri);
         

@@ -188,6 +188,13 @@ namespace Ch.Elca.Iiop.Interception {
             }
             
         }
+        
+        /// <summary>
+        /// <see cref="omg.org.PortableInterceptor.ClientRequestInterceptor.send_poll"></see>
+        /// </summary>        
+        public void send_poll(ClientRequestInfo ri) {
+            // nothing to do
+        }
                
         /// <summary>
         /// <see cref="omg.org.PortableInterceptor.ClientRequestInterceptor.receive_reply"></see>
