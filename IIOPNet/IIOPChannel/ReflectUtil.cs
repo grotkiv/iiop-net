@@ -50,7 +50,6 @@ namespace Ch.Elca.Iiop.Util {
         private static Type s_idlEnumAttributeType = typeof(IdlEnumAttribute);
         private static Type s_implClassAttributeType = typeof(ImplClassAttribute);
         private static Type s_idlSequenceAttributeType = typeof(IdlSequenceAttribute);
-        private static Type s_idlArrayAttributeType = typeof(IdlArrayAttribute);
         private static Type s_idlStructAttrType = typeof(IdlStructAttribute);
         private static Type s_idlUnionAttrType = typeof(IdlUnionAttribute);
         private static Type s_wideCharAttrType = typeof(WideCharAttribute);
@@ -59,23 +58,21 @@ namespace Ch.Elca.Iiop.Util {
         private static Type s_throwsIdlExceptionAttributeType = typeof(ThrowsIdlExceptionAttribute);
         private static Type s_oneWayAttributeType = typeof(System.Runtime.Remoting.Messaging.OneWayAttribute);
         private static Type s_iOrderedAttributeType = typeof(IOrderedAttribute);
-                
+        private static Type s_contextElementAttributeType = typeof(ContextElementAttribute);
+        private static Type s_supportedInterfaceAttributeType = typeof(SupportedInterfaceAttribute);
+        private static Type s_repositoryIdAttributeType = typeof(RepositoryIDAttribute);
+
         private static Type s_voidType = typeof(void);
         private static Type s_stringType = typeof(System.String);
         private static Type s_charType = typeof(System.Char);
         private static Type s_int16Type = typeof(System.Int16);
         private static Type s_int32Type = typeof(System.Int32);
         private static Type s_int64Type = typeof(System.Int64);
-        private static Type s_uInt16Type = typeof(System.UInt16);
-        private static Type s_uInt32Type = typeof(System.UInt32);
-        private static Type s_uInt64Type = typeof(System.UInt64);
         private static Type s_booleanType = typeof(System.Boolean);
         private static Type s_byteType = typeof(System.Byte);
-        private static Type s_sByteType = typeof(System.SByte);
         private static Type s_singleType = typeof(System.Single);
         private static Type s_doubleType = typeof(System.Double);
-        private static Type s_dateTimeType = typeof(System.DateTime);
-
+        
         private static Type s_objectType = typeof(System.Object);
         private static Type s_objectArrayType = typeof(System.Object[]);
         private static Type s_valueTypeType = typeof(System.ValueType);
@@ -148,13 +145,6 @@ namespace Ch.Elca.Iiop.Util {
                 return s_idlSequenceAttributeType;
             }
         }
-
-        /// <summary>caches typeof(IdlArrayAttribute)</summary>        
-        public static Type IdlArrayAttributeType {
-            get {
-                return s_idlArrayAttributeType;
-            }
-        }
         
         /// <summary>caches typeof(IdlStructAttribute)</summary>        
         public static Type IdlStructAttributeType {
@@ -211,7 +201,32 @@ namespace Ch.Elca.Iiop.Util {
                 return s_iOrderedAttributeType;
             }
         }
+
+
+        public static Type ContextElementAttributeType {
+            get {
+                return s_contextElementAttributeType;
+            }
+        }
         
+        /// <summary>
+        /// caches typeof(Ch.Elca.Iiop.Idl.SupportedInterfaceAttribute)
+        /// </summary>
+        public static Type SupportedInterfaceAttributeType {
+            get {
+                return s_supportedInterfaceAttributeType;
+            }
+        }
+        
+        /// <summary>
+        /// caches typeof(Ch.Elca.Iiop.Idl.RepositoryIDAttribute)
+        /// </summary>        
+        public static Type RepositoryIDAttributeType {
+            get {
+                return s_repositoryIdAttributeType;
+            }
+        }        
+
         /// <summary>caches typeof(void)</summary>
         public static Type VoidType {
             get {
@@ -252,43 +267,15 @@ namespace Ch.Elca.Iiop.Util {
             get {
                 return s_int64Type;
             }
-        }
-
-        /// <summary>caches typeof(UInt16)</summary>
-        public static Type UInt16Type {
-            get {
-                return s_uInt16Type;
-            }
-        }
-
-        /// <summary>caches typeof(UInt32)</summary>
-        public static Type UInt32Type {
-            get {
-                return s_uInt32Type;
-            }
-        }
-
-        /// <summary>caches typeof(UInt64)</summary>
-        public static Type UInt64Type {
-            get {
-                return s_uInt64Type;
-            }
-        }
-
+        }        
+        
         /// <summary>caches typeof(Byte)</summary>
         public static Type ByteType {
             get {
                 return s_byteType;
             }
         }
-
-        /// <summary>caches typeof(SByte)</summary>
-        public static Type SByteType {
-            get {
-                return s_sByteType;
-            }
-        }
-
+        
         /// <summary>caches typeof(Boolean)</summary>
         public static Type BooleanType {
             get {
@@ -344,13 +331,6 @@ namespace Ch.Elca.Iiop.Util {
                 return s_typeType;
             }
         }
-
-        /// <summary>caches typeof(DateTime)</summary>
-        public static Type DateTimeType {
-            get {
-                return s_dateTimeType;
-            }
-        }
         
         #endregion SProperties        
         #region SMethods
@@ -397,13 +377,21 @@ namespace Ch.Elca.Iiop.Util {
         }
                 
         public static AttributeExtCollection GetCustomAttriutesForMethod(MethodInfo member, bool inherit) {
-            if (!inherit) {
-                object[] attributes = member.GetCustomAttributes(inherit);
-                return AttributeExtCollection.ConvertToAttributeCollection(attributes);            
+            return GetCustomAttriutesForMethod(member, inherit, null);
+        }
+
+        public static AttributeExtCollection GetCustomAttriutesForMethod(MethodInfo member, bool inherit,
+                                                                         Type attributeType) {
+            AttributeExtCollection result;
+            object[] attributes;
+            if (attributeType == null) {
+                attributes = member.GetCustomAttributes(inherit);
             } else {
+                attributes = member.GetCustomAttributes(attributeType, inherit);
+            }
+            result = AttributeExtCollection.ConvertToAttributeCollection(attributes);           
+            if (inherit) {
                 // check also for interface methods ...
-                AttributeExtCollection result = AttributeExtCollection.ConvertToAttributeCollection(
-                    member.GetCustomAttributes(true));
                 if (member.IsVirtual) {
                     // check also for attributes on interface method, if it's a implementation of an interface method
                     Type declaringType = member.DeclaringType;
@@ -413,12 +401,18 @@ namespace Ch.Elca.Iiop.Util {
                         MethodInfo found = IsMethodDefinedInInterface(member, interf);
                         if (found != null) {
                             // add attributes from interface definition if not already present                                                
-                            result = result.MergeMissingAttributes(found.GetCustomAttributes(true));
+                            object[] inheritedAttributes;
+                            if (attributeType == null) {
+                                inheritedAttributes = found.GetCustomAttributes(inherit);
+                            } else {
+                                inheritedAttributes = found.GetCustomAttributes(attributeType, inherit);
+                            }
+                            result = result.MergeMissingAttributes(inheritedAttributes);
                         }
-                    }                    
-                }    
-                return result;
+                    }
+                }
             }
+            return result;
         }
 
         /// <summary>
@@ -584,18 +578,28 @@ namespace Ch.Elca.Iiop.Util {
         /// checks, if thrown is part of the raises attributes (the ThrowsIdlException attributes) of thrower
         /// </summary>        
         public static bool IsExceptionInRaiseAttributes(Exception thrown, MethodInfo thrower) {
-            AttributeExtCollection methodAttributes =
-                ReflectionHelper.GetCustomAttriutesForMethod(thrower, true);
-            foreach (Attribute attr in methodAttributes) {
-                if (ReflectionHelper.ThrowsIdlExceptionAttributeType.
-                    IsAssignableFrom(attr.GetType())) {
-                    if (((ThrowsIdlExceptionAttribute)attr).ExceptionType.
-                        Equals(thrown.GetType())) {
-                        return true;
-                    }
-                }
+        	AttributeExtCollection methodAttributes =
+        		ReflectionHelper.GetCustomAttriutesForMethod(thrower, true);
+        	foreach (Attribute attr in methodAttributes) {
+        		if (ReflectionHelper.ThrowsIdlExceptionAttributeType.
+        		    IsAssignableFrom(attr.GetType())) {
+        			if (((ThrowsIdlExceptionAttribute)attr).ExceptionType.
+        			    Equals(thrown.GetType())) {
+        				return true;
+        			}
+        		}
+        	}
+        	return false;
+        }    
+        
+        /// <summary>generate the signature info for the method</summary>
+        public static Type[] GenerateSigForMethod(MethodBase method) {
+            ParameterInfo[] parameters = method.GetParameters();
+            Type[] result = new Type[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++) {                             
+                result[i] = parameters[i].ParameterType;
             }
-            return false;
+            return result;
         }        
         
         #endregion SMethods

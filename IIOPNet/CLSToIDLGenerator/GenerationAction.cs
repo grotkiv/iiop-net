@@ -295,7 +295,8 @@ namespace Ch.Elca.Iiop.Idl {
         
         /// <summary>maps a method to IDL</summary>
         /// <param name="shouldThrowException">if true, generate a raise clause for method: GenericUserException</param>
-        private void MapMethod(MethodInfo methodToMap, Type declaringType, bool shouldThrowException) {
+        private void MapMethod(MethodInfo methodToMap, Type declaringType, bool shouldThrowException,
+                               bool shouldPassContext) {
             Type returnType = methodToMap.ReturnType;
 
             // check for oneway method
@@ -358,6 +359,20 @@ namespace Ch.Elca.Iiop.Idl {
 
                 m_currentOutputStream.Write(")");
             }
+            if (shouldPassContext) {
+                AttributeExtCollection contextAttributes =
+                    ReflectionHelper.GetCustomAttriutesForMethod(methodToMap, true,
+                                                                 ReflectionHelper.ContextElementAttributeType);
+                if (contextAttributes.Count > 0) {
+                    m_currentOutputStream.Write(" context (");
+                    string separator = "";
+                    foreach (ContextElementAttribute contextAttr in contextAttributes) {
+                        m_currentOutputStream.Write(separator + "\"" + contextAttr.ContextElementKey + "\"");
+                        separator = " ,";
+                    }
+                    m_currentOutputStream.Write(")");
+                }
+            }
             m_currentOutputStream.Write(";");
 
             m_currentOutputStream.WriteLine();
@@ -365,13 +380,14 @@ namespace Ch.Elca.Iiop.Idl {
 
         /// <summary>maps all the method of the Type typToMap, which are consistent with the bindingFlags</summary>
         /// <param name="shouldThrowException">if true, generate a raise clause for method: GenericUserException</param>
-        private void MapMethods(Type typToMap, bool shouldThrowException, BindingFlags flags) {
+        private void MapMethods(Type typToMap, bool shouldThrowException, bool shouldPassContext,
+                                BindingFlags flags) {
             MethodInfo[] methods = typToMap.GetMethods(flags);
             foreach (MethodInfo info in methods) { 
                 // private methods are not exposed
                 // specialName-methods are not mapped, e.g. property accessor methods are such methods
                 if ((!info.IsPrivate) && (!ReflectionHelper.CheckIsMethodInInterfaceOrBase(typToMap, info, flags)) && (!info.IsSpecialName)) { 
-                    MapMethod(info, typToMap, shouldThrowException);
+                    MapMethod(info, typToMap, shouldThrowException, shouldPassContext);
                 }
             }
         }
@@ -538,7 +554,7 @@ namespace Ch.Elca.Iiop.Idl {
             m_currentOutputStream.WriteLine(" {");
             
             // map the properties and methods
-            MapMethods(clsType, true, BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+            MapMethods(clsType, true, true, BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
             MapProperties(clsType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
             
             CloseOpenScopes(1); // close interface scope
@@ -573,36 +589,6 @@ namespace Ch.Elca.Iiop.Idl {
             } else {
                 m_currentOutputStream.WriteLine("typedef sequence<{0}, {1}> {2} ;", elemTypeMapped, bound, typedefName);
             }
-                                                        
-            m_currentOutputStream.WriteLine("");
-
-            EndType();
-            return null;
-        }        
-
-        public object MapToIdlArray(Type clsType, int[] dimensions, AttributeExtCollection allAttributes, AttributeExtCollection elemTypeAttributes) {
-            // for arrays, the attributes of the element type also influence the mapped type
-            // therefore, use attributes also to check mapped type
-            if (m_depManager.CheckMappedType(clsType, allAttributes)) {
-                return null; // already mapped
-            }
-            string namespaceName;
-            string elemTypeMapped;
-            string typedefName =
-                IdlNaming.GetTypeDefAliasForArrayType(clsType, dimensions, elemTypeAttributes, out namespaceName, out elemTypeMapped);
-                        
-            string[] modules = IdlNaming.MapNamespaceNameToIdlModules(namespaceName);
-            BeginTypeWithName(clsType, allAttributes, elemTypeAttributes, modules, typedefName);
-            
-            // write type dependant information
-            WriteModuleOpenings(modules);
-
-            // write typedef
-            string dimensionsRep = String.Empty;
-            for (int i = 0; i < dimensions.Length; i++) {
-                dimensionsRep = dimensionsRep + "[" + dimensions[i] + "]";
-            }
-            m_currentOutputStream.WriteLine("typedef {0} {1}{2};", elemTypeMapped, typedefName, dimensionsRep);
                                                         
             m_currentOutputStream.WriteLine("");
 
@@ -667,7 +653,7 @@ namespace Ch.Elca.Iiop.Idl {
                                         BindingFlags.DeclaredOnly);
             
             // map the properties and methods
-            MapMethods(clsType, false, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+            MapMethods(clsType, false, false, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
             MapProperties(clsType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 
             CloseOpenScopes(1); // close interface scope
@@ -704,7 +690,7 @@ namespace Ch.Elca.Iiop.Idl {
             m_currentOutputStream.WriteLine("");
             
             // map the properties and methods
-            MapMethods(clsType, true, BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+            MapMethods(clsType, true, true, BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
             MapProperties(clsType, BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
 
             CloseOpenScopes(1); // close interface scope
@@ -735,7 +721,7 @@ namespace Ch.Elca.Iiop.Idl {
             }
             m_currentOutputStream.WriteLine(" {");
             m_currentOutputStream.WriteLine("");
-            MapMethods(clsType, false, BindingFlags.Instance | BindingFlags.Public | 
+            MapMethods(clsType, false, false, BindingFlags.Instance | BindingFlags.Public | 
                            BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
             
             CloseOpenScopes(1); // close interface scope
@@ -748,7 +734,7 @@ namespace Ch.Elca.Iiop.Idl {
             
         }
 
-        public object MapToIdlBoxedValueType(Type clsType, Type needsBoxingFrom) {
+        public object MapToIdlBoxedValueType(Type clsType, bool isAlreadyBoxed) {
             if (m_depManager.CheckMappedType(clsType)) { 
                 return null; 
             }
@@ -991,7 +977,7 @@ namespace Ch.Elca.Iiop.Idl {
             return null;
         }
 
-        public object MapToIdlBoxedValueType(System.Type dotNetType, Type needsBoxingFrom) {
+        public object MapToIdlBoxedValueType(System.Type dotNetType, bool isAlreadyBoxed) {
             throw new NotSupportedException("a value-box can't have a forward declaration");
         }
         
@@ -1078,10 +1064,6 @@ namespace Ch.Elca.Iiop.Idl {
         }
 
         public object MapToIdlSequence(System.Type dotNetType, int bound, AttributeExtCollection allAttributes, AttributeExtCollection elemTypeAttributes) {
-            throw new NotSupportedException("no fwd declaration possible for this IDL-type");
-        }
-
-        public object MapToIdlArray(System.Type dotNetType, int[] dimensions, AttributeExtCollection allAttributes, AttributeExtCollection elemTypeAttributes) {
             throw new NotSupportedException("no fwd declaration possible for this IDL-type");
         }
 
@@ -1178,7 +1160,7 @@ namespace Ch.Elca.Iiop.Idl {
             return null;
         }
 
-        public object MapToIdlBoxedValueType(System.Type dotNetType, Type needsBoxingFrom) {
+        public object MapToIdlBoxedValueType(System.Type dotNetType, bool isAlreadyBoxed) {
             WriteInclude(dotNetType);
             return null;
         }
@@ -1214,11 +1196,6 @@ namespace Ch.Elca.Iiop.Idl {
         }
         
         public object MapToIdlSequence(System.Type dotNetType, int bound, AttributeExtCollection allAttributes, AttributeExtCollection elementTypeAttributes) {
-            WriteInclude(dotNetType, allAttributes);
-            return null;            
-        }
-
-        public object MapToIdlArray(System.Type dotNetType, int[] dimensions, AttributeExtCollection allAttributes, AttributeExtCollection elementTypeAttributes) {
             WriteInclude(dotNetType, allAttributes);
             return null;            
         }

@@ -85,7 +85,4 @@ using System.Runtime.CompilerServices;
 //       documentation for more information on this.
 //
 [assembly: AssemblyDelaySign(false)]
-#if (!DISABLE_STRONG_NAME)
-[assembly: AssemblyKeyFile(@"..\Key.snk")]
-#endif
 [assembly: AssemblyKeyName("")]

@@ -30,13 +30,16 @@ using System;
 using System.Reflection;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
+using System.Runtime.Remoting.Messaging;
 using NUnit.Framework;
 using Ch.Elca.Iiop;
+using Ch.Elca.Iiop.Idl;
 using Ch.Elca.Iiop.Services;
 using omg.org.CosNaming;
 using omg.org.CORBA;
 
 namespace Ch.Elca.Iiop.IntegrationTests {
+
 
     [TestFixture]
     public class TestClient {
@@ -47,9 +50,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
         private TestService m_testService;
         private TestExceptionService m_testExService;
-        private ISimpleTestInterface m_svcSingleCall;
-        private ISimpleTestInterface m_svcSingletonCall;
-        private ISimpleTestInterface m_contextBound;
+        private TestBoxedValuetypeService m_testBoxedService;
 
 
         #endregion IFields
@@ -71,13 +72,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             // get the reference to the test-service
             m_testService = (TestService)RemotingServices.Connect(typeof(TestService), "corbaloc:iiop:1.2@localhost:8087/test");
             m_testExService = (TestExceptionService)RemotingServices.Connect(typeof(TestExceptionService), "corbaloc:iiop:1.2@localhost:8087/testExService");
-
-            m_svcSingleCall = 
-                (ISimpleTestInterface)RemotingServices.Connect(typeof(ISimpleTestInterface), "corbaloc:iiop:1.2@localhost:8087/testSingleCall");
-            m_svcSingletonCall = 
-                (ISimpleTestInterface)RemotingServices.Connect(typeof(ISimpleTestInterface), "corbaloc:iiop:1.2@localhost:8087/testSingletonCall");
-            m_contextBound = 
-                (ISimpleTestInterface)RemotingServices.Connect(typeof(ISimpleTestInterface), "corbaloc:iiop:1.2@localhost:8087/testContextBound");
+            m_testBoxedService = (TestBoxedValuetypeService)RemotingServices.Connect(typeof(TestBoxedValuetypeService), "corbaloc:iiop:1.2@localhost:8087/testBoxedService");
         }
 
         [TearDown]
@@ -423,141 +418,12 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
-        public void TestIdlIntOneDimArray() {
-            int[] testArray = new int[] { 1, 2, 3, 4, 5 };
-            int[] result = m_testService.EchoIdlLongArrayFixedSize5(testArray);
-            Assertion.AssertEquals(testArray.Length, result.Length);           
-            for (int i = 0; i < testArray.Length; i++) {
-                Assertion.AssertEquals(testArray[i], result[i]);
-            }
-        }
-
-        [Test]
-        public void TestIdlIntTwoDimArray() {
-            int[,] testArray = new int[,] { {1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {10, 11, 12}, {13, 14, 15} };
-            int[,] result = m_testService.EchoIdlLongArray5times3(testArray);
-            Assertion.AssertEquals(testArray.Rank, result.Rank);
-            Assertion.AssertEquals(testArray.GetLength(0), result.GetLength(0));
-            Assertion.AssertEquals(testArray.GetLength(1), result.GetLength(1));
-            for (int i = 0; i < testArray.GetLength(0); i++) {
-                for (int j = 0; j < testArray.GetLength(1); j++) {
-                    Assertion.AssertEquals(testArray[i,j], result[i,j]);    
-                }                
-            }
-        }
-
-        [Test]
-        public void TestIdlArrayInsideStruct() {
-            IdlArrayContainer container = new IdlArrayContainer();
-            container.OneDimIntArray5 = new int[] { 1, 2, 3, 4, 5 };
-            container.TwoDimIntArray2x2 = new int[,] { { 1, 2 }, { 3, 4 } };
-            IdlArrayContainer result = m_testService.EchoIdlArrayContainer(container);
-            Assertion.AssertEquals(container.OneDimIntArray5.Length, result.OneDimIntArray5.Length);
-            Assertion.AssertEquals(container.TwoDimIntArray2x2.GetLength(0), result.TwoDimIntArray2x2.GetLength(0));
-            Assertion.AssertEquals(container.TwoDimIntArray2x2.GetLength(1), result.TwoDimIntArray2x2.GetLength(1));
-
-            for (int i = 0; i < container.OneDimIntArray5.Length; i++) {
-                Assertion.AssertEquals(container.OneDimIntArray5[i], result.OneDimIntArray5[i]);
-            }
-
-            for (int i = 0; i < container.TwoDimIntArray2x2.GetLength(0); i++) {
-                for (int j = 0; j < container.TwoDimIntArray2x2.GetLength(1); j++) {
-                    Assertion.AssertEquals(container.TwoDimIntArray2x2[i,j], result.TwoDimIntArray2x2[i,j]);
-                }                
-            }            
-        }
-
-        [Test]
-        public void TestIdlArraysAsAny() {
-            IdlArrayContainer container = new IdlArrayContainer();
-            container.OneDimIntArray5 = new int[] { 1, 2, 3, 4, 5 };
-            container.TwoDimIntArray2x2 = new int[,] { { 1, 2 }, { 3, 4 } };
-            IdlArrayContainer result = 
-                (IdlArrayContainer)m_testService.EchoAnything(container);
-            Assertion.AssertEquals(container.OneDimIntArray5.Length, result.OneDimIntArray5.Length);
-            Assertion.AssertEquals(container.TwoDimIntArray2x2.GetLength(0), result.TwoDimIntArray2x2.GetLength(0));
-            Assertion.AssertEquals(container.TwoDimIntArray2x2.GetLength(1), result.TwoDimIntArray2x2.GetLength(1));
-
-            for (int i = 0; i < container.OneDimIntArray5.Length; i++) {
-                Assertion.AssertEquals(container.OneDimIntArray5[i], result.OneDimIntArray5[i]);
-            }
-
-            for (int i = 0; i < container.TwoDimIntArray2x2.GetLength(0); i++) {
-                for (int j = 0; j < container.TwoDimIntArray2x2.GetLength(1); j++) {
-                    Assertion.AssertEquals(container.TwoDimIntArray2x2[i,j], result.TwoDimIntArray2x2[i,j]);
-                }                
-            }
-
-            // test with any container
-            int[] arg1Dim = new int[] { 1, 2, 3, 4, 5 };
-            int[] result1Dim = (int[])m_testService.RetrieveIdlIntArrayAsAny(arg1Dim);
-            for (int i = 0; i < arg1Dim.Length; i++) {
-                Assertion.AssertEquals(arg1Dim[i], result1Dim[i]);
-            }
-            
-
-            int[,] arg2Dim = new int[,] { { 1,2 }, {3, 4} };
-            int[,] result2Dim = (int[,])m_testService.RetrieveIdlInt2DimArray2x2AsAny(arg2Dim);
-            for (int i = 0; i < arg2Dim.GetLength(0); i++) {
-                for (int j = 0; j < arg2Dim.GetLength(1); j++) {
-                    Assertion.AssertEquals(arg2Dim[i,j], result2Dim[i,j]);
-                }                
-            }            
-
-            int[,,] arg3Dim = new int[2,2,3];
-            arg3Dim[0,0,0] = 1;
-            arg3Dim[0,0,1] = 2;
-            arg3Dim[0,0,2] = 3;
-            arg3Dim[0,1,0] = 4;
-            arg3Dim[0,1,1] = 5;
-            arg3Dim[0,1,2] = 6;
-            arg3Dim[1,0,0] = 7;
-            arg3Dim[1,0,1] = 8;
-            arg3Dim[1,0,2] = 9;
-            arg3Dim[1,1,0] = 10;
-            arg3Dim[1,1,1] = 11;
-            arg3Dim[1,1,2] = 12;
-            int[,,] result3Dim = (int[,,])m_testService.RetrieveIdlInt3DimArray2x2x3AsAny(arg3Dim);
-            Assertion.AssertEquals(arg3Dim.GetLength(0), result3Dim.GetLength(0));
-            Assertion.AssertEquals(arg3Dim.GetLength(1), result3Dim.GetLength(1));
-            Assertion.AssertEquals(arg3Dim.GetLength(2), result3Dim.GetLength(2));
-            for (int i = 0; i < arg3Dim.GetLength(0); i++) {
-                for (int j = 0; j < arg3Dim.GetLength(1); j++) {
-                    for (int k = 0; k < arg3Dim.GetLength(2); k++) {
-                        Assertion.AssertEquals(arg3Dim[i,j,k], result3Dim[i,j,k]);
-                    }
-                }                
-            }            
-        }
-
-
-        [Test]
         public void TestRemoteObjects() {
             Adder adder = m_testService.RetrieveAdder();
             System.Int32 arg1 = 1;
             System.Int32 arg2 = 2;
             System.Int32 result = adder.Add(1, 2);
             Assertion.AssertEquals((System.Int32) arg1 + arg2, result);            
-        }
-
-        [Test]
-        public void TestRemoteObjectPassedAsAny() {
-            Object adderAsObject = m_testService.RetrieveAdderAsAny();
-            Adder adder = (Adder)adderAsObject;
-            System.Int32 arg1 = 1;
-            System.Int32 arg2 = 2;
-            System.Int32 result = adder.Add(1, 2);
-            Assertion.AssertEquals((System.Int32) arg1 + arg2, result);            
-        }
-
-        [Test]
-        public void TestRemoteObjectPassedForAbstractBase() {
-            Object adderAsAbstractBase = m_testService.RetrieveAdderForAbstractInterfaceBase();
-            Adder adder = (Adder)adderAsAbstractBase;
-            System.Int32 arg1 = 1;
-            System.Int32 arg2 = 2;
-            System.Int32 result = adder.Add(1, 2);
-            Assertion.AssertEquals((System.Int32) arg1 + arg2, result);
         }
 
         [Test]
@@ -668,33 +534,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             System.Int32 echo = result.EchoInt(arg);
             Assertion.AssertEquals(arg, echo);
         }
-        [Test]
-        public void TestReceivingUnknownInterfaceImplementor() {
-            TestEchoInterface result = m_testService.RetrieveUnknownEchoInterfaceImplementor();
-            // result is a proxy
-            Assertion.AssertEquals(true, RemotingServices.IsTransparentProxy(result));
-            System.Int32 arg = 23;
-            System.Int32 echo = result.EchoInt(arg);
-            Assertion.AssertEquals(arg, echo);
-        }
-
-
-
-
-        /// <summary>
-        /// Checks unknown implementation class of interface as any
-        /// </summary>
-        [Test]
-        public void TestReceivingUnknownInterfaceImplementorAsAny() {
-            object resultAsAny = m_testService.RetrieveUnknownEchoInterfaceImplementorAsAny();
-            TestEchoInterface result = (TestEchoInterface)resultAsAny;
-            // result is a proxy
-            Assertion.AssertEquals(true, RemotingServices.IsTransparentProxy(result));
-            System.Int32 arg = 23;
-            System.Int32 echo = result.EchoInt(arg);
-            Assertion.AssertEquals(arg, echo);
-        }
-
 
         /// <summary>
         /// Checks if a ByVal actual value for a formal parameter interface is passed correctly
@@ -787,8 +626,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             arg4[0] = 1;
             System.Int32[] result4 = (System.Int32[]) m_testService.EchoAnything(arg4);
             Assertion.AssertEquals(arg4[0], result4[0]);
-
-            TestJaggedArrays(); // problems with name mapping possible -> make sure to check afterwards
         }
                 
         [Test]
@@ -810,6 +647,22 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             // wait for response
             System.Boolean result = nbd.EndInvoke(ar);
             Assertion.AssertEquals(false, result);
+        }
+
+        [Test]
+        public void TestAsyncCallInParallel() {
+            System.Boolean arg = true;
+            TestNegateBooleanDelegate nbd = new TestNegateBooleanDelegate(m_testService.TestNegateBoolean);
+            IAsyncResult[] callResults = new IAsyncResult[50];
+            // async calls
+            for (int i = 0; i < callResults.Length; i++) {
+                callResults[i] = nbd.BeginInvoke(arg, null, null);
+            }
+            // wait for responses
+            for (int i = 0; i < callResults.Length; i++) {
+                System.Boolean result = nbd.EndInvoke(callResults[i]);
+                Assertion.AssertEquals(false, result);
+            }
         }
 
         [Test]
@@ -1062,77 +915,31 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
-        public void TestSeqOfSeqByRefBugReport() {
-            SSensi arg0Elem = new SSensi();
-            arg0Elem.ICode = 1;
-            arg0Elem.IDev = 1;
-            arg0Elem.Sensibilites = new Int64[] { 1L, 2L };
-            SSensi arg1Elem = new SSensi();
-            arg1Elem.ICode = 2;
-            arg1Elem.IDev = 2;
-            arg1Elem.Sensibilites = new Int64[0];            
-            SSensi[] arg = new SSensi[] { arg0Elem, arg1Elem } ;
-            int argLengthBefore = arg.Length;
-            m_testService.TestDuplicateSeqOfSeqInOut(ref arg);          
-            Assertion.AssertEquals("wrong length", argLengthBefore * 2, arg.Length);
-            CheckSSensiEquality(arg0Elem, arg[0]);
-            CheckSSensiEquality(arg0Elem, arg[1]);
-            CheckSSensiEquality(arg1Elem, arg[2]);
-            CheckSSensiEquality(arg1Elem, arg[3]);
-        }
-
-        private void CheckSSensiEquality(SSensi expected, SSensi compare) {
-            Assertion.AssertEquals("wrong ICode", expected.ICode, compare.ICode);
-            Assertion.AssertEquals("wrong IDev", expected.IDev, compare.IDev);
-            Assertion.AssertNotNull("wrong Sensibilities", expected.Sensibilites);
-            Assertion.AssertNotNull("wrong Sensibilities", compare.Sensibilites);
-            Assertion.AssertEquals("wrong number of entries in Sensibilities", expected.Sensibilites.Length, 
-                                   compare.Sensibilites.Length);
-            for (int i = 0; i < expected.Sensibilites.Length; i++) {
-                Assertion.AssertEquals("wrong sensibilities element " + i, expected.Sensibilites[i],
-                                       compare.Sensibilites[i]);
+        public void TestContextElements() {
+            string arg = "test-Arg";
+            string entryName = "element1";
+            CorbaContextElement entry = new CorbaContextElement(arg);              
+            CallContext.SetData(entryName, entry);
+            try {
+                string extractedElem = m_testService.TestContextElementPassing();
+                Assertion.AssertEquals("wrong entry extracted from callcontext", arg, extractedElem);
+            } finally {
+                CallContext.FreeNamedDataSlot(entryName);
             }
         }
 
         [Test]
-        public void TestWellKnownServiceType() {
-            CheckWellKnownService(m_svcSingletonCall, true);
-            CheckWellKnownService(m_svcSingleCall, false);
+        public void TestBoxedValuetypes() {
+            string arg1 = "test-Arg";
+            string result1 = m_testBoxedService.EchoBoxedString(arg1);
+            Assertion.AssertEquals("wrong boxed string returned", arg1, result1);
+
+            Test arg2 = new Test(); 
+            arg2.a = "a";
+            arg2.b = "b";
+            Test result2 = m_testBoxedService.EchoBoxedStruct(arg2);
+            Assertion.AssertEquals("wrong boxed struct returned", arg2, result2);
         }
-
-        [Test]
-        public void TestContextBoundServiceType() {
-            CheckWellKnownService(m_contextBound, true);
-        }
-
-        private void CheckWellKnownService(ISimpleTestInterface svcToCheck, bool stateShouldBeKept) {
-            Int32 arg1 = 1;
-            Int32 arg2 = 2;
-            Assertion.AssertEquals(arg1 + arg2, svcToCheck.Add(arg1, arg2));
-
-            Int32 stateSet = 8;
-            Int32 stateSet2 = 10;
-            svcToCheck.TestValue = stateSet;
-            if (stateShouldBeKept) {
-                Assertion.AssertEquals("set 1 failed", stateSet, svcToCheck.TestValue);
-                svcToCheck.TestValue = stateSet2;
-                Assertion.AssertEquals("set 2 failed", stateSet2, svcToCheck.TestValue);
-            } else {
-                Assertion.AssertEquals("set 1 failed", svcToCheck.InitialValue, svcToCheck.TestValue);
-                svcToCheck.TestValue = stateSet2;
-                Assertion.AssertEquals("set 2 failed", svcToCheck.InitialValue, svcToCheck.TestValue);
-            }
-        }
-
-        [Test]
-        public void TestMBRTypesWithReservedNameCollisions() {
-            CCE._Assembly asm = m_testService.CreateAsm();
-            Assertion.AssertNotNull("asm not created", asm);
-
-            CCE.N_Assembly _asm = m_testService.Create_Asm();
-            Assertion.AssertNotNull("_asm not created", _asm);
-        }
-
 
         #endregion IMethods
 

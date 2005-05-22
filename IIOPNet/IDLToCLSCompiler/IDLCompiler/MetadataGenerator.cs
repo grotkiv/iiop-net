@@ -318,7 +318,7 @@ public class MetaDataGenerator : IDLParserVisitor {
         m_symbolTable = symbolTable;
         m_symbolTable.CheckAllFwdDeclsComplete(); // assure symbol table is valid: all fwd decls are defined by a full definition
         // helps to find already declared types
-        m_typeManager = new TypeManager(m_modBuilder, m_typesInRefAsms, symbolTable);
+        m_typeManager = new TypeManager(m_modBuilder, m_typesInRefAsms);
         // ready for code generation
         m_initalized = true;
     }    
@@ -711,7 +711,8 @@ public class MetaDataGenerator : IDLParserVisitor {
                                                                methods[j].ReturnTypeCustomAttributes.GetCustomAttributes(false)),
                                                            true),
                                          MethodAttributes.Abstract | MethodAttributes.Public |
-                                         MethodAttributes.Virtual | MethodAttributes.HideBySig);
+                                         MethodAttributes.Virtual | MethodAttributes.NewSlot |
+                                         MethodAttributes.HideBySig);
                 
             }
             // properties
@@ -730,14 +731,14 @@ public class MetaDataGenerator : IDLParserVisitor {
                     m_ilEmitHelper.AddPropertyGetter(classBuilder, properties[j].Name,
                                                      propType, MethodAttributes.Virtual | MethodAttributes.Abstract |
                                                                MethodAttributes.Public | MethodAttributes.HideBySig | 
-                                                               MethodAttributes.SpecialName);
+                                                               MethodAttributes.SpecialName | MethodAttributes.NewSlot);
                 MethodBuilder setAccessor = null;
                 if (properties[j].CanWrite) {
                     setAccessor = 
                         m_ilEmitHelper.AddPropertySetter(classBuilder, properties[j].Name,
                                                          propType, MethodAttributes.Virtual | MethodAttributes.Abstract |
                                                                    MethodAttributes.Public | MethodAttributes.HideBySig |
-                                                                   MethodAttributes.SpecialName);
+                                                                   MethodAttributes.SpecialName | MethodAttributes.NewSlot);
                 }
                 
                 m_ilEmitHelper.AddProperty(classBuilder, properties[j].Name,
@@ -1056,13 +1057,11 @@ public class MetaDataGenerator : IDLParserVisitor {
                               typeSpecNode.GetIdentification(), 
                               node.GetIdentification()));
         }
-        ASTdeclarators decl = (ASTdeclarators)node.jjtGetChild(1);
-        for (int i = 0; i < decl.jjtGetNumChildren(); i++) {
-            string declFieldName = 
-                DetermineTypeAndNameForDeclarator((ASTdeclarator)decl.jjtGetChild(i), data,
-                                                  ref fieldType);
+        String[] decl = (String[])node.jjtGetChild(1).jjtAccept(this, data);
+
+        for (int i = 0; i < decl.Length; i++) {
             if (node.isPrivate()) { // map to protected field
-                String privateName = declFieldName;
+                String privateName = decl[i];
                 // compensate a problem in the java rmi compiler, which can produce illegal idl:
                 // it produces idl-files with name clashes if a method getx() and a field x exists
                 if (!privateName.StartsWith("m_")) { 
@@ -1072,7 +1071,7 @@ public class MetaDataGenerator : IDLParserVisitor {
                 m_ilEmitHelper.AddFieldWithCustomAttrs(builder, privateName, 
                                                        fieldType, FieldAttributes.Family);
             } else { // map to public field
-                String fieldName = IdlNaming.MapIdlNameToClsName(declFieldName);
+                String fieldName = IdlNaming.MapIdlNameToClsName(decl[i]);
                 m_ilEmitHelper.AddFieldWithCustomAttrs(builder, fieldName, 
                                                        fieldType, FieldAttributes.Public);
             }
@@ -1145,31 +1144,6 @@ public class MetaDataGenerator : IDLParserVisitor {
     }
 
     #region const-dcl
-
-    /// <summary>
-    /// returns true, if the Type type can be used as type for a constant field; otherwise false.
-    /// </summary>
-    private bool CanSetConstantValue(Type type) {
-        // ok for the following types:
-        // Boolean, SByte, Int16, Int32, Int64, Byte, UInt16, UInt32, UInt64,
-        // Single, Double, DateTime, Char, String und Enum        
-        return (type.Equals(ReflectionHelper.BooleanType) ||
-                type.Equals(ReflectionHelper.SByteType) ||
-                type.Equals(ReflectionHelper.Int16Type) ||
-                type.Equals(ReflectionHelper.Int32Type) ||
-                type.Equals(ReflectionHelper.Int64Type) ||
-                type.Equals(ReflectionHelper.ByteType) ||
-                type.Equals(ReflectionHelper.UInt16Type) ||
-                type.Equals(ReflectionHelper.UInt32Type) ||
-                type.Equals(ReflectionHelper.UInt64Type) ||
-                type.Equals(ReflectionHelper.SingleType) ||
-                type.Equals(ReflectionHelper.DoubleType) ||
-                type.Equals(ReflectionHelper.DateTimeType) ||
-                type.Equals(ReflectionHelper.CharType) ||
-                type.Equals(ReflectionHelper.StringType) ||
-                type.IsEnum);
-    }
-
     /**
      * @see parser.IDLParserVisitor#visit(ASTconst_dcl, Object)
      * @param data expects a BuildInfo instance
@@ -1203,29 +1177,19 @@ public class MetaDataGenerator : IDLParserVisitor {
         TypeBuilder constContainer = m_typeManager.StartTypeDefinition(constSymbol,
                                                                        TypeAttributes.Class | TypeAttributes.Sealed | TypeAttributes.Public, 
                                                                        typeof(System.Object), new System.Type[] { typeof(IIdlEntity) }, false);
-        string constFieldName = "ConstVal";
-        FieldBuilder constField;
-        if (CanSetConstantValue(constType.GetSeparatedClsType())) {
-            // possible as constant field
-            constField = m_ilEmitHelper.AddFieldWithCustomAttrs(constContainer, constFieldName, constType,
-                                                                FieldAttributes.Static | FieldAttributes.Literal | FieldAttributes.Public);
-            constField.SetConstant(val.GetValueToAssign(constType.GetSeparatedClsType(),
-                                                        constType.GetAssignableFromType()));
-        } else {
-            // not possible as constant -> use a readonly static field instead of a constant
-            constField = m_ilEmitHelper.AddFieldWithCustomAttrs(constContainer, constFieldName, constType,
-                                                                FieldAttributes.Static | FieldAttributes.InitOnly | FieldAttributes.Public);
-            // add static initalizer to assign value
-            ConstructorBuilder staticInit = constContainer.DefineConstructor(MethodAttributes.Private | MethodAttributes.Static,
-                                                                            CallingConventions.Standard, Type.EmptyTypes);
-            ILGenerator constrIl = staticInit.GetILGenerator();
-            val.EmitLoadValue(constrIl, constType.GetSeparatedClsType(), constType.GetAssignableFromType());
-            constrIl.Emit(OpCodes.Stsfld, constField);
-            constrIl.Emit(OpCodes.Ret);
-        }
-
+                
+        FieldBuilder constField = m_ilEmitHelper.AddFieldWithCustomAttrs(constContainer, "ConstVal", constType, 
+                                                                         FieldAttributes.Static | FieldAttributes.InitOnly | FieldAttributes.Public);
+        
         // add private default constructor
         constContainer.DefineDefaultConstructor(MethodAttributes.Private);
+        // add static initalizer
+        ConstructorBuilder staticInit = constContainer.DefineConstructor(MethodAttributes.Private | MethodAttributes.Static, 
+                                                                        CallingConventions.Standard, Type.EmptyTypes);        
+        ILGenerator constrIl = staticInit.GetILGenerator();
+        val.EmitLoadValue(constrIl, constType.GetSeparatedClsType(), constType.GetAssignableFromType());
+        constrIl.Emit(OpCodes.Stsfld, constField);
+        constrIl.Emit(OpCodes.Ret);
 
         // create the type
         m_typeManager.EndTypeDefinition(constSymbol);
@@ -1411,18 +1375,14 @@ public class MetaDataGenerator : IDLParserVisitor {
         Node declarators = node.jjtGetChild(1);    
         for (int i = 0; i < declarators.jjtGetNumChildren(); i++) {
             ASTdeclarator decl = (ASTdeclarator) declarators.jjtGetChild(i);
-            if (decl.jjtGetChild(0) is ASTcomplex_declarator) {
-                // check for custom mapping, because will become element type of array
-                typeUsedInDefine = ReplaceByCustomMappedIfNeeded(typeUsedInDefine);
+            if (decl.jjtGetChild(0) is ASTsimple_declarator) {
+                String ident = ((SimpleNodeWithIdent) decl.jjtGetChild(0)).getIdent();
+                Symbol typedefSymbol = currentScope.getSymbol(ident);
+                // inform the type-manager of this typedef
+                Debug.WriteLine("typedef defined here, type: " + typeUsedInDefine.GetCompactClsType() +
+                                ", symbol: " + typedefSymbol);
+                m_typeManager.RegisterTypeDef(typeUsedInDefine, typedefSymbol);
             }
-            string ident = 
-                DetermineTypeAndNameForDeclarator(decl, data, 
-                                                  ref typeUsedInDefine);
-            Symbol typedefSymbol = currentScope.getSymbol(ident);
-            // inform the type-manager of this typedef
-            Debug.WriteLine("typedef defined here, type: " + typeUsedInDefine.GetCompactClsType() +
-                            ", symbol: " + typedefSymbol);
-            m_typeManager.RegisterTypeDef(typeUsedInDefine, typedefSymbol);
         }    
         return null;
     }
@@ -1497,67 +1457,23 @@ public class MetaDataGenerator : IDLParserVisitor {
         return child.jjtAccept(this, data);
     }
 
-    private TypeContainer GetTypeContainerForMultiDimArray(TypeContainer elemType, int[] dimensions) {
-        string clsArrayRep = "[";
-        for (int i = 1; i < dimensions.Length; i++) {
-            clsArrayRep = clsArrayRep + ",";
-        }
-        clsArrayRep = clsArrayRep + "]";
-        // create CLS array type with the help of GetType(), otherwise not possible
-        Type arrayType;
-        // because not fully defined types are possible, use module and not assembly to get type from
-        Module declModule = elemType.GetCompactClsType().Module;
-        arrayType = declModule.GetType(elemType.GetCompactClsType().FullName + clsArrayRep); // not nice, better solution ?        
-        Debug.WriteLine("created array type: " + arrayType);
-
-        // determine the needed attributes: IdlArray is required by the array itself (+optional dimension attrs); 
-        // combine with the attribute from the element type
-        // possible are: IdlArray (for array of array), IdlSequence (for array of sequence), ObjectIdlType,
-        // WideChar, StringValue
-        // invariant: boxed value attribute is not among them, because elem type 
-        // is in the compact form        
-        AttributeExtCollection elemAttributes = elemType.GetCompactTypeAttrInstances();
-        long arrayAttrOrderNr = IdlArrayAttribute.DetermineArrayAttributeOrderNr(elemAttributes);
-        
-        IdlArrayAttribute arrayAttr = new IdlArrayAttribute(arrayAttrOrderNr, dimensions[0]); // at least one dimension available, because of grammar
-        AttributeExtCollection arrayAttributes = 
-            new AttributeExtCollection(elemAttributes);
-        arrayAttributes = arrayAttributes.MergeAttribute(arrayAttr);        
-        for (int i = 1; i < dimensions.Length; i++) {
-            IdlArrayDimensionAttribute dimAttr = new IdlArrayDimensionAttribute(arrayAttrOrderNr, i, dimensions[i]);
-            arrayAttributes = arrayAttributes.MergeAttribute(dimAttr);
-        }
-        
-        return new TypeContainer(arrayType,
-                                 arrayAttributes);        
-    }
-
-    /// <summary>
-    /// returns the name of the declared identity. For array declarators, creates the array type out of the typeSpecType
-    /// </summary>
-    private string DetermineTypeAndNameForDeclarator(ASTdeclarator node, object visitorData, ref TypeContainer typeSpecType) {
-        Node child = node.jjtGetChild(0); // child of declarator
-        if (child is ASTsimple_declarator) {
-            // a simple delcarator
-            ASTsimple_declarator simpleDecl = (ASTsimple_declarator) child;
-            return simpleDecl.getIdent();
-        } else if (child is ASTcomplex_declarator) {
-            ASTarray_declarator arrayDecl = (ASTarray_declarator) child.jjtGetChild(0);
-            int[] dimensions = (int[])arrayDecl.jjtAccept(this, visitorData);
-            typeSpecType = GetTypeContainerForMultiDimArray(typeSpecType, dimensions);
-            return arrayDecl.getIdent();
-        } else {
-            throw new NotSupportedException("unexpected delcarator: " + child.GetType()); // should never occur
-        }
-    }
-
     /**
      * @see parser.IDLParserVisitor#visit(ASTdeclarators, Object)
      * @param data unused
      * @return an array of all declared elements here
      */
     public Object visit(ASTdeclarators node, Object data) {
-        return null; // nothing to do, used by parent node
+        String[] result = new String[node.jjtGetNumChildren()];
+        for (int i = 0; i < node.jjtGetNumChildren(); i++) {
+            Node child = node.jjtGetChild(i).jjtGetChild(0); // child of i-th declarator
+            if (child is ASTcomplex_declarator) {
+                throw new NotSupportedException("complex_declarator is unsupported by this compiler");
+            }
+            // a simple delcarator
+            ASTsimple_declarator simpleDecl = (ASTsimple_declarator) child;
+            result[i] = simpleDecl.getIdent();
+        }
+        return result;
     }
 
     /**
@@ -1833,12 +1749,9 @@ public class MetaDataGenerator : IDLParserVisitor {
                               node.GetIdentification()));
         }
         fieldType = ReplaceByCustomMappedIfNeeded(fieldType);
-        ASTdeclarators decl = (ASTdeclarators)node.jjtGetChild(1);        
-        for (int i = 0; i < decl.jjtGetNumChildren(); i++) {
-            string fieldName = IdlNaming.MapIdlNameToClsName(
-                                   DetermineTypeAndNameForDeclarator((ASTdeclarator)decl.jjtGetChild(i), data,
-                                                                     ref fieldType));
-            m_ilEmitHelper.AddFieldWithCustomAttrs(builder, fieldName, fieldType, 
+        String[] decl = (String[])node.jjtGetChild(1).jjtAccept(this, info);
+        for (int i = 0; i < decl.Length; i++) {
+            m_ilEmitHelper.AddFieldWithCustomAttrs(builder, decl[i], fieldType, 
                                                    FieldAttributes.Public);
         }
         return null;
@@ -2001,10 +1914,11 @@ public class MetaDataGenerator : IDLParserVisitor {
                               node.GetIdentification()));
         }
         elemType = ReplaceByCustomMappedIfNeeded(elemType);
-        Node elemDecl = elemSpec.jjtGetChild(1);
-        string elemDeclIdent = 
-                DetermineTypeAndNameForDeclarator((ASTdeclarator)elemDecl, data,
-                                                  ref elemType);
+        Node elemDecl = elemSpec.jjtGetChild(1).jjtGetChild(0);
+        if (elemDecl is ASTcomplex_declarator) {
+            throw new NotSupportedException("complex_declarator is unsupported by this compiler");
+        }            
+        string elemDeclIdent = ((ASTsimple_declarator) elemDecl).getIdent(); // a simple delcarator        
         // generate the methods/field for this switch-case
         buildInfo.GetGenerationHelper().GenerateSwitchCase(elemType, elemDeclIdent, discriminatorValues);
 
@@ -2164,25 +2078,21 @@ public class MetaDataGenerator : IDLParserVisitor {
         return containter;
     }
 
+    #region array unsupported at the moment
     /**
      * @see parser.IDLParserVisitor#visit(ASTarray_declarator, Object)
      */
     public Object visit(ASTarray_declarator node, Object data) {
-        int[] dimensions = new int[node.jjtGetNumChildren()];
-        for (int i = 0; i < node.jjtGetNumChildren(); i++) {            
-            long dimension = (long)node.jjtGetChild(i).jjtAccept(this, data);
-            dimensions[i] = (int)dimension;
-        }
-        return dimensions;
+        throw new NotSupportedException("array type is not supported by this compiler");
     }
 
     /**
      * @see parser.IDLParserVisitor#visit(ASTfixed_array_size, Object)
      */
     public Object visit(ASTfixed_array_size node, Object data) {
-        long dimensionSize = (long)node.jjtGetChild(0).jjtAccept(this, data);                                  
-        return dimensionSize;
+        throw new NotSupportedException("array type is not supported by this compiler");
     }
+    #endregion
 
     /**
      * @see parser.IDLParserVisitor#visit(ASTattr_dcl, Object)
@@ -2209,13 +2119,15 @@ public class MetaDataGenerator : IDLParserVisitor {
             MethodBuilder getAccessor = m_ilEmitHelper.AddPropertyGetter(builder, 
                                                                          propName, transmittedName,
                                                                          propType,
-                                                                         MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public);
+                                                                         MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public |
+                                                                         MethodAttributes.NewSlot);
             MethodBuilder setAccessor = null;
             if (!(node.isReadOnly())) {
                 setAccessor = m_ilEmitHelper.AddPropertySetter(builder, 
                                                                propName, transmittedName,
                                                                propType,
-                                                               MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public);
+                                                               MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public |
+                                                               MethodAttributes.NewSlot);
             }            
             m_ilEmitHelper.AddProperty(builder, propName, transmittedName,
                                        propType, getAccessor, setAccessor);
@@ -2295,6 +2207,13 @@ public class MetaDataGenerator : IDLParserVisitor {
         }
         return result;
     }
+    
+    private void AddOneWayAttribute(MethodBuilder builder) {
+        ConstructorInfo info = 
+            typeof(System.Runtime.Remoting.Messaging.OneWayAttribute).GetConstructor(Type.EmptyTypes);
+        CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(info, new object[0]);
+        builder.SetCustomAttribute(attributeBuilder);
+    }
 
     /**
      * @see parser.IDLParserVisitor#visit(ASTop_dcl, Object)
@@ -2316,13 +2235,26 @@ public class MetaDataGenerator : IDLParserVisitor {
         MethodBuilder methodBuilder = 
             m_ilEmitHelper.AddMethod(typeAtBuild, methodName, transmittedName,
                                      parameters, returnType,
-                                     MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public | MethodAttributes.HideBySig);
-        if ((node.jjtGetNumChildren() > 2) && (node.jjtGetChild(2) is ASTraises_expr)) {
+                                     MethodAttributes.Virtual | MethodAttributes.Abstract | MethodAttributes.Public |
+                                     MethodAttributes.HideBySig | MethodAttributes.NewSlot);
+        if (node.IsOneWay()) {
+            AddOneWayAttribute(methodBuilder);
+        }
+        int currentChild = 2;
+        if ((node.jjtGetNumChildren() > currentChild) && (node.jjtGetChild(currentChild) is ASTraises_expr)) {
             // has a raises expression, add attributes for allowed exceptions
             Type[] exceptionTypes = (Type[])node.jjtGetChild(2).jjtAccept(this, buildInfo);
             foreach (Type exceptionType in exceptionTypes) {
                 methodBuilder.SetCustomAttribute(
                     new ThrowsIdlExceptionAttribute(exceptionType).CreateAttributeBuilder());
+            }
+            currentChild++;
+        }        
+        if ((node.jjtGetNumChildren() > currentChild) && (node.jjtGetChild(currentChild) is ASTcontext_expr)) {
+            string[] contextElementAttrs = (string[])node.jjtGetChild(currentChild).jjtAccept(this, buildInfo);
+            foreach (string contextElem in contextElementAttrs) {
+                methodBuilder.SetCustomAttribute(
+                    new ContextElementAttribute(contextElem).CreateAttributeBuilder());
             }
         }
         return null;
@@ -2428,7 +2360,15 @@ public class MetaDataGenerator : IDLParserVisitor {
      * @see parser.IDLParserVisitor#visit(ASTcontext_expr, Object)
      */
     public Object visit(ASTcontext_expr node, Object data) {
-        return null; // TBD: ???
+        ArrayList result = new ArrayList();
+        foreach (string element in node.GetContextElements()) {
+            if (!element.EndsWith("*")) {
+                result.Add(element);
+            } else {
+                Console.WriteLine("warning: context element with * at the end not supported by IIOP.NET; ignoring");
+            }
+        }
+        return (string[])result.ToArray(ReflectionHelper.StringType);
     }
 
     /**

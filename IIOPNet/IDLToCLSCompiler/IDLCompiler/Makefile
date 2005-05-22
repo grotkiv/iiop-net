@@ -1,4 +1,3 @@
-Key = ..\..\Key.snk
 IIOPChannel = ..\..\IIOPChannel\bin\IIOPChannel.dll
 IDLPreprocessor = ..\IDLPreprocessor\bin\IDLPreprocessor.dll
 Dest = bin\ 
@@ -16,7 +15,7 @@ $(Dest)IDLPreprocessor.dll: $(IDLPreprocessor)
 	if not exist $(Dest)nul mkdir $(Dest)
 	copy $(IDLPreprocessor) $@
 
-$(Dest)IDLToCLSCompiler.exe: $(Dest)IIOPChannel.dll $(Dest)IDLPreprocessor.dll *.cs $(Key)
+$(Dest)IDLToCLSCompiler.exe: $(Dest)IIOPChannel.dll $(Dest)IDLPreprocessor.dll *.cs
 	csc /nowarn:0162,0164,0168,0169,0219 $(CSFLAGS) /res:MappingPluginSchema.xsd /r:$(Dest)IIOPChannel.dll /r:$(Dest)IDLPreprocessor.dll /t:exe /out:$@ *.cs
 
 
@@ -35,7 +34,7 @@ $(DestUt)IDLPreprocessor.dll: $(IDLPreprocessor)
 	copy $(IDLPreprocessor) $@
 
 
-$(DestUt)IDLToCLSCompiler.exe: $(DestUt)IIOPChannel.dll $(DestUt)IDLPreprocessor.dll *.cs $(Key)
+$(DestUt)IDLToCLSCompiler.exe: $(DestUt)IIOPChannel.dll $(DestUt)IDLPreprocessor.dll *.cs
 	csc $(CSFLAGS) /d:UnitTest /res:MappingPluginSchema.xsd /r:$(NUNITV2_HOME)\bin\nunit.framework.dll /r:$(DestUt)IIOPChannel.dll /r:$(DestUt)IDLPreprocessor.dll /t:exe /out:$@ *.cs
 
 
