@@ -9,7 +9,9 @@ build: nunit-var
     cd JacOrbClient
     $(MAKE) build
     cd ..
-
+    cd MultiThreaded
+    $(MAKE) build
+    cd ..
 
 
 nunit-var:        
@@ -26,7 +28,9 @@ test: nunit-var
     cd JacOrbClient
     $(MAKE) test
     cd ..
-
+    cd MultiThreaded
+    $(MAKE) test
+    cd ..
 
    
 clean:
@@ -39,4 +43,6 @@ clean:
     cd JacOrbClient
     $(MAKE) clean
     cd ..
-
+    cd MultiThreaded
+    $(MAKE) clean
+    cd ..
