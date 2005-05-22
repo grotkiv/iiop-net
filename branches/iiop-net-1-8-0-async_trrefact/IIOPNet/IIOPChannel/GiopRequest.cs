@@ -477,6 +477,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
             m_requestMessage = request;
             m_replyMessage = reply;
+            m_conDesc = conDesc;
             InitalizeForInterception(interceptionOptions);
         }
         
