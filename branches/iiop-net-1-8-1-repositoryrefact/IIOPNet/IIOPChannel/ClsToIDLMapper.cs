@@ -407,11 +407,11 @@ namespace Ch.Elca.Iiop.Idl {
         /// <summar>load or create a boxed value type for a .NET array, which is mapped to an IDL boxed value type through the CLS to IDL mapping</summary>
         /// <remarks>this method is not called for IDL Boxed value types, mapped to a CLS array, for those the getBoxedValueType method is responsible</remarks>
         private static Type GetBoxedArrayType(Type clsArrayType) {
-            BoxedValueRuntimeTypeGenerator gen = BoxedValueRuntimeTypeGenerator.GetSingleton();
             // convert a .NET true moredim array type to an array of array of ... type
             if (clsArrayType.GetArrayRank() > 1) {
                 clsArrayType = BoxedArrayHelper.CreateNestedOneDimType(clsArrayType);
             }
+            BoxedValueRuntimeTypeGenerator gen = BoxedValueRuntimeTypeGenerator.GetSingleton();
             return gen.GetOrCreateBoxedTypeForArray(clsArrayType);
         }               
 
