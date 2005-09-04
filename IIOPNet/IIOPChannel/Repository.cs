@@ -137,9 +137,6 @@ namespace Ch.Elca.Iiop.Idl {
                 }
             }
             Debug.WriteLineIf(result == null, "type not found for id: " + repId);
-            if (result == null) { // TODO: remove output
-                Console.WriteLine("type not found for id: " + repId);
-            }
             return result;            
 /*            string typeNameAssumeIdlMapped = GetTypeNameForId(repId, true);
             if (typeNameAssumeIdlMapped != null) {
