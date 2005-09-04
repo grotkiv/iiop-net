@@ -95,6 +95,7 @@ namespace Ch.Elca.Iiop.Idl {
                 Type result = RetrieveType(fullname);
                 if (result == null) {
                     result = forTypeCode.CreateType(m_modBuilder, fullname);
+                    Repository.RegisterDynamicallyCreatedType(result);
                 }
                 return result;
             }
