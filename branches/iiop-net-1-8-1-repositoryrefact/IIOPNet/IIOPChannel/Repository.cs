@@ -112,7 +112,7 @@ namespace Ch.Elca.Iiop.Idl {
         #endregion IConstructors
         #region SFields
 
-        private static AssemblyCache s_asmCache = AssemblyCache.GetSingleton();
+        // private static AssemblyCache s_asmCache = AssemblyCache.GetSingleton();
         private static Repository s_instance = new Repository();
 
         #endregion SFields
@@ -358,61 +358,6 @@ namespace Ch.Elca.Iiop.Idl {
             }
         }        
 
-        /// <summary>
-        /// searches for the CLS type with the specified fully qualified name 
-        /// in all accessible assemblies
-        /// </summary>
-        /// <param name="clsTypeName">the fully qualified CLS type name</param>
-        /// <returns></returns>
-        private static Type LoadType(string clsTypeName) {
-            Debug.WriteLine("try to load type: " + clsTypeName);
-            Repository instance = s_instance;
-            Type foundType = LoadTypeFromAssemblies(clsTypeName);
-            if (foundType == null) { // check for nested type
-                foundType = LoadNested(clsTypeName);
-            }
-            if (foundType == null) { // check if accessible with Type.GetType
-                foundType = Type.GetType(clsTypeName, false);
-            }
-            return foundType;
-        }
-
-        private static Type LoadTypeFromAssemblies(string clsTypeName) {
-            Type foundType = null;
-            Assembly[] cachedAsms = s_asmCache.CachedAssemblies;
-            for (int i = 0; i < cachedAsms.Length; i++) {
-                foundType = cachedAsms[i].GetType(clsTypeName);
-                if (foundType != null) { 
-                    break; 
-                }
-            }
-            if (foundType == null) {
-                // check if it's a dynamically created type for a CLS type which is mapped to a boxed value type
-                BoxedValueRuntimeTypeGenerator singleton = BoxedValueRuntimeTypeGenerator.GetSingleton();
-                foundType = singleton.RetrieveType(clsTypeName);
-                if (foundType == null) {
-                    // check in Types created dynamically for type-codes:
-                    TypeFromTypeCodeRuntimeGenerator typeCodeGen = TypeFromTypeCodeRuntimeGenerator.GetSingleton();
-                    foundType = typeCodeGen.RetrieveType(clsTypeName);
-                }
-            }
-            
-            return foundType;
-        }    
-
-
-        private static Type LoadNested(string clsTypeName) {
-            if (clsTypeName.IndexOf(".") < 0) { return null; }
-            string nesterTypeName = clsTypeName.Substring(0, clsTypeName.LastIndexOf("."));
-            string nestedType = clsTypeName.Substring(clsTypeName.LastIndexOf(".")+1);
-            string name = nesterTypeName + "_package." + nestedType;
-            Type foundType = LoadTypeFromAssemblies(name);
-            if (foundType == null) { // check access via Type.GetType
-                Type.GetType(name, false);
-            }
-            return foundType;
-        }
-                
         #endregion loading types 
         #region dynamically created types
         
