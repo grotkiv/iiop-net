@@ -57,7 +57,8 @@ namespace Ch.Elca.Iiop.Idl {
            
             internal AssemblyLoader(Repository forRepository) {
                 m_forRepository = forRepository;
-                AppDomain.CurrentDomain.AssemblyLoad += new AssemblyLoadEventHandler(this.AssemblyLoaded);
+                AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(this.AssemblyNotResolvable);
+                AppDomain.CurrentDomain.AssemblyLoad += new AssemblyLoadEventHandler(this.AssemblyLoaded);                
                 Assembly[] alreadyLoaded = AppDomain.CurrentDomain.GetAssemblies();
                 for (int i = 0; i < alreadyLoaded.Length; i++) {                    
                     RegisterTypes(alreadyLoaded[i]);
@@ -66,6 +67,71 @@ namespace Ch.Elca.Iiop.Idl {
             
             private void AssemblyLoaded(object sender, AssemblyLoadEventArgs args) {
                 RegisterTypes(args.LoadedAssembly);
+            }
+            
+            
+            private string ParseAssemblyNamePart(string part) {
+                int valueIndex = part.IndexOf("=");
+                if (valueIndex > 0) {
+                    return part.Substring(valueIndex + 1).Trim();
+                } else {
+                    return null;
+                }
+            }
+            private void ParseAssemblyName(string asmName, out string simpleName, out string version, 
+                                           out string publicKeyToken, out string culture) {
+                version = null;
+                publicKeyToken = null;
+                culture = null;
+                string[] nameParts = asmName.Split(',');                
+                simpleName = nameParts[0].Trim();
+                for (int i = 1; i < nameParts.Length; i++) {
+                    string trimmedPart = nameParts[i].Trim();
+                    if (trimmedPart.StartsWith("Version")) {
+                        version = ParseAssemblyNamePart(nameParts[i]);
+                    } else if (trimmedPart.StartsWith("PublicKeyToken")) {
+                        publicKeyToken = ParseAssemblyNamePart(nameParts[i]);
+                    } else if (trimmedPart.StartsWith("Culture")) {
+                        culture = ParseAssemblyNamePart(nameParts[i]);
+                    }
+                }
+            }
+            
+            private Assembly AssemblyNotResolvable(object sender, ResolveEventArgs args) {
+                Debug.WriteLine("assembly was not resolvable: " + args.Name);
+                string toResolveName;
+                string toResolveVersion;
+                string toResolvePkToken;
+                string toResolveCulture;
+                ParseAssemblyName(args.Name, out toResolveName, out toResolveVersion,
+                                  out toResolvePkToken, out toResolveCulture);
+                if ((toResolvePkToken != null) && (toResolveVersion != null) && (toResolveCulture == null)) {
+                    // il emit doesn't generate full assembly names for referenced types if Culture is Invariant.
+                    // Therefore, a type can't be resolved, if the assembly is only installed in the gac ->
+                    // fix this by adding invariant culture here
+                    Assembly[] assemblies;
+                    lock(m_loadedAssemblies.SyncRoot) {
+                        assemblies = new Assembly[m_loadedAssemblies.Count];
+                        m_loadedAssemblies.Values.CopyTo(assemblies, 0);
+                    }
+                    for (int i = 0; i < assemblies.Length; i++) {
+                        if (((Assembly)assemblies[i]).GetName().Name == toResolveName) {
+                            // candidate
+                            string candidateName;
+                            string candidateVersion;
+                            string candidatePkToken;
+                            string candidateCulture;
+                            ParseAssemblyName(((Assembly)assemblies[i]).FullName, 
+                                              out candidateName, out candidateVersion,
+                                              out candidatePkToken, out candidateCulture);
+                            if ((candidateVersion == toResolveVersion) && 
+                                (candidatePkToken == toResolvePkToken)) {
+                                return assemblies[i];
+                            }                                
+                        }
+                    }                    
+                }
+                return null;
             }
             
             private void RegisterTypes(Assembly forAssembly) {
@@ -137,61 +203,32 @@ namespace Ch.Elca.Iiop.Idl {
                 }
             }
             Debug.WriteLineIf(result == null, "type not found for id: " + repId);
-            return result;            
-/*            string typeNameAssumeIdlMapped = GetTypeNameForId(repId, true);
-            if (typeNameAssumeIdlMapped != null) {
-                // now try to load the type:
-                // check, if type with correct repository id can be found, 
-                // if it's assumed, that repId represents a type, which was
-                // mapped from IDL to CLS
-                result = LoadType(typeNameAssumeIdlMapped);
-                bool isRepIdCorrect = false;
-                if (result != null) {
-                    try {
-                        isRepIdCorrect = GetRepositoryID(result) == repId;
-                    } catch (Exception) {
-                        // for types in construction, not supported -> ignore
-                    }
-                }
-                if (result == null || !isRepIdCorrect) {
-                    // check, if type can be found, if a native CLS type mapped to idl is assumed.
-                    string typeNameAssumeCls = GetTypeNameForId(repId, false);
-                    if (typeNameAssumeCls != null) {
-                        result = LoadType(typeNameAssumeCls);
-                    }
-                }
-            } */
+            return result;
         }
 
         /// <summary>
-        /// gets the fully qualified type name for the repository-id
+        /// create a fully qualified type name for the repository-id; if no type is registered for
+        /// a repostiroy id, this name can be used to create a type for the repository id.
         /// </summary>
-        internal static string GetTypeNameForId(string repId) {
-            return GetTypeNameForId(repId, false);
-        }
-
-        /// <summary>
-        /// gets the fully qualified type name for the repository-id
-        /// </summary>
-        private static string GetTypeNameForId(string repId, bool assumeMappedFromIdl) {
+        internal static string CreateTypeNameForId(string repId) {
             if (repId.StartsWith("RMI")) {
-                return GetTypeNameForRMIId(repId);
+                return CreateTypeNameForRMIId(repId);
             } else if (repId.StartsWith("IDL")) {
-                return GetTypeNameForIDLId(repId, assumeMappedFromIdl);
+                return CreateTypeNameForIDLId(repId, false);
             } else {
                 return null; // unknown
             }
         }
 
         /// <summary>
-        /// gets the CLS type name represented by the IDL-id
+        /// creates a CLS type name for a type represented by the IDL-id
         /// </summary>
         /// <param name="idlID"></param>
         /// <param name="assumeMappedFromIdl">should assume, that type represented by idlid is mapped from IDL to CLS</param>
         /// <returns>
         /// The typename for the idlID
         /// </returns>
-        private static string GetTypeNameForIDLId(string idlID, bool assumeMappedFromIdl) {
+        private static string CreateTypeNameForIDLId(string idlID, bool assumeMappedFromIdl) {
             idlID = idlID.Substring(4);
             if (idlID.IndexOf(":") < 0) { 
                 // invalid repository id: idlID
@@ -202,11 +239,11 @@ namespace Ch.Elca.Iiop.Idl {
             return typeName;
         }
         /// <summary>
-        /// gets the CLS type name represented by the RMI-id
+        /// create a CLS type name for a type represented by the RMI-id
         /// </summary>
         /// <param name="rmiID"></param>
         /// <returns></returns>
-        private static string GetTypeNameForRMIId(string rmiID) {
+        private static string CreateTypeNameForRMIId(string rmiID) {
             rmiID = rmiID.Substring(4);
             string typeName = "";
             if (rmiID.IndexOf(":") >= 0) {
