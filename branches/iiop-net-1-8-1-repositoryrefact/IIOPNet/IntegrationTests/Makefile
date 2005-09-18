@@ -65,6 +65,9 @@ build: nunit-var junit-var
 #   @if not defined JACORB_HOME echo JACORB_HOME not set, skipping JACORB integration test
 #   @if defined JACORB_HOME $(MAKE) /C build
 #   cd ..
+    cd GacTest
+    $(MAKE) build
+    cd ..
 
 build-ssl:
     cd JBossSsl3.2.5
@@ -142,6 +145,9 @@ test: nunit-var junit-var
     @if not defined OMNIORB_HOME echo OMNIORB_HOME not set, skipping OmniORB integration test
     @if defined OMNIORB_HOME $(MAKE) /C test
     cd ..
+    cd GacTest
+    $(MAKE) test
+    cd ..
 
 test-ssl:
     cd JBossSsl3.2.5
@@ -170,9 +176,9 @@ clean:
     cd BidirGiop
     $(MAKE) clean
     cd ..
-        cd Multithread
-        $(MAKE) clean
-        cd ..
+    cd Multithread
+    $(MAKE) clean
+    cd ..
     cd JavaRMIIIOP
     $(MAKE) clean
     cd ..
@@ -208,4 +214,7 @@ clean:
 #   cd ..
     cd JBossSsl3.2.5
     $(MAKE) /C clean
+    cd ..
+    cd GacTest
+    $(MAKE) clean
     cd ..
