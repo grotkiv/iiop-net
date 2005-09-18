@@ -151,11 +151,13 @@ namespace Ch.Elca.Iiop.Idl {
                                                   forAssembly.FullName, rtle));
                     types = rtle.Types; // the types loaded without exception
                 }
-                for (int i = 0; i < types.Length; i++) {
-                    if (types[i] != null) { // null, if type coudln't be loaded
-                        m_forRepository.RegisterType(types[i]);
-                    }
-                }                
+		if (types != null) { // check needed for mono, because mono returns null for GetTypes in case of dynamically created assemblies
+                    for (int i = 0; i < types.Length; i++) {
+                        if (types[i] != null) { // null, if type coudln't be loaded
+                            m_forRepository.RegisterType(types[i]);
+                        }
+                    }                
+		}
             }
             
         }
