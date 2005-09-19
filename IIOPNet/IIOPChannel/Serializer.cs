@@ -853,11 +853,11 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         #region Constants
 
-        private const string GET_FIELD_FOR_DISCR_METHOD_NAME = UnionGenerationHelper.GET_FIELD_FOR_DISCR_METHOD;
+        private const string GET_FIELD_FOR_DISCR_METHOD_NAME = "GetFieldForDiscriminator";
 
-        private const string DISCR_FIELD_NAME = UnionGenerationHelper.DISCR_FIELD_NAME;
+        private const string DISCR_FIELD_NAME = "m_discriminator";
 
-        private const string INITALIZED_FIELD_NAME = UnionGenerationHelper.INIT_FIELD_NAME;
+        private const string INITALIZED_FIELD_NAME = "m_initalized";
 
         #endregion Constants
 

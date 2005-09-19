@@ -53,8 +53,6 @@ namespace Ch.Elca.Iiop.Idl {
         private AssemblyBuilder m_asmBuilder;
         private ModuleBuilder m_modBuilder;
 
-        private Hashtable m_createdTypes = new Hashtable();
-
         #endregion IFields
         #region IConstructors
         
@@ -90,24 +88,28 @@ namespace Ch.Elca.Iiop.Idl {
 
         /// <summary>get or create the boxed value type(s) for a .NET arrayType</summary>
         internal Type GetOrCreateBoxedTypeForArray(Type arrayType) {
+            if (!arrayType.IsArray) {
+                // an array-type is required for calling GetOrCreateBoxedTypeForArray
+                throw new INTERNAL(10050, CompletionStatus.Completed_MayBe);                 
+            }
             lock(this) {
-                if (!arrayType.IsArray) { 
-                    // an array-type is required for calling GetOrCreateBoxedTypeForArray
-                    throw new INTERNAL(10050, CompletionStatus.Completed_MayBe);
-                    
-                }
-                if (m_createdTypes.Contains(arrayType)) {
-                    return (Type)m_createdTypes[arrayType];
-                } else {
+                // for the .NET / .NET case, check if already a boxed type has been created by the idl to cls compiler
+                // the repository id, which will identify the boxed value type generated for clsArrayType
+                // will be used to check, if this boxed value type has already been created by the idl to cls mapping.
+                string repIdForType = m_boxedValGen.GetRepositoryIDForBoxedArrayType(arrayType);
+                Type result = Repository.GetTypeForId(repIdForType);
+                if (result == null) {
+                    // no type found,
                     // create the boxed value type(s) for the array
                     TypeBuilder resultBuild = m_boxedValGen.CreateBoxedTypeForArray(arrayType, m_modBuilder, this);
-                    Type result = resultBuild.CreateType();
-                    m_createdTypes.Add(arrayType, result); // register created type for arrayType
-                    return result;
+                    result = resultBuild.CreateType();
+                    Repository.RegisterDynamicallyCreatedType(result);
+                    
                 }
+                return result;                
             }
         }
-
+        
         #endregion IMethods
 
     }
@@ -140,7 +142,7 @@ namespace Ch.Elca.Iiop.Idl {
         internal TypeBuilder CreateBoxedTypeForArray(Type arrayType, ModuleBuilder modBuilder,
                                                      BoxedValueRuntimeTypeGenerator gen) {
             // create the boxed value type(s) for the array
-            string boxedTypeFullName = CreateBoxedFullTypeName(arrayType);
+            string boxedTypeFullName = CreateBoxedArrayFullTypeName(arrayType);
             TypeBuilder boxBuilder = modBuilder.DefineType(boxedTypeFullName,
                                                            TypeAttributes.Class | TypeAttributes.Public,
                                                            ReflectionHelper.BoxedValueBaseType);
@@ -148,8 +150,17 @@ namespace Ch.Elca.Iiop.Idl {
             return boxBuilder;
         }
         
+        /// <summary>
+        /// returns the repository id, which will be assigned to a boxed value type generated at runtime
+        /// for a .NET array type.
+        /// </summary>
+        internal string GetRepositoryIDForBoxedArrayType(Type arrayType) {
+            string typeName = CreateBoxedArrayFullTypeName(arrayType);
+            return IdlNaming.MapFullTypeNameToIdlRepId(typeName);
+        }
+        
         /// <summary>creates the fully qualified type name for the box</summary>
-        private string CreateBoxedFullTypeName(Type arrayType) {
+        private string CreateBoxedArrayFullTypeName(Type arrayType) {
             Type arrayElemType = DetermineInnermostArrayElemType(arrayType);
             // unqualified name of the innermost element type of the array
             string arrayElemTypeName = IdlNaming.MapShortTypeNameToIdl(arrayElemType); // need the mapped name for identifier

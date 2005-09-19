@@ -1,1 +1,0 @@
-client.exe -ORBInitRef NameService=corbaloc::localhost:8087/NameService

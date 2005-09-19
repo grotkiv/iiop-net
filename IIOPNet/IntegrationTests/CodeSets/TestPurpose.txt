@@ -1,5 +1,0 @@
-This integration test checks the codeset functionality of IIOP.NET.
-
-
-
-
