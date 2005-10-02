@@ -29,6 +29,7 @@
 
 using System;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Collections;
 using System.Diagnostics;
 using Ch.Elca.Iiop.Cdr;
@@ -74,6 +75,35 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion SMethods
         #region IMethods
 
+        /// <summary>
+        /// Generate code, which serialises an instance of the given type,        
+        /// </summary>
+        /// <param name="actualObject">The instance to serialise</param>
+        /// <param name="targetStream">The CdrOututStream usable the write instance to</param>
+        internal void GenerateMarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
+                                                 LocalBuilder actualObject, LocalBuilder targetStream) {
+            Debug.WriteLine("generate marshal code for formal: " + formal);
+            // TODO: custom marshalling support; e.g. call ArgumentSerializer base class method
+            // determine the serialiser
+            Serialiser serialiser = DetermineSerialiser(ref formal, ref attributes);
+            serialiser.GenerateSerialisationCode(formal, attributes, gen, actualObject, targetStream);
+        }
+        
+        /// <summary>
+        /// generate code, which deserialises an instance of the given type
+        /// </summary>
+        /// <param name="sourceStream">The CdrInputStream usable the read instance from</param>
+        internal void GenerateUnmarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
+                                                   LocalBuilder sourceStream) {
+            Debug.WriteLine("generate unmarshal code for formal: " + formal);
+            Type formalNew = formal;
+            // determine the serialiser
+            Serialiser serialiser = DetermineSerialiser(ref formalNew, ref attributes);
+            serialiser.GenerateDeserialisationCode(formalNew, attributes, gen, sourceStream);
+            // TODO: custom marshalling support; e.g. call ArgumentSerializer base class method
+        }
+        
+        
         /// <summary>
         /// Marshals items
         /// </summary>
