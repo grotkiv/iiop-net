@@ -34,6 +34,7 @@ using System.Runtime.Remoting.Channels;
 using System.Diagnostics;
 using System.Collections;
 using System.Reflection;
+using System.Reflection.Emit;
 using Ch.Elca.Iiop.Cdr;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.Idl;
@@ -96,6 +97,31 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                    sourceStream);
             fieldToDeser.SetValue(actual, fieldVal);
             return fieldVal;
+        }
+        
+        /// <summary>
+        /// emits code to serialise the given type
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            // throw new NotImplementedException();
+            gen.ThrowException(typeof(NotImplementedException));
+            
+        }
+        
+        /// <summary>
+        /// emits code to deserialise the given type
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream) {
+            // throw new NotImplementedException();
+            gen.ThrowException(typeof(NotImplementedException));
         }
 
         #endregion IMethods
