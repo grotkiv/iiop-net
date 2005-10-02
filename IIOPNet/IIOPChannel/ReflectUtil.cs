@@ -655,6 +655,13 @@ namespace Ch.Elca.Iiop.Util {
             return result;
         }        
         
+        /// <summary>
+        /// gets the by ref Type for a type.
+        /// </summary>
+        public static Type GetByRefTypeFor(Type type) {
+            return type.Module.GetType(type.FullName + "&");
+        }
+        
         #endregion SMethods
 
     }
