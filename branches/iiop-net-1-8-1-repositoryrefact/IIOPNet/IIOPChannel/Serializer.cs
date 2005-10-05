@@ -100,12 +100,12 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         /// <summary>
-        /// emits code to serialise the given type
+        /// Emits code to serialise the given type.
         /// </summary>
         /// <param name="formal">the type to serialise</param>
         /// <param name="attributes">parameter/field attributes</param>
         /// <param name="gen">the generator to use</param>
-        internal void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+        internal virtual void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                 ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
             // throw new NotImplementedException();
             gen.ThrowException(typeof(NotImplementedException));
@@ -113,16 +113,22 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         /// <summary>
-        /// emits code to deserialise the given type
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
         /// </summary>
         /// <param name="formal">the type to serialise</param>
         /// <param name="attributes">parameter/field attributes</param>
         /// <param name="gen">the generator to use</param>
-        internal void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+        internal virtual void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                   ILGenerator gen, LocalBuilder sourceStream) {
             // throw new NotImplementedException();
             gen.ThrowException(typeof(NotImplementedException));
         }
+        
+        /// <summary>
+        /// returns true, if the serialiser is for a basic type. This is helpful to 
+        /// decide, if a serialization helper class is useful or not.
+        /// </summary>
+        internal abstract bool IsSimpleTypeSerializer();
 
         #endregion IMethods
 
@@ -145,6 +151,32 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadOctet();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.ByteType);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrOutputStream).GetMethod("WriteOctet", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrInputStream).GetMethod("ReadOctet", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.ByteType);
+        }
+        
 
         #endregion IMethods
 
@@ -165,6 +197,31 @@ namespace Ch.Elca.Iiop.Marshalling {
             return sourceStream.ReadBool();
         }
 
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.BooleanType);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrOutputStream).GetMethod("WriteBool", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrInputStream).GetMethod("ReadBool", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.BooleanType);
+        }        
+        
         #endregion IMethods
 
     }
@@ -183,6 +240,31 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadShort();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.Int16Type);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteShort", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadShort", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.Int16Type);
+        }        
 
         #endregion IMethods
 
@@ -202,6 +284,31 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadLong();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.Int32Type);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteLong", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadLong", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.Int32Type);
+        }                
 
         #endregion IMethods
 
@@ -221,6 +328,31 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadLongLong();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.Int64Type);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteLongLong", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadLongLong", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.Int64Type);
+        }                        
 
         #endregion IMethods
 
@@ -240,6 +372,31 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadFloat();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.SingleType);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteFloat", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadFloat", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.SingleType);
+        }                                
 
         #endregion IMethods
 
@@ -259,6 +416,31 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadDouble();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.DoubleType);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteDouble", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadDouble", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.DoubleType);
+        }                                        
 
         #endregion IMethods
 
@@ -301,6 +483,35 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.CharType);
+            string writeMethod = (m_useWide ? "WriteWChar" : "WriteChar");
+            Type cdrOutputStType = (m_useWide ? typeof(CdrEndianDepOutputStreamOp) : typeof(CdrOutputStream));
+            gen.Emit(OpCodes.Callvirt, cdrOutputStType.GetMethod(writeMethod, BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            string readMethod = (m_useWide ? "ReadWChar" : "ReadChar");
+            Type cdrInputStType = (m_useWide ? typeof(CdrEndianDepInputStreamOp) : typeof(CdrInputStream));
+            gen.Emit(OpCodes.Callvirt, cdrInputStType.GetMethod(readMethod, BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.CharType);
+        }                                                
 
         #endregion IMethods
 
@@ -347,6 +558,35 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.StringType);
+            string writeMethod = (m_useWide ? "WriteWString" : "WriteString");
+            Type cdrOutputStType = (m_useWide ? typeof(CdrEndianDepOutputStreamOp) : typeof(CdrOutputStream));
+            gen.Emit(OpCodes.Callvirt, cdrOutputStType.GetMethod(writeMethod, BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            string readMethod = (m_useWide ? "ReadWString" : "ReadString");
+            Type cdrInputStType = (m_useWide ? typeof(CdrEndianDepInputStreamOp) : typeof(CdrInputStream));
+            gen.Emit(OpCodes.Callvirt, cdrInputStType.GetMethod(readMethod, BindingFlags.Public | BindingFlags.Instance));
+
+        }        
 
         #endregion IMethods
 
@@ -434,6 +674,10 @@ namespace Ch.Elca.Iiop.Marshalling {
             object proxy = RemotingServices.Connect(interfaceType, url);
             return proxy;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }  
         
         #endregion IMethods
 
@@ -758,6 +1002,9 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
 
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
 
         #endregion IMethods
 
@@ -833,6 +1080,10 @@ namespace Ch.Elca.Iiop.Marshalling {
             Debug.WriteLine("unboxed result of boxedvalue-ser: " + result);
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
 
         #endregion IMethods
 
@@ -870,6 +1121,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                                    info.GetValue(actual), targetStream);
             }
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
 
         #endregion IMethods
 
@@ -955,6 +1210,10 @@ namespace Ch.Elca.Iiop.Marshalling {
             } 
             // else:  case outside covered discr range, do not serialise value, only discriminator
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
 
         #endregion IMethods
     }
@@ -993,6 +1252,11 @@ namespace Ch.Elca.Iiop.Marshalling {
             // deserialise as IDL-value-type
             return m_valObjectSer.Deserialise(formal, attributes, sourceStream);
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
+
 
         #endregion IMethods
 
@@ -1025,6 +1289,10 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }                   
 
         #endregion IMethods
 
@@ -1072,6 +1340,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                 return Enum.ToObject(formal, val);
             }
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
     
         #endregion IMethods
 
@@ -1138,6 +1410,10 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true; // TODO
+        }        
 
         #endregion IMethods
 
@@ -1225,6 +1501,10 @@ namespace Ch.Elca.Iiop.Marshalling {
             DeserialiseDimension(result, marshaller, sourceStream, new int[result.Rank], 0);
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true; // TODO
+        }                
 
         #endregion IMethods        
 
@@ -1325,6 +1605,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                 return new Any(result, typeCode);
             }
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false; // TODO
+        }                
         
         #endregion IMethods
 
@@ -1480,6 +1764,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                 targetStream.WriteIndirection(tcImpl);
             }
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false; // TODO
+        }                
 
         #endregion IMethods
 
@@ -1529,6 +1817,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                 return result;
             }
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }                
 
         #endregion IMethods
     
@@ -1587,6 +1879,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             }
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }                        
 
         #endregion IMethods
 

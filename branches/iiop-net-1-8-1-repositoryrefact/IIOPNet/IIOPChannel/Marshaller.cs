@@ -81,12 +81,23 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="actualObject">The instance to serialise</param>
         /// <param name="targetStream">The CdrOututStream usable the write instance to</param>
         internal void GenerateMarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
-                                                 LocalBuilder actualObject, LocalBuilder targetStream) {
+                                                 LocalBuilder actualObject, LocalBuilder targetStream,
+                                                 SerializationGenerator helperTypeGenerator) {
             Debug.WriteLine("generate marshal code for formal: " + formal);
             // TODO: custom marshalling support; e.g. call ArgumentSerializer base class method
             // determine the serialiser
             Serialiser serialiser = DetermineSerialiser(ref formal, ref attributes);
-            serialiser.GenerateSerialisationCode(formal, attributes, gen, actualObject, targetStream);
+            if (serialiser.IsSimpleTypeSerializer()) {
+                serialiser.GenerateSerialisationCode(formal, attributes, gen, actualObject, targetStream);
+            } else {
+                Type helperType =
+                    helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser);
+                // call the instance serialization helper
+                gen.Emit(OpCodes.Newobj, helperType.GetConstructor(Type.EmptyTypes));
+                gen.Emit(OpCodes.Ldloc, actualObject);
+                gen.Emit(OpCodes.Ldloc, targetStream);
+                gen.Emit(OpCodes.Callvirt, helperType.GetMethod("SerializeInstance", BindingFlags.Public | BindingFlags.Instance));
+            }
         }
         
         /// <summary>
@@ -94,12 +105,22 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// </summary>
         /// <param name="sourceStream">The CdrInputStream usable the read instance from</param>
         internal void GenerateUnmarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
-                                                   LocalBuilder sourceStream) {
+                                                   LocalBuilder sourceStream,
+                                                   SerializationGenerator helperTypeGenerator) {
             Debug.WriteLine("generate unmarshal code for formal: " + formal);
             Type formalNew = formal;
             // determine the serialiser
             Serialiser serialiser = DetermineSerialiser(ref formalNew, ref attributes);
-            serialiser.GenerateDeserialisationCode(formalNew, attributes, gen, sourceStream);
+            if (serialiser.IsSimpleTypeSerializer()) {
+                serialiser.GenerateDeserialisationCode(formalNew, attributes, gen, sourceStream);
+            } else {
+                Type helperType =
+                    helperTypeGenerator.GetInstanceSerialiser(formalNew, attributes, serialiser);
+                // call the instance serialization helper
+                gen.Emit(OpCodes.Newobj, helperType.GetConstructor(Type.EmptyTypes));                
+                gen.Emit(OpCodes.Ldloc, sourceStream);
+                gen.Emit(OpCodes.Callvirt, helperType.GetMethod("DeserializeInstance", BindingFlags.Public | BindingFlags.Instance));                
+            }
             // TODO: custom marshalling support; e.g. call ArgumentSerializer base class method
         }
         
