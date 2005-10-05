@@ -30,6 +30,7 @@
 
 
 using System;
+using System.Diagnostics;
 using System.Collections;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -78,21 +79,23 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         private void Initalize() {
             AssemblyName asmname = new AssemblyName();
-            asmname.Name = "dynSerializationHelpers.dll";        
+            asmname.Name = "dynSerializationHelpers";        
             m_asmBuilder = System.Threading.Thread.GetDomain().
-                DefineDynamicAssembly(asmname, AssemblyBuilderAccess.Run);
-            m_modBuilder = m_asmBuilder.DefineDynamicModule("dynSerializationHelpers");            
+                DefineDynamicAssembly(asmname, AssemblyBuilderAccess.RunAndSave);
+            m_modBuilder = m_asmBuilder.DefineDynamicModule("dynSerializationHelpers.netmodule", 
+                                                            "dynSerializationHelpers.dll");            
         }
         
         private string GetArgumentSerializerTypeName(Type forType) {
-            return "Ch.Elca.Iiop.Generators." + forType.Namespace +
+            return "Ch.Elca.Iiop.Generators." + forType.Namespace + "." + 
                    "_" + forType.Name + "ArgHelper";            
         }
         
-/*        private string GetInstanceSerializerTypeName(Type forType) {
-            return "Ch.Elca.Iiop.Generators." + forType.NameSpace +
+        private string GetInstanceSerializerTypeName(Type forType) {            
+            string result = "Ch.Elca.Iiop.Generators." + forType.Namespace + "." +
                    forType.Name + "Helper";
-        } */
+            return result;
+        }
         
 
         /// <summar>Retrieve or generate a serialiser to use for serialising/deserialising
@@ -104,20 +107,28 @@ namespace Ch.Elca.Iiop.Marshalling {
                 if (ser == null) {
                     ser = CreateArgumentsSerialiser(forType, argSerTypeName);
                 }
+                if (forType.Name == "_XYZYu") {
+                    m_asmBuilder.Save("dynSerializationHelpers.dll");
+                }
                 return (ArgumentsSerializer)Activator.CreateInstance(ser);
             }
         }
-
-/*        /// <summar>Retrieve or generate a serialiser to use for serialising/deserialising
-        /// an instance of the given type forType</summary>        
-        internal Type GetInstanceSerialiser(Type forType) {
+        
+        /// <summar>Retrieve or generate a serialiser to use for serialising/deserialising
+        /// an instance of the given type forType. forTypeSerializer is responsible to
+        /// serialize/deserialize the type by using reflection. It is also responsible for generating
+        /// the real serialization/deserialization code</summary>        
+        internal Type GetInstanceSerialiser(Type forType, AttributeExtCollection attributes,
+                                            Serialiser forTypeSerializer) {
             string instanceSerTypeName = GetInstanceSerializerTypeName(forType);
             lock(this) {
-                
-            }
-            
-        }
-*/        
+                Type ser = m_asmBuilder.GetType(instanceSerTypeName);
+                if (ser == null) {
+                    ser = CreateInstanceSerialiser(forType, attributes, instanceSerTypeName, forTypeSerializer);
+                }
+                return ser;
+            }            
+        }        
 
         /// <summary>
         /// generates the code for marshalling requests arguments for a call to the given method
@@ -147,7 +158,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldelem_Ref); 
                     gen.Emit(OpCodes.Stloc, actualInstance); // store actual to serialise in local variable
                     s_marshaller.GenerateMarshallingCodeFor(paramInfo.ParameterType, paramAttrs,
-                                                            gen, actualInstance, targetStream);
+                                                            gen, actualInstance, targetStream, this);
                 }
                 // move to next parameter
                 // out-args are also part of the actual array -> move to next for those whithout doing something
@@ -185,12 +196,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                 if (ParameterMarshaller.IsInParam(paramInfo) || ParameterMarshaller.IsRefParam(paramInfo)) {
                     AttributeExtCollection paramAttrs = ReflectionHelper.CollectParameterAttributes(paramInfo, 
                                                                                                     method);
+                    gen.Emit(OpCodes.Ldloc, resultLoc);
                     gen.Emit(OpCodes.Ldc_I4, actualParamNr);
                     s_marshaller.GenerateUnmarshallingCodeFor(paramInfo.ParameterType, paramAttrs,
-                                                              gen, sourceStream);
-                    if (paramInfo.ParameterType.IsValueType) {
-                        gen.Emit(OpCodes.Box, paramInfo.ParameterType);                        
-                    }                    
+                                                              gen, sourceStream, this);
                     gen.Emit(OpCodes.Stelem_Ref);
                 } // else: null for an out parameter
             }           
@@ -220,7 +229,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 gen.Emit(OpCodes.Ldarg_2);
                 gen.Emit(OpCodes.Stloc, actualInstance); // store actual to serialise in local
                 s_marshaller.GenerateMarshallingCodeFor(method.ReturnType, returnAttr, gen,
-                                                        actualInstance, targetStream);
+                                                        actualInstance, targetStream, this);
             }
             // ... then the out/ref args
             int outParamNr = 0;
@@ -235,7 +244,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldelem_Ref); 
                     gen.Emit(OpCodes.Stloc, actualInstance); // store actual to serialise in local variable                    
                     s_marshaller.GenerateMarshallingCodeFor(paramInfo.ParameterType, paramAttrs, gen,
-                                                            actualInstance, targetStream);                                        
+                                                            actualInstance, targetStream, this);                                        
                     outParamNr++;
                 }
             }            
@@ -252,10 +261,9 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// </remarks>
         private void GenerateDeserializeResponseArgsForMethod(ILGenerator gen, MethodInfo method) {
             LocalBuilder resultLoc = 
-                gen.DeclareLocal(ReflectionHelper.ObjectArrayType);
-            gen.Emit(OpCodes.Ldc_I4, 0);
-            gen.Emit(OpCodes.Newarr, ReflectionHelper.ObjectType);
-            gen.Emit(OpCodes.Stloc, resultLoc);                
+                gen.DeclareLocal(ReflectionHelper.ObjectType);
+            gen.Emit(OpCodes.Ldnull);            
+            gen.Emit(OpCodes.Stloc, resultLoc); // the result is an object, initalize with null
 
             LocalBuilder sourceStream = gen.DeclareLocal(typeof(Ch.Elca.Iiop.Cdr.CdrInputStream));
             gen.Emit(OpCodes.Ldarg_2);
@@ -267,10 +275,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 AttributeExtCollection returnAttr = ReflectionHelper.CollectReturnParameterAttributes(method);
                 
                 s_marshaller.GenerateUnmarshallingCodeFor(method.ReturnType, returnAttr,
-                                                          gen, sourceStream);
-                if (method.ReturnType.IsValueType) {
-                    gen.Emit(OpCodes.Box, method.ReturnType);
-                }
+                                                          gen, sourceStream, this);
                 gen.Emit(OpCodes.Stloc, resultLoc);
             }
             
@@ -279,7 +284,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             gen.Emit(OpCodes.Ldarg_3);
             gen.Emit(OpCodes.Ldc_I4, parameters.Length);
             gen.Emit(OpCodes.Newarr, ReflectionHelper.ObjectType);
-            gen.Emit(OpCodes.Stind_Ref);
+            gen.Emit(OpCodes.Stind_Ref); // store in outArgs out-argument
             
             bool outArgFound = false;
             for (int actualParamNr = 0; actualParamNr < parameters.Length; actualParamNr++) {                    
@@ -292,11 +297,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldc_I4, actualParamNr); // target index
                     
                     s_marshaller.GenerateUnmarshallingCodeFor(paramInfo.ParameterType, paramAttrs,
-                                                              gen, sourceStream);
+                                                              gen, sourceStream, this);
                     
-                    if (paramInfo.ParameterType.IsValueType) {
-                        gen.Emit(OpCodes.Box, paramInfo.ParameterType);
-                    }
                     gen.Emit(OpCodes.Stelem_Ref); // store the value in the array
                     
                     outArgFound = true;
@@ -309,7 +311,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 gen.Emit(OpCodes.Ldarg_3);
                 gen.Emit(OpCodes.Ldc_I4_0);
                 gen.Emit(OpCodes.Newarr, ReflectionHelper.ObjectType);
-                gen.Emit(OpCodes.Stind_Ref);
+                gen.Emit(OpCodes.Stind_Ref); // store in outArgs out-argument
             }
             
             gen.Emit(OpCodes.Ldloc, resultLoc); // push result onto the stack
@@ -406,6 +408,11 @@ namespace Ch.Elca.Iiop.Marshalling {
                 if (methods[i].IsSpecialName) {
                     continue;
                 }
+                if (methods[i].DeclaringType.Equals(ReflectionHelper.ObjectType) ||
+                    methods[i].DeclaringType.Equals(ReflectionHelper.MarshalByRefObjectType)) {
+                    // don't support remote calls for methods defined directly on Object and on MarshalByRefObject
+                    continue;
+                }
                 GenerateArgumentSerialisationsForMethod(serReqArgsIl, endLabelSerReqArgs,
                                                         deserReqArgsIl, endLabelDeserReqArgs,
                                                         serRespArgsIl, endLabelSerRespArgs,
@@ -416,6 +423,11 @@ namespace Ch.Elca.Iiop.Marshalling {
             PropertyInfo[] properties =
                 forType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
             for (int i = 0; i < properties.Length; i++) {
+                if (properties[i].DeclaringType.Equals(ReflectionHelper.ObjectType) ||
+                    properties[i].DeclaringType.Equals(ReflectionHelper.MarshalByRefObjectType)) {
+                    // don't support remote calls for properties defined directly on Object and on MarshalByRefObject
+                    continue;
+                }                
                 MethodInfo getter = properties[i].GetGetMethod();
                 MethodInfo setter = properties[i].GetGetMethod();
                 if (getter != null) {
@@ -473,6 +485,11 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         private Type CreateArgumentsSerialiser(Type forType, string serTypeName) {
+            if (!(forType.IsInterface || forType.IsMarshalByRef)) {
+                Debug.WriteLine("Can't create an argument serializer for : " + forType.FullName);
+                throw new omg.org.CORBA.BAD_PARAM(745, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+            }
+            
             TypeBuilder resultBuilder = m_modBuilder.DefineType(serTypeName, 
                                                                 TypeAttributes.Class | TypeAttributes.Sealed |
                                                                 TypeAttributes.Public, 
@@ -550,11 +567,75 @@ namespace Ch.Elca.Iiop.Marshalling {
             return result;
         }        
         
-/*        internal Type CreateInstanceSerialiser(Type forType, string serTypeName) {
+        private void DefineInstanceSerialiserMethods(MethodBuilder serInstance, MethodBuilder deserInstance, 
+                                                     Type forType, AttributeExtCollection attributes,
+                                                     Serialiser responsibleSerialiser) {
+            ILGenerator serInstanceIl = serInstance.GetILGenerator();
+            ILGenerator deserInstanceIl = deserInstance.GetILGenerator();
             
+            LocalBuilder actualInstance = serInstanceIl.DeclareLocal(ReflectionHelper.ObjectType);
+            LocalBuilder targetStream = serInstanceIl.DeclareLocal(typeof(Ch.Elca.Iiop.Cdr.CdrOutputStream));
+            serInstanceIl.Emit(OpCodes.Ldarg_1);
+            serInstanceIl.Emit(OpCodes.Stloc, actualInstance);
+            serInstanceIl.Emit(OpCodes.Ldarg_2);
+            serInstanceIl.Emit(OpCodes.Stloc, targetStream);            
+            responsibleSerialiser.GenerateSerialisationCode(forType, attributes,
+                                                            serInstanceIl, actualInstance,
+                                                            targetStream);            
+            serInstanceIl.Emit(OpCodes.Ret);
+            
+                        
+            LocalBuilder sourceStream = deserInstanceIl.DeclareLocal(typeof(Ch.Elca.Iiop.Cdr.CdrInputStream));
+            deserInstanceIl.Emit(OpCodes.Ldarg_1);
+            deserInstanceIl.Emit(OpCodes.Stloc, sourceStream);            
+            responsibleSerialiser.GenerateDeserialisationCode(forType, attributes,
+                                                              deserInstanceIl, sourceStream);                        
+            deserInstanceIl.Emit(OpCodes.Ret);
         }
-*/
-                                                
+        
+
+        /// <summary>generates a serialization helper type for a type, which is complex to 
+        /// serialize/deserialize, so that the code is not directly embedded into the serialization/
+        /// deserialization requestor</summary>
+        private Type CreateInstanceSerialiser(Type forType, AttributeExtCollection attributes,
+                                              string serHelperTypeName,
+                                              Serialiser responsibleSerializer) {
+            TypeBuilder resultBuilder = m_modBuilder.DefineType(serHelperTypeName, 
+                                                                TypeAttributes.Class | TypeAttributes.Sealed |
+                                                                TypeAttributes.Public, 
+                                                                typeof(Ch.Elca.Iiop.Marshalling.TypeSerializationHelper),
+                                                                Type.EmptyTypes);
+            // methods to override
+
+            // public abstract void SerializeInstance(object actual, CdrOutputStream targetStream);
+            MethodBuilder serInstance = 
+                resultBuilder.DefineMethod("SerializeInstance",
+                                           MethodAttributes.Public | MethodAttributes.Virtual | 
+                                           MethodAttributes.Final | MethodAttributes.HideBySig,
+                                           ReflectionHelper.VoidType,
+                                           new Type[] { ReflectionHelper.ObjectType,                                                        
+                                                        typeof(Ch.Elca.Iiop.Cdr.CdrOutputStream)
+                                           });
+            serInstance.DefineParameter(1, ParameterAttributes.In, "actual");
+            serInstance.DefineParameter(2, ParameterAttributes.In, "targetStream");
+
+            
+            // public abstract object DeserializeInstance(CdrInputStream sourceStream);            
+            MethodBuilder deserInstance =
+                resultBuilder.DefineMethod("DeserializeInstance",
+                                           MethodAttributes.Public | MethodAttributes.Virtual | 
+                                           MethodAttributes.Final | MethodAttributes.HideBySig,
+                                           ReflectionHelper.ObjectType,
+                                           new Type[] { typeof(Ch.Elca.Iiop.Cdr.CdrInputStream) });            
+            deserInstance.DefineParameter(1, ParameterAttributes.In, "sourceStream");            
+            
+
+            DefineInstanceSerialiserMethods(serInstance, deserInstance, 
+                                            forType, attributes, responsibleSerializer);
+    
+            Type result = resultBuilder.CreateType();
+            return result;
+        }                                                        
         
         #endregion IMethods
 
