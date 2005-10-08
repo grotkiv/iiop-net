@@ -107,6 +107,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal virtual void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                 ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
                                                 SerializationGenerator helperTypeGenerator) {
             // throw new NotImplementedException();
             gen.ThrowException(typeof(NotImplementedException));
@@ -121,6 +122,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal virtual void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                   ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
                                                   SerializationGenerator helperTypeGenerator) {
             // throw new NotImplementedException();
             gen.ThrowException(typeof(NotImplementedException));
@@ -160,6 +162,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -175,6 +178,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                            ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
                                                            SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, sourceStream);
             gen.Emit(OpCodes.Callvirt, typeof(CdrInputStream).GetMethod("ReadOctet", BindingFlags.Public | BindingFlags.Instance));
@@ -207,6 +211,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -222,6 +227,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                            ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
                                                            SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, sourceStream);
             gen.Emit(OpCodes.Callvirt, typeof(CdrInputStream).GetMethod("ReadBool", BindingFlags.Public | BindingFlags.Instance));
@@ -253,6 +259,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -268,6 +275,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                            ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
                                                            SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, sourceStream);
             gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadShort", BindingFlags.Public | BindingFlags.Instance));
@@ -299,6 +307,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -314,6 +323,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                            ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
                                                            SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, sourceStream);
             gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadLong", BindingFlags.Public | BindingFlags.Instance));
@@ -345,6 +355,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -360,6 +371,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                            ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
                                                            SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, sourceStream);
             gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadLongLong", BindingFlags.Public | BindingFlags.Instance));
@@ -391,6 +403,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -406,6 +419,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                            ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
                                                            SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, sourceStream);
             gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadFloat", BindingFlags.Public | BindingFlags.Instance));
@@ -437,6 +451,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -452,6 +467,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                            ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
                                                            SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, sourceStream);
             gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadDouble", BindingFlags.Public | BindingFlags.Instance));
@@ -506,6 +522,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -523,6 +540,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                            ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
                                                            SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, sourceStream);
             string readMethod = (m_useWide ? "ReadWChar" : "ReadChar");
@@ -583,6 +601,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -600,6 +619,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="gen">the generator to use</param>
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                            ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
                                                            SerializationGenerator helperTypeGenerator) {
             gen.Emit(OpCodes.Ldloc, sourceStream);
             string readMethod = (m_useWide ? "ReadWString" : "ReadString");
@@ -1160,6 +1180,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                 ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
                                                 SerializationGenerator helperTypeGenerator) {
             FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(formal);
             Marshaller marshaller = Marshaller.GetSingleton();
@@ -1183,12 +1204,14 @@ namespace Ch.Elca.Iiop.Marshalling {
                 gen.Emit(OpCodes.Stloc, fieldLocal);
                 marshaller.GenerateMarshallingCodeFor(info.FieldType,
                                                       ReflectionHelper.GetCustomAttriutesForField(info, true),
-                                                      gen, fieldLocal, targetStream, helperTypeGenerator);                
+                                                      gen, fieldLocal, targetStream, temporaryLocal,
+                                                      helperTypeGenerator);
             }            
         }
         
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                   ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
                                                   SerializationGenerator helperTypeGenerator) {
             FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(formal);
             Marshaller marshaller = Marshaller.GetSingleton();
@@ -1218,7 +1241,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 gen.Emit(OpCodes.Ldloc, result); // actual instance
                 marshaller.GenerateUnmarshallingCodeFor(info.FieldType,
                                                         ReflectionHelper.GetCustomAttriutesForField(info, true), 
-                                                        gen, sourceStream, helperTypeGenerator);
+                                                        gen, sourceStream, temporaryLocal, helperTypeGenerator);
                 gen.Emit(OpCodes.Callvirt, s_setFieldValue); // set the field value via reflection
             }            
             // push result onto the stack
@@ -1404,6 +1427,17 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// <summary>serializes enums</summary>
     internal class EnumSerializer : Serialiser {
         
+        private static MethodInfo s_enumToObject = typeof(Enum).GetMethod("ToObject", BindingFlags.Public | BindingFlags.Static, null,
+                                   new Type[] { ReflectionHelper.TypeType, ReflectionHelper.ObjectType },
+                                   null);
+        
+        private static MethodInfo s_enumIsDefined = typeof(Enum).GetMethod("IsDefined", BindingFlags.Public | BindingFlags.Static, null,
+                                   new Type[] { ReflectionHelper.TypeType, ReflectionHelper.ObjectType },
+                                   null);
+
+        private static ConstructorInfo s_badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) });
+        
+        
         #region IMethods
 
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
@@ -1444,8 +1478,48 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
         
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            // don't handle special case idl enum here specifically, because can be handled equally to other case
+            // map to the base-type of the enum, write the value of the enum
+            Type underlyingType = Enum.GetUnderlyingType(formal);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            // marshal the enum value
+            marshaller.GenerateMarshallingCodeFor(underlyingType, attributes, gen, actualObject, targetStream,
+                                                  temporaryLocal, helperTypeGenerator);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            // don't handle special case idl enum here specifically, because can be handled equally to other case
+            Type underlyingType = Enum.GetUnderlyingType(formal);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            // unmarshal the enum-value
+            marshaller.GenerateUnmarshallingCodeFor(underlyingType, attributes, gen, sourceStream, 
+                                                    temporaryLocal, helperTypeGenerator);                        
+            gen.Emit(OpCodes.Stloc, temporaryLocal);
+            Label afterCheck = gen.DefineLabel();
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal); // type argument
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            gen.Emit(OpCodes.Call, s_enumIsDefined);
+            gen.Emit(OpCodes.Brtrue, afterCheck);
+            // illegal enum value for enum: formal, val: val
+            gen.Emit(OpCodes.Ldc_I4, 10041);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, s_badParamCtr);            
+            gen.Emit(OpCodes.Throw);
+            gen.MarkLabel(afterCheck);
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal); // type argument
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            gen.Emit(OpCodes.Call, s_enumToObject);
+        }        
+                        
         internal override bool IsSimpleTypeSerializer() {
-            return false;
+            return true;
         }        
     
         #endregion IMethods
@@ -1513,6 +1587,16 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             return result;
         }
+        
+//        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+//                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+//                                                SerializationGenerator helperTypeGenerator) {
+//        }
+//        
+//        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+//                                                  ILGenerator gen, LocalBuilder sourceStream,
+//                                                  SerializationGenerator helperTypeGenerator) {
+//        }        
         
         internal override bool IsSimpleTypeSerializer() {
             return true; // TODO
