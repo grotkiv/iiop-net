@@ -82,6 +82,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="targetStream">The CdrOututStream usable the write instance to</param>
         internal void GenerateMarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
                                                  LocalBuilder actualObject, LocalBuilder targetStream,
+                                                 LocalBuilder temporaryLocal,
                                                  SerializationGenerator helperTypeGenerator) {
             Debug.WriteLine("generate marshal code for formal: " + formal);
             // TODO: custom marshalling support; e.g. call ArgumentSerializer base class method
@@ -89,7 +90,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             Serialiser serialiser = DetermineSerialiser(ref formal, ref attributes);
             if (serialiser.IsSimpleTypeSerializer()) {
                 serialiser.GenerateSerialisationCode(formal, attributes, gen, actualObject, targetStream,
-                                                     helperTypeGenerator);
+                                                     temporaryLocal, helperTypeGenerator);
             } else {
                 Type helperType =
                     helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser);
@@ -107,6 +108,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="sourceStream">The CdrInputStream usable the read instance from</param>
         internal void GenerateUnmarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
                                                    LocalBuilder sourceStream,
+                                                   LocalBuilder temporaryLocal,
                                                    SerializationGenerator helperTypeGenerator) {
             Debug.WriteLine("generate unmarshal code for formal: " + formal);
             Type formalNew = formal;
@@ -114,7 +116,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             Serialiser serialiser = DetermineSerialiser(ref formalNew, ref attributes);
             if (serialiser.IsSimpleTypeSerializer()) {
                 serialiser.GenerateDeserialisationCode(formalNew, attributes, gen, sourceStream,
-                                                       helperTypeGenerator);
+                                                       temporaryLocal, helperTypeGenerator);
             } else {
                 Type helperType =
                     helperTypeGenerator.GetInstanceSerialiser(formalNew, attributes, serialiser);

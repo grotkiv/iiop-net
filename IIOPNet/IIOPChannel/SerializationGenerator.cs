@@ -56,6 +56,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             private ILGenerator m_gen;
             private LocalBuilder m_streamLocal;
             private LocalBuilder m_workingLocal;
+            private LocalBuilder m_temporaryLocal;
             private object m_endLabel;
         
             internal ArgSerializerMethodContext(ILGenerator gen) {
@@ -82,6 +83,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             }
             
+            /// <summary>
+            /// a local variable for use only directly for argument ser/deser methods and not for
+            /// instanc ser/deser as part of those methods
+            /// </summary>
             internal LocalBuilder WorkingLocal {
                 get {
                     if (m_workingLocal == null) {
@@ -89,6 +94,21 @@ namespace Ch.Elca.Iiop.Marshalling {
                         throw new omg.org.CORBA.INTERNAL(4765, omg.org.CORBA.CompletionStatus.Completed_MayBe);
                     }
                     return m_workingLocal;
+                }
+            }
+
+            /// <summary>
+            /// a local variable for use by
+            /// instanc ser/deser as part of args ser/deser methods.
+            /// The type of this local is Object.
+            /// </summary>            
+            internal LocalBuilder TemporaryForTypeSerDeser {
+                get {
+                    if (m_temporaryLocal == null) {
+                        // not yet setup
+                        throw new omg.org.CORBA.INTERNAL(4765, omg.org.CORBA.CompletionStatus.Completed_MayBe);                        
+                    }
+                    return m_temporaryLocal;
                 }
             }
             
@@ -119,6 +139,9 @@ namespace Ch.Elca.Iiop.Marshalling {
                 m_gen.Emit(OpCodes.Stloc, m_streamLocal);                
                 m_endLabel = m_gen.DefineLabel();
                 m_workingLocal = m_gen.DeclareLocal(workingLocalType);
+                m_temporaryLocal = m_gen.DeclareLocal(ReflectionHelper.ObjectType);
+                m_gen.Emit(OpCodes.Ldnull);
+                m_gen.Emit(OpCodes.Stloc, m_temporaryLocal);
             }
             
             /// <summary>
@@ -320,7 +343,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldelem_Ref); 
                     gen.Emit(OpCodes.Stloc, context.WorkingLocal); // store actual to serialise in local variable
                     s_marshaller.GenerateMarshallingCodeFor(paramInfo.ParameterType, paramAttrs,
-                                                            gen, context.WorkingLocal, context.StreamLocal, this);
+                                                            gen, context.WorkingLocal, context.StreamLocal, 
+                                                            context.TemporaryForTypeSerDeser, this);
                 }
                 // move to next parameter
                 // out-args are also part of the actual array -> move to next for those whithout doing something
@@ -353,7 +377,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldloc, context.WorkingLocal);
                     gen.Emit(OpCodes.Ldc_I4, actualParamNr);
                     s_marshaller.GenerateUnmarshallingCodeFor(paramInfo.ParameterType, paramAttrs,
-                                                              gen, context.StreamLocal, this);
+                                                              gen, context.StreamLocal, context.TemporaryForTypeSerDeser,
+                                                              this);
                     gen.Emit(OpCodes.Stelem_Ref);
                 } // else: null for an out parameter
             }           
@@ -380,7 +405,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                 gen.Emit(OpCodes.Ldarg_2);
                 gen.Emit(OpCodes.Stloc, context.WorkingLocal); // store actual to serialise in local
                 s_marshaller.GenerateMarshallingCodeFor(method.ReturnType, returnAttr, gen,
-                                                        context.WorkingLocal, context.StreamLocal, this);
+                                                        context.WorkingLocal, context.StreamLocal, 
+                                                        context.TemporaryForTypeSerDeser, this);
             }
             // ... then the out/ref args
             int outParamNr = 0;
@@ -395,7 +421,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldelem_Ref); 
                     gen.Emit(OpCodes.Stloc, context.WorkingLocal); // store actual to serialise in local variable                    
                     s_marshaller.GenerateMarshallingCodeFor(paramInfo.ParameterType, paramAttrs, gen,
-                                                            context.WorkingLocal, context.StreamLocal, this);                                        
+                                                            context.WorkingLocal, context.StreamLocal, 
+                                                            context.TemporaryForTypeSerDeser, this);
                     outParamNr++;
                 }
             }            
@@ -421,7 +448,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                 AttributeExtCollection returnAttr = ReflectionHelper.CollectReturnParameterAttributes(method);
                 
                 s_marshaller.GenerateUnmarshallingCodeFor(method.ReturnType, returnAttr,
-                                                          gen, context.StreamLocal, this);
+                                                          gen, context.StreamLocal, 
+                                                          context.TemporaryForTypeSerDeser, this);
                 gen.Emit(OpCodes.Stloc, context.WorkingLocal);
             }
             
@@ -443,7 +471,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldc_I4, actualParamNr); // target index
                     
                     s_marshaller.GenerateUnmarshallingCodeFor(paramInfo.ParameterType, paramAttrs,
-                                                              gen, context.StreamLocal, this);
+                                                              gen, context.StreamLocal, 
+                                                              context.TemporaryForTypeSerDeser, this);
                     
                     gen.Emit(OpCodes.Stelem_Ref); // store the value in the array
                     
@@ -710,21 +739,28 @@ namespace Ch.Elca.Iiop.Marshalling {
             
             LocalBuilder actualInstance = serInstanceIl.DeclareLocal(ReflectionHelper.ObjectType);
             LocalBuilder targetStream = serInstanceIl.DeclareLocal(typeof(Ch.Elca.Iiop.Cdr.CdrOutputStream));
+            LocalBuilder temporaryLocalSer = serInstanceIl.DeclareLocal(ReflectionHelper.ObjectType);            
             serInstanceIl.Emit(OpCodes.Ldarg_1);
             serInstanceIl.Emit(OpCodes.Stloc, actualInstance);
             serInstanceIl.Emit(OpCodes.Ldarg_2);
             serInstanceIl.Emit(OpCodes.Stloc, targetStream);            
+            serInstanceIl.Emit(OpCodes.Ldnull);
+            serInstanceIl.Emit(OpCodes.Stloc, temporaryLocalSer);
             responsibleSerialiser.GenerateSerialisationCode(forType, attributes,
                                                             serInstanceIl, actualInstance,
-                                                            targetStream, this);
+                                                            targetStream, temporaryLocalSer, this);
             serInstanceIl.Emit(OpCodes.Ret);
             
                         
             LocalBuilder sourceStream = deserInstanceIl.DeclareLocal(typeof(Ch.Elca.Iiop.Cdr.CdrInputStream));
+            LocalBuilder temporaryLocalDeSer = deserInstanceIl.DeclareLocal(ReflectionHelper.ObjectType);
             deserInstanceIl.Emit(OpCodes.Ldarg_1);
             deserInstanceIl.Emit(OpCodes.Stloc, sourceStream);            
+            deserInstanceIl.Emit(OpCodes.Ldnull);
+            deserInstanceIl.Emit(OpCodes.Stloc, temporaryLocalDeSer);
             responsibleSerialiser.GenerateDeserialisationCode(forType, attributes,
-                                                              deserInstanceIl, sourceStream, this);
+                                                              deserInstanceIl, sourceStream, 
+                                                              temporaryLocalDeSer, this);
             deserInstanceIl.Emit(OpCodes.Ret);
         }
         
