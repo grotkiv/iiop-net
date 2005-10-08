@@ -1552,6 +1552,21 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
         
+        private void EmitCheckBound(ILGenerator gen, LocalBuilder readBound) {
+            if (IdlSequenceAttribute.IsBounded(m_bound)) {
+                Label ok = gen.DefineLabel();
+                gen.Emit(OpCodes.Ldloc, readBound);                
+                gen.Emit(OpCodes.Ldc_I4, m_bound);
+                gen.Emit(OpCodes.Ble, ok);
+                ConstructorInfo badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+                gen.Emit(OpCodes.Ldc_I4, 3434);
+                gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+                gen.Emit(OpCodes.Newobj, badParamCtr);
+                gen.Emit(OpCodes.Throw);
+                gen.MarkLabel(ok);
+            }
+        }
+        
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                        CdrOutputStream targetStream) {
             Array array = (Array) actual;
@@ -1588,18 +1603,133 @@ namespace Ch.Elca.Iiop.Marshalling {
             return result;
         }
         
-//        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
-//                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
-//                                                SerializationGenerator helperTypeGenerator) {
-//        }
-//        
-//        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
-//                                                  ILGenerator gen, LocalBuilder sourceStream,
-//                                                  SerializationGenerator helperTypeGenerator) {
-//        }        
+        private void EmitForLoopVarIncrement1AndBranchCheck(ILGenerator gen, LocalBuilder loopVar,
+                                                            LocalBuilder arrayLengthLoc, Label loopCheck,
+                                                            Label loopBegin) {
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            gen.Emit(OpCodes.Ldc_I4_1);            
+            gen.Emit(OpCodes.Add);
+            gen.Emit(OpCodes.Stloc, loopVar);
+            // loop check
+            gen.MarkLabel(loopCheck);
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            gen.Emit(OpCodes.Ldloc, arrayLengthLoc);           
+            gen.Emit(OpCodes.Blt, loopBegin);            
+        }        
+        
+        private void EmitLoopBeginBranchCheck(ILGenerator gen, LocalBuilder loopVar, 
+                                              Label loopCheck, Label loopBegin) {
+            gen.Emit(OpCodes.Ldc_I4_0);
+            gen.Emit(OpCodes.Stloc, loopVar);
+            gen.Emit(OpCodes.Br, loopCheck);
+            gen.MarkLabel(loopBegin);            
+        }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            // non null check
+            Label notNullLabel = gen.DefineLabel();
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Brtrue, notNullLabel);
+            // null not allowed for a sequence:
+            ConstructorInfo badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+            gen.Emit(OpCodes.Ldc_I4, 3433);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, badParamCtr);
+            gen.Emit(OpCodes.Throw);            
+            gen.MarkLabel(notNullLabel);            
+            // check now bound
+            LocalBuilder arrayLengthLoc = gen.DeclareLocal(ReflectionHelper.Int32Type);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Castclass, formal);
+            gen.Emit(OpCodes.Ldlen);
+            gen.Emit(OpCodes.Conv_I4);            
+            gen.Emit(OpCodes.Stloc, arrayLengthLoc);
+            EmitCheckBound(gen, arrayLengthLoc);
+            // write the length
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, arrayLengthLoc);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteULong", BindingFlags.Public | BindingFlags.Instance));
+            
+            // marshal elements with a for loop
+            LocalBuilder loopVar = gen.DeclareLocal(ReflectionHelper.Int32Type); // loop variable
+            LocalBuilder elemVar = gen.DeclareLocal(ReflectionHelper.ObjectType);
+            Label loopBegin = gen.DefineLabel();
+            Label loopCheck = gen.DefineLabel();
+            EmitLoopBeginBranchCheck(gen, loopVar, loopCheck, loopBegin);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            if (formal.GetElementType().IsValueType) {
+                gen.Emit(OpCodes.Ldelema, formal.GetElementType());
+                gen.Emit(OpCodes.Ldobj, formal.GetElementType());
+                gen.Emit(OpCodes.Box, formal.GetElementType());
+            } else {
+                gen.Emit(OpCodes.Ldelem_Ref);
+            }
+            gen.Emit(OpCodes.Stloc, elemVar);
+            Marshaller.GetSingleton().GenerateMarshallingCodeFor(formal.GetElementType(), attributes,
+                                                                 gen, elemVar, targetStream, 
+                                                                 temporaryLocal, helperTypeGenerator);
+            // loop var increment and check
+            EmitForLoopVarIncrement1AndBranchCheck(gen, loopVar, arrayLengthLoc, 
+                                                   loopCheck, loopBegin);
+        }
+        
+        private void EmitReadLength(ILGenerator gen, LocalBuilder sourceStream,
+                                    LocalBuilder arrayLengthLoc) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadULong", BindingFlags.Public | BindingFlags.Instance));            
+            gen.Emit(OpCodes.Stloc, arrayLengthLoc);            
+        }
+                
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {  
+            // mapped from an IDL-sequence
+            LocalBuilder arrayLengthLoc = gen.DeclareLocal(ReflectionHelper.Int32Type);
+            LocalBuilder result = gen.DeclareLocal(formal);
+            // read the length
+            EmitReadLength(gen, sourceStream, arrayLengthLoc);
+            EmitCheckBound(gen, temporaryLocal);
+
+            gen.Emit(OpCodes.Ldloc, arrayLengthLoc);
+            gen.Emit(OpCodes.Newarr, formal.GetElementType());                        
+            gen.Emit(OpCodes.Stloc, result); // resulting array is now on top of stack
+                        
+            // unmarshal the elements with a for loop
+            LocalBuilder loopVar = gen.DeclareLocal(ReflectionHelper.Int32Type); // loop variable
+            Label loopBegin = gen.DefineLabel();
+            Label loopCheck = gen.DefineLabel();
+                        
+            EmitLoopBeginBranchCheck(gen, loopVar, loopCheck, loopBegin);
+            // prepare to store in array            
+            gen.Emit(OpCodes.Ldloc, result);
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            if (formal.GetElementType().IsValueType) {
+                gen.Emit(OpCodes.Ldelema, formal.GetElementType());
+            }
+            Marshaller.GetSingleton().GenerateUnmarshallingCodeFor(formal.GetElementType(), attributes,
+                                                                 gen, sourceStream, 
+                                                                 temporaryLocal, helperTypeGenerator);            
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal.GetElementType());
+            if (formal.GetElementType().IsValueType) {
+                gen.Emit(OpCodes.Stobj, formal.GetElementType());
+            } else {
+                gen.Emit(OpCodes.Stelem_Ref);
+            }            
+            // loop var increment and check
+            EmitForLoopVarIncrement1AndBranchCheck(gen, loopVar, arrayLengthLoc, 
+                                                   loopCheck, loopBegin);
+            // at the end, push result onto the stack; arrays are always ref types, therefore no check for box needed
+            gen.Emit(OpCodes.Ldloc, result);
+        }
         
         internal override bool IsSimpleTypeSerializer() {
-            return true; // TODO
+            return false;
         }        
 
         #endregion IMethods

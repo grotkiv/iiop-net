@@ -74,7 +74,7 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         #endregion SMethods
         #region IMethods
-
+       
         /// <summary>
         /// Generate code, which serialises an instance of the given type,        
         /// </summary>
