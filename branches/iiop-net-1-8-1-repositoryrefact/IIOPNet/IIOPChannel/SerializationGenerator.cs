@@ -279,9 +279,21 @@ namespace Ch.Elca.Iiop.Marshalling {
                    "_" + forType.Name + "ArgHelper";            
         }
         
-        private string GetInstanceSerializerTypeName(Type forType) {            
+        private string GetInstanceSerializerTypeName(Type forType, Serialiser forTypeSerializer) {            
+            string forTypeName = forType.Name;
+            if (forType.IsArray) {
+                string arrBeginEscape = "_arrSH";
+                if (forTypeSerializer is IdlSequenceSerializer) {
+                    arrBeginEscape = "_seqSH";
+                }
+                // need to escape [ and ] and ,
+                forTypeName = forTypeName.Replace("[", arrBeginEscape);
+                forTypeName = forTypeName.Replace("]", "_");
+                forTypeName = forTypeName.Replace(",", "_");
+            }            
+            
             string result = "Ch.Elca.Iiop.Generators." + forType.Namespace + "." +
-                   forType.Name + "Helper";
+                   forTypeName + "Helper";
             return result;
         }
         
@@ -309,7 +321,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// the real serialization/deserialization code</summary>        
         internal Type GetInstanceSerialiser(Type forType, AttributeExtCollection attributes,
                                             Serialiser forTypeSerializer) {
-            string instanceSerTypeName = GetInstanceSerializerTypeName(forType);
+            string instanceSerTypeName = GetInstanceSerializerTypeName(forType, forTypeSerializer);
             lock(this) {
                 Type ser = m_asmBuilder.GetType(instanceSerTypeName);
                 if (ser == null) {
