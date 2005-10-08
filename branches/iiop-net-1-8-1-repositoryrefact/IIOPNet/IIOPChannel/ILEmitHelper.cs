@@ -193,6 +193,8 @@ namespace Ch.Elca.Iiop.Idl {
         ///<summary>reference to one of the internal constructor of class ParameterInfo. 
         /// Used for assigning custom attributes to the return parameter</summary>
         private static ConstructorInfo s_paramBuildConstr;
+        
+        private static MethodInfo s_getTypeFromHandleMethod;
     
         #endregion SFields
         #region IFields
@@ -211,6 +213,7 @@ namespace Ch.Elca.Iiop.Idl {
                                                                             typeof(ParameterAttributes),
                                                                             ReflectionHelper.StringType }, 
                                                                null);
+            s_getTypeFromHandleMethod = ReflectionHelper.TypeType.GetMethod("GetTypeFromHandle", BindingFlags.Public | BindingFlags.Static);
         }
 
         #endregion SConstructor
@@ -518,6 +521,14 @@ namespace Ch.Elca.Iiop.Idl {
             } else {
                 gen.Emit(OpCodes.Castclass, targetType); // cast the reference to the correct return value
             }
+        }
+        
+        /// <summary>
+        /// emit instructions to load type
+        /// </summary>
+        public void EmitLoadType(ILGenerator gen, Type type) {
+            gen.Emit(OpCodes.Ldtoken, type);
+            gen.Emit(OpCodes.Call, s_getTypeFromHandleMethod);
         }
         
         #endregion IMethods
