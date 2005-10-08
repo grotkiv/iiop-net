@@ -716,7 +716,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             serInstanceIl.Emit(OpCodes.Stloc, targetStream);            
             responsibleSerialiser.GenerateSerialisationCode(forType, attributes,
                                                             serInstanceIl, actualInstance,
-                                                            targetStream);            
+                                                            targetStream, this);
             serInstanceIl.Emit(OpCodes.Ret);
             
                         
@@ -724,7 +724,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             deserInstanceIl.Emit(OpCodes.Ldarg_1);
             deserInstanceIl.Emit(OpCodes.Stloc, sourceStream);            
             responsibleSerialiser.GenerateDeserialisationCode(forType, attributes,
-                                                              deserInstanceIl, sourceStream);                        
+                                                              deserInstanceIl, sourceStream, this);
             deserInstanceIl.Emit(OpCodes.Ret);
         }
         

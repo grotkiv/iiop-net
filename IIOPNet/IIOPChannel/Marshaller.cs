@@ -88,7 +88,8 @@ namespace Ch.Elca.Iiop.Marshalling {
             // determine the serialiser
             Serialiser serialiser = DetermineSerialiser(ref formal, ref attributes);
             if (serialiser.IsSimpleTypeSerializer()) {
-                serialiser.GenerateSerialisationCode(formal, attributes, gen, actualObject, targetStream);
+                serialiser.GenerateSerialisationCode(formal, attributes, gen, actualObject, targetStream,
+                                                     helperTypeGenerator);
             } else {
                 Type helperType =
                     helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser);
@@ -112,7 +113,8 @@ namespace Ch.Elca.Iiop.Marshalling {
             // determine the serialiser
             Serialiser serialiser = DetermineSerialiser(ref formalNew, ref attributes);
             if (serialiser.IsSimpleTypeSerializer()) {
-                serialiser.GenerateDeserialisationCode(formalNew, attributes, gen, sourceStream);
+                serialiser.GenerateDeserialisationCode(formalNew, attributes, gen, sourceStream,
+                                                       helperTypeGenerator);
             } else {
                 Type helperType =
                     helperTypeGenerator.GetInstanceSerialiser(formalNew, attributes, serialiser);
