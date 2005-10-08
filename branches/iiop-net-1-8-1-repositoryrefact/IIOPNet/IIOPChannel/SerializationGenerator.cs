@@ -44,6 +44,171 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// generates and manages type used for serialisation/deserialisation
     /// </summary>
     internal class SerializationGenerator {
+                
+        #region Types
+        
+        private class ArgSerializerMethodContext {
+                                    
+            private static ConstructorInfo s_badOpCtr =                            
+                typeof(omg.org.CORBA.BAD_OPERATION).GetConstructor(new Type[] { ReflectionHelper.Int32Type, 
+                                                                                typeof(omg.org.CORBA.CompletionStatus) });
+            
+            private ILGenerator m_gen;
+            private LocalBuilder m_streamLocal;
+            private LocalBuilder m_workingLocal;
+            private object m_endLabel;
+        
+            internal ArgSerializerMethodContext(ILGenerator gen) {
+                m_gen = gen;
+            }
+            
+            internal ILGenerator Generator {
+                get {
+                    if (m_gen == null) {
+                        // already completed
+                        throw new omg.org.CORBA.INTERNAL(4764, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+                    }
+                    return m_gen;
+                }
+            }
+            
+            internal LocalBuilder StreamLocal {
+                get {
+                    if (m_streamLocal == null) {
+                        // not yet setup
+                        throw new omg.org.CORBA.INTERNAL(4765, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+                    }
+                    return m_streamLocal;
+                }
+            }
+            
+            internal LocalBuilder WorkingLocal {
+                get {
+                    if (m_workingLocal == null) {
+                        // not yet setup
+                        throw new omg.org.CORBA.INTERNAL(4765, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+                    }
+                    return m_workingLocal;
+                }
+            }
+            
+            /// <summary>
+            /// the label before method return.
+            /// </summary>
+            internal Label EndLabel {
+                get {
+                    if (m_endLabel == null) {
+                        throw new omg.org.CORBA.INTERNAL(4765, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+                    }
+                    return (Label)m_endLabel;
+                }
+            }
+            
+            /// <summary>
+            /// peforms the inital step, i.e.
+            /// - store the stream in a local variable
+            /// - define an end label
+            /// - define a local to work with
+            /// </summary>
+            /// <param name="streamType"></param>
+            /// <param name="streanFromArgument"></param>
+            internal void Setup(Type streamType, int streanFromArgument,
+                                Type workingLocalType) {
+                m_streamLocal = m_gen.DeclareLocal(streamType);
+                m_gen.Emit(OpCodes.Ldarg, streanFromArgument);
+                m_gen.Emit(OpCodes.Stloc, m_streamLocal);                
+                m_endLabel = m_gen.DefineLabel();
+                m_workingLocal = m_gen.DeclareLocal(workingLocalType);
+            }
+            
+            /// <summary>
+            /// emit throwing a CORBA System error BAD_OPERATION
+            /// </summary>
+            internal void EmitThrowBadOperation(int minor,
+                                                omg.org.CORBA.CompletionStatus status) {
+                Generator.Emit(OpCodes.Ldc_I4, minor);
+                Generator.Emit(OpCodes.Ldc_I4, (int)status);
+                Generator.Emit(OpCodes.Newobj, s_badOpCtr);
+                Generator.Emit(OpCodes.Throw);                
+            }
+            
+            /// <summary>complete the method definition, i.e.
+            /// define the end label and emit the ret statement
+            /// </summary>
+            internal void End() {           
+                // the labels after all tests
+                Generator.MarkLabel(EndLabel);
+                // return
+                Generator.Emit(OpCodes.Ret);                
+                
+                m_endLabel = null;
+                m_streamLocal = null;
+                m_gen = null;                
+            }
+            
+        }
+        
+        private class ArgSerializationGenerationContext {           
+            
+            private Type m_forType;
+            
+            private ArgSerializerMethodContext m_serializeRequestArgsContext;
+            private ArgSerializerMethodContext m_deserializeRequestArgsContext;
+            private ArgSerializerMethodContext m_serializeResponseArgsContext;
+            private ArgSerializerMethodContext m_deserializeResponseArgsContext;
+        
+            internal ArgSerializationGenerationContext(Type forType) {
+                m_forType = forType;
+            }      
+            
+            internal Type ForType {
+                get {
+                    return m_forType;
+                }
+            }
+            
+            
+            internal ArgSerializerMethodContext SerializeRequestArgsContext {
+                get {
+                    return m_serializeRequestArgsContext;
+                }
+            }
+            
+            internal ArgSerializerMethodContext DeserializeRequestArgsContext {
+                get {
+                    return m_deserializeRequestArgsContext;
+                }
+            }
+            
+            internal ArgSerializerMethodContext SerializeResponseArgsContext {
+                get {
+                    return m_serializeResponseArgsContext;
+                }
+            }    
+            
+            internal ArgSerializerMethodContext DeserializeResponseArgsContext {
+                get {
+                    return m_deserializeResponseArgsContext;
+                }
+            }                                                    
+            
+            internal void InitalizeArgSerializerMethodContext(MethodBuilder serializeRequestArgs,
+                                                              MethodBuilder deserializeRequestArgs,
+                                                              MethodBuilder serializeResponseArgs,
+                                                              MethodBuilder deserializeResponseArgs) {
+                m_serializeRequestArgsContext = 
+                    new ArgSerializerMethodContext(serializeRequestArgs.GetILGenerator());
+                m_deserializeRequestArgsContext =
+                    new ArgSerializerMethodContext(deserializeRequestArgs.GetILGenerator());
+                m_serializeResponseArgsContext =
+                    new ArgSerializerMethodContext(serializeResponseArgs.GetILGenerator());
+                m_deserializeResponseArgsContext =
+                    new ArgSerializerMethodContext(deserializeResponseArgs.GetILGenerator());
+            }
+            
+        }
+        
+        #endregion Types
         
         #region SFields
         
@@ -105,7 +270,8 @@ namespace Ch.Elca.Iiop.Marshalling {
             lock(this) {
                 Type ser = m_asmBuilder.GetType(argSerTypeName);
                 if (ser == null) {
-                    ser = CreateArgumentsSerialiser(forType, argSerTypeName);
+                    ser = CreateArgumentsSerialiser(new ArgSerializationGenerationContext(forType),
+                                                    argSerTypeName);
                 }
                 if (forType.Name == "_XYZYu") {
                     m_asmBuilder.Save("dynSerializationHelpers.dll");
@@ -138,13 +304,9 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// the ArgumentSerializer method
         /// public abstract void SerializeRequestArgs(string targetMethod, object[] actual, CdrOutputStream targetStream)        
         /// </remarks>
-        private void GenerateSerializeRequestArgsForMethod(ILGenerator gen, MethodInfo method) {
+        private void GenerateSerializeRequestArgsForMethod(ArgSerializerMethodContext context, MethodInfo method) {
             
-            LocalBuilder actualInstance = gen.DeclareLocal(ReflectionHelper.ObjectType);
-            LocalBuilder targetStream = gen.DeclareLocal(typeof(Ch.Elca.Iiop.Cdr.CdrOutputStream));
-            gen.Emit(OpCodes.Ldarg_3);
-            gen.Emit(OpCodes.Stloc, targetStream);
-            
+            ILGenerator gen = context.Generator;           
             ParameterInfo[] parameters = method.GetParameters();
             
             for (int actualParamNr = 0; actualParamNr < parameters.Length; actualParamNr++) {
@@ -156,9 +318,9 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldarg_2);
                     gen.Emit(OpCodes.Ldc_I4, actualParamNr);
                     gen.Emit(OpCodes.Ldelem_Ref); 
-                    gen.Emit(OpCodes.Stloc, actualInstance); // store actual to serialise in local variable
+                    gen.Emit(OpCodes.Stloc, context.WorkingLocal); // store actual to serialise in local variable
                     s_marshaller.GenerateMarshallingCodeFor(paramInfo.ParameterType, paramAttrs,
-                                                            gen, actualInstance, targetStream, this);
+                                                            gen, context.WorkingLocal, context.StreamLocal, this);
                 }
                 // move to next parameter
                 // out-args are also part of the actual array -> move to next for those whithout doing something
@@ -174,37 +336,29 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// public abstract object[] DeserializeRequestArgs(string targetMethod, CdrInputStream sourceStream,
         ///                                                 out IDictionary contextElements)
         /// </remarks>
-        private void GenerateDeserializeRequestArgsForMethod(ILGenerator gen, MethodInfo method) {
-            LocalBuilder resultLoc = 
-                gen.DeclareLocal(ReflectionHelper.ObjectArrayType);
-            gen.Emit(OpCodes.Ldc_I4, 0);
-            gen.Emit(OpCodes.Newarr, ReflectionHelper.ObjectType);
-            gen.Emit(OpCodes.Stloc, resultLoc);                
-
-            LocalBuilder sourceStream = gen.DeclareLocal(typeof(Ch.Elca.Iiop.Cdr.CdrInputStream));
-            gen.Emit(OpCodes.Ldarg_2);
-            gen.Emit(OpCodes.Stloc, sourceStream);            
+        private void GenerateDeserializeRequestArgsForMethod(ArgSerializerMethodContext context, MethodInfo method) {
+            ILGenerator gen = context.Generator;
             
             ParameterInfo[] parameters = method.GetParameters();
             // assign result for this method
             gen.Emit(OpCodes.Ldc_I4, parameters.Length);
             gen.Emit(OpCodes.Newarr, ReflectionHelper.ObjectType);
-            gen.Emit(OpCodes.Stloc, resultLoc);
+            gen.Emit(OpCodes.Stloc, context.WorkingLocal);
                                     
             for (int actualParamNr = 0; actualParamNr < parameters.Length; actualParamNr++) {
                 ParameterInfo paramInfo = parameters[actualParamNr];
                 if (ParameterMarshaller.IsInParam(paramInfo) || ParameterMarshaller.IsRefParam(paramInfo)) {
                     AttributeExtCollection paramAttrs = ReflectionHelper.CollectParameterAttributes(paramInfo, 
                                                                                                     method);
-                    gen.Emit(OpCodes.Ldloc, resultLoc);
+                    gen.Emit(OpCodes.Ldloc, context.WorkingLocal);
                     gen.Emit(OpCodes.Ldc_I4, actualParamNr);
                     s_marshaller.GenerateUnmarshallingCodeFor(paramInfo.ParameterType, paramAttrs,
-                                                              gen, sourceStream, this);
+                                                              gen, context.StreamLocal, this);
                     gen.Emit(OpCodes.Stelem_Ref);
                 } // else: null for an out parameter
             }           
             
-            gen.Emit(OpCodes.Ldloc, resultLoc); // push result onto the stack
+            gen.Emit(OpCodes.Ldloc, context.WorkingLocal); // push result onto the stack
         }
 
         /// <summary>
@@ -216,20 +370,17 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// public abstract void SerializeResponseArgs(string targetMethod, object retValue, object[] outArgs,
         ///                                            CdrOutputStream targetStream);
         /// </remarks>        
-        private void GenerateSerializeResponseArgsForMethod(ILGenerator gen, MethodInfo method) {
-            LocalBuilder actualInstance = gen.DeclareLocal(ReflectionHelper.ObjectType);
-            LocalBuilder targetStream = gen.DeclareLocal(typeof(Ch.Elca.Iiop.Cdr.CdrOutputStream));
-            gen.Emit(OpCodes.Ldarg, 4);
-            gen.Emit(OpCodes.Stloc, targetStream);           
+        private void GenerateSerializeResponseArgsForMethod(ArgSerializerMethodContext context, MethodInfo method) {
+            ILGenerator gen = context.Generator;
             
             ParameterInfo[] parameters = method.GetParameters();
             // first serialise the return value, 
             if (!method.ReturnType.Equals(ReflectionHelper.VoidType)) {
                 AttributeExtCollection returnAttr = ReflectionHelper.CollectReturnParameterAttributes(method);
                 gen.Emit(OpCodes.Ldarg_2);
-                gen.Emit(OpCodes.Stloc, actualInstance); // store actual to serialise in local
+                gen.Emit(OpCodes.Stloc, context.WorkingLocal); // store actual to serialise in local
                 s_marshaller.GenerateMarshallingCodeFor(method.ReturnType, returnAttr, gen,
-                                                        actualInstance, targetStream, this);
+                                                        context.WorkingLocal, context.StreamLocal, this);
             }
             // ... then the out/ref args
             int outParamNr = 0;
@@ -242,9 +393,9 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldarg_3);
                     gen.Emit(OpCodes.Ldc_I4, actualParamNr);
                     gen.Emit(OpCodes.Ldelem_Ref); 
-                    gen.Emit(OpCodes.Stloc, actualInstance); // store actual to serialise in local variable                    
+                    gen.Emit(OpCodes.Stloc, context.WorkingLocal); // store actual to serialise in local variable                    
                     s_marshaller.GenerateMarshallingCodeFor(paramInfo.ParameterType, paramAttrs, gen,
-                                                            actualInstance, targetStream, this);                                        
+                                                            context.WorkingLocal, context.StreamLocal, this);                                        
                     outParamNr++;
                 }
             }            
@@ -259,24 +410,19 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// public abstract object DeserializeResponseArgs(string targetMethod, CdrInputStream sourceStream,
         ///                                                out object[] outArgs);
         /// </remarks>
-        private void GenerateDeserializeResponseArgsForMethod(ILGenerator gen, MethodInfo method) {
-            LocalBuilder resultLoc = 
-                gen.DeclareLocal(ReflectionHelper.ObjectType);
+        private void GenerateDeserializeResponseArgsForMethod(ArgSerializerMethodContext context, MethodInfo method) {
+            ILGenerator gen = context.Generator;
             gen.Emit(OpCodes.Ldnull);            
-            gen.Emit(OpCodes.Stloc, resultLoc); // the result is an object, initalize with null
-
-            LocalBuilder sourceStream = gen.DeclareLocal(typeof(Ch.Elca.Iiop.Cdr.CdrInputStream));
-            gen.Emit(OpCodes.Ldarg_2);
-            gen.Emit(OpCodes.Stloc, sourceStream);            
-            
+            gen.Emit(OpCodes.Stloc, context.WorkingLocal); // the result is an object, initalize with null
+           
             ParameterInfo[] parameters = method.GetParameters();
             // demarshal first the return value            
             if (!method.ReturnType.Equals(ReflectionHelper.VoidType)) {
                 AttributeExtCollection returnAttr = ReflectionHelper.CollectReturnParameterAttributes(method);
                 
                 s_marshaller.GenerateUnmarshallingCodeFor(method.ReturnType, returnAttr,
-                                                          gen, sourceStream, this);
-                gen.Emit(OpCodes.Stloc, resultLoc);
+                                                          gen, context.StreamLocal, this);
+                gen.Emit(OpCodes.Stloc, context.WorkingLocal);
             }
             
             // ... then the outargs
@@ -297,7 +443,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                     gen.Emit(OpCodes.Ldc_I4, actualParamNr); // target index
                     
                     s_marshaller.GenerateUnmarshallingCodeFor(paramInfo.ParameterType, paramAttrs,
-                                                              gen, sourceStream, this);
+                                                              gen, context.StreamLocal, this);
                     
                     gen.Emit(OpCodes.Stelem_Ref); // store the value in the array
                     
@@ -314,7 +460,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 gen.Emit(OpCodes.Stind_Ref); // store in outArgs out-argument
             }
             
-            gen.Emit(OpCodes.Ldloc, resultLoc); // push result onto the stack
+            gen.Emit(OpCodes.Ldloc, context.WorkingLocal); // push result onto the stack
         }
                
         private void GenerateMethodNameCompare(ILGenerator gen, string methodName, Label branchOnFalse) {
@@ -336,157 +482,145 @@ namespace Ch.Elca.Iiop.Marshalling {
             return mappedName;
         }
                
-        private void GenerateArgumentSerialisationsForMethod(ILGenerator serReqArgsIl, 
-                                                       Label endLabelSerReqArgs,
-                                                       ILGenerator deserReqArgsIl,
-                                                       Label endLabelDeserReqArgs,
-                                                       ILGenerator serRespArgsIl,
-                                                       Label endLabelSerRespArgs,
-                                                       ILGenerator deserRespArgsIl,
-                                                       Label endLabelDeserRespArgs,
-                                                       MethodInfo method) {
+        private void GenerateArgumentSerialisationsForMethod(ArgSerializationGenerationContext context,
+                                                             MethodInfo method) {
     
                 // the label after the code for the given method
-                Label nextBranchLabelSerReqArgs = serReqArgsIl.DefineLabel();
-                Label nextBranchLabelDeserReqArgs = deserReqArgsIl.DefineLabel();
-                Label nextBranchLabelSerRespArgs = serRespArgsIl.DefineLabel();
-                Label nextBranchLabelDeserRespArgs = deserRespArgsIl.DefineLabel();                                    
+                Label nextBranchLabelSerReqArgs = context.SerializeRequestArgsContext.Generator.DefineLabel();
+                Label nextBranchLabelDeserReqArgs = context.DeserializeRequestArgsContext.Generator.DefineLabel();
+                Label nextBranchLabelSerRespArgs = context.SerializeResponseArgsContext.Generator.DefineLabel();
+                Label nextBranchLabelDeserRespArgs = context.DeserializeResponseArgsContext.Generator.DefineLabel();
 
-    
                 string mappedName = DetermineMethodName(method);
-                GenerateMethodNameCompare(serReqArgsIl, mappedName, nextBranchLabelSerReqArgs);
-                GenerateMethodNameCompare(deserReqArgsIl, mappedName, nextBranchLabelDeserReqArgs);
-                GenerateMethodNameCompare(serRespArgsIl, mappedName, nextBranchLabelSerRespArgs);
-                GenerateMethodNameCompare(deserRespArgsIl, mappedName, nextBranchLabelDeserRespArgs);
+                GenerateMethodNameCompare(context.SerializeRequestArgsContext.Generator, 
+                                          mappedName, nextBranchLabelSerReqArgs);
+                GenerateMethodNameCompare(context.DeserializeRequestArgsContext.Generator, 
+                                          mappedName, nextBranchLabelDeserReqArgs);
+                GenerateMethodNameCompare(context.SerializeResponseArgsContext.Generator, 
+                                          mappedName, nextBranchLabelSerRespArgs);
+                GenerateMethodNameCompare(context.DeserializeResponseArgsContext.Generator, 
+                                          mappedName, nextBranchLabelDeserRespArgs);
                 
                 // the real serialisation code, if the method name is equal to the checked name
-                GenerateSerializeRequestArgsForMethod(serReqArgsIl, method);                                
-                GenerateDeserializeRequestArgsForMethod(deserReqArgsIl, method);
-                GenerateSerializeResponseArgsForMethod(serRespArgsIl, method);
-                GenerateDeserializeResponseArgsForMethod(deserRespArgsIl, method);
+                GenerateSerializeRequestArgsForMethod(context.SerializeRequestArgsContext, method);                                
+                GenerateDeserializeRequestArgsForMethod(context.DeserializeRequestArgsContext, method);
+                GenerateSerializeResponseArgsForMethod(context.SerializeResponseArgsContext, method);
+                GenerateDeserializeResponseArgsForMethod(context.DeserializeResponseArgsContext, method);
                 
                 // jump to end after handling for the given method name
-                serReqArgsIl.Emit(OpCodes.Br, endLabelSerReqArgs);
-                deserReqArgsIl.Emit(OpCodes.Br, endLabelDeserReqArgs);
-                serRespArgsIl.Emit(OpCodes.Br, endLabelSerRespArgs);
-                deserRespArgsIl.Emit(OpCodes.Br, endLabelDeserRespArgs);
+                context.SerializeRequestArgsContext.Generator.Emit(OpCodes.Br, 
+                                                                   context.SerializeRequestArgsContext.EndLabel);
+                context.DeserializeRequestArgsContext.Generator.Emit(OpCodes.Br, 
+                                                                     context.DeserializeRequestArgsContext.EndLabel);
+                context.SerializeResponseArgsContext.Generator.Emit(OpCodes.Br, 
+                                                                    context.SerializeResponseArgsContext.EndLabel);
+                context.DeserializeResponseArgsContext.Generator.Emit(OpCodes.Br, 
+                                                            context.DeserializeResponseArgsContext.EndLabel);
                 
-                serReqArgsIl.MarkLabel(nextBranchLabelSerReqArgs);
-                deserReqArgsIl.MarkLabel(nextBranchLabelDeserReqArgs);
-                serRespArgsIl.MarkLabel(nextBranchLabelSerRespArgs);
-                deserRespArgsIl.MarkLabel(nextBranchLabelDeserRespArgs);    
+                context.SerializeRequestArgsContext.Generator.MarkLabel(nextBranchLabelSerReqArgs);
+                context.DeserializeRequestArgsContext.Generator.MarkLabel(nextBranchLabelDeserReqArgs);
+                context.SerializeResponseArgsContext.Generator.MarkLabel(nextBranchLabelSerRespArgs);
+                context.DeserializeResponseArgsContext.Generator.MarkLabel(nextBranchLabelDeserRespArgs);    
         }
         
-        private void DefineArgumentsSerialiserMethods(MethodBuilder serReqArgs, 
-                                                      MethodBuilder deserReqArgs,
-                                                      MethodBuilder serRespArgs,
-                                                      MethodBuilder deserRespArgs,
-                                                      Type forType) {    
+        /// <summary>
+        /// returns true, if no serialization code should be generated for a method;
+        /// otherwise false.
+        /// </summary>
+        private bool IgnoreMethod(MethodInfo info) {
+            if (info.DeclaringType.IsInterface) {
+                return false;
+            }
+            // only ignore methods on classes and not on interfaces
+            if ((info.Name == "InitializeLifetimeService") && (info.GetParameters().Length == 0) &&
+                (info.ReturnType.Equals(ReflectionHelper.ObjectType))) {
+                return true;            
+            } // from MarshalByRefObject
+            // TODO
+            return false;                
+        }
+        
+        private bool IgnoreProperty(PropertyInfo info) {
+            // TODO
+            return false;
+        }
+        
+        private void DefineArgumentsSerialiserMethods(ArgSerializationGenerationContext context) {
             
-            ILGenerator serReqArgsIl = serReqArgs.GetILGenerator();
-            ILGenerator deserReqArgsIl = deserReqArgs.GetILGenerator();
-            // init contextElements
-            deserReqArgsIl.Emit(OpCodes.Ldarg_3);
-            deserReqArgsIl.Emit(OpCodes.Ldnull);
-            deserReqArgsIl.Emit(OpCodes.Stind_Ref);
+            context.SerializeRequestArgsContext.
+                Setup(typeof(Ch.Elca.Iiop.Cdr.CdrOutputStream), 3,
+                      ReflectionHelper.ObjectType);
+            context.DeserializeRequestArgsContext.
+                Setup(typeof(Ch.Elca.Iiop.Cdr.CdrInputStream), 2,
+                      ReflectionHelper.ObjectArrayType);
+            context.SerializeResponseArgsContext.
+                Setup(typeof(Ch.Elca.Iiop.Cdr.CdrOutputStream), 4,
+                      ReflectionHelper.ObjectType);
+            context.DeserializeResponseArgsContext.
+                Setup(typeof(Ch.Elca.Iiop.Cdr.CdrInputStream), 2,
+                      ReflectionHelper.ObjectType);
+                                    
+            // DeserializeRequestArgs: init contextElements
+            context.DeserializeRequestArgsContext.Generator.Emit(OpCodes.Ldarg_3);
+            context.DeserializeRequestArgsContext.Generator.Emit(OpCodes.Ldnull);
+            context.DeserializeRequestArgsContext.Generator.Emit(OpCodes.Stind_Ref);
             
-            ILGenerator serRespArgsIl = serRespArgs.GetILGenerator();
-            ILGenerator deserRespArgsIl = deserRespArgs.GetILGenerator();
-            // init outArgs
-            deserRespArgsIl.Emit(OpCodes.Ldarg_3);
-            deserRespArgsIl.Emit(OpCodes.Ldnull);
-            deserRespArgsIl.Emit(OpCodes.Stind_Ref);
-                            
-            Label endLabelSerReqArgs = serReqArgsIl.DefineLabel();
-            Label endLabelDeserReqArgs = deserReqArgsIl.DefineLabel();
-            Label endLabelSerRespArgs = serRespArgsIl.DefineLabel();
-            Label endLabelDeserRespArgs = deserRespArgsIl.DefineLabel();
-            
+            // DeserializeResponseArgsContext: init outArgs
+            context.DeserializeResponseArgsContext.Generator.Emit(OpCodes.Ldarg_3);
+            context.DeserializeResponseArgsContext.Generator.Emit(OpCodes.Ldnull);
+            context.DeserializeResponseArgsContext.Generator.Emit(OpCodes.Stind_Ref);
+                                        
             MethodInfo[] methods =
-                forType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+                context.ForType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
             for (int i = 0; i < methods.Length; i++) {
                 if (methods[i].IsSpecialName) {
                     continue;
                 }
-                if (methods[i].DeclaringType.Equals(ReflectionHelper.ObjectType) ||
-                    methods[i].DeclaringType.Equals(ReflectionHelper.MarshalByRefObjectType)) {
-                    // don't support remote calls for methods defined directly on Object and on MarshalByRefObject
+                if (IgnoreMethod(methods[i])) {
+                    // don't support remote calls for method
                     continue;
                 }
-                GenerateArgumentSerialisationsForMethod(serReqArgsIl, endLabelSerReqArgs,
-                                                        deserReqArgsIl, endLabelDeserReqArgs,
-                                                        serRespArgsIl, endLabelSerRespArgs,
-                                                        deserRespArgsIl, endLabelDeserRespArgs,
+                GenerateArgumentSerialisationsForMethod(context,
                                                         methods[i]);
             }
             
             PropertyInfo[] properties =
-                forType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                context.ForType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
             for (int i = 0; i < properties.Length; i++) {
-                if (properties[i].DeclaringType.Equals(ReflectionHelper.ObjectType) ||
-                    properties[i].DeclaringType.Equals(ReflectionHelper.MarshalByRefObjectType)) {
-                    // don't support remote calls for properties defined directly on Object and on MarshalByRefObject
+                if (IgnoreProperty(properties[i])) {
+                    // don't support remote calls for this property
                     continue;
                 }                
                 MethodInfo getter = properties[i].GetGetMethod();
                 MethodInfo setter = properties[i].GetGetMethod();
                 if (getter != null) {
-                    GenerateArgumentSerialisationsForMethod(serReqArgsIl, endLabelSerReqArgs,
-                                                            deserReqArgsIl, endLabelDeserReqArgs,
-                                                            serRespArgsIl, endLabelSerRespArgs,
-                                                            deserRespArgsIl, endLabelDeserRespArgs,
+                    GenerateArgumentSerialisationsForMethod(context,
                                                             getter);
                 }
                 
                 if (setter != null) {
-                    GenerateArgumentSerialisationsForMethod(serReqArgsIl, endLabelSerReqArgs,
-                                                            deserReqArgsIl, endLabelDeserReqArgs,
-                                                            serRespArgsIl, endLabelSerRespArgs,
-                                                            deserRespArgsIl, endLabelDeserRespArgs,
+                    GenerateArgumentSerialisationsForMethod(context,
                                                             setter);
                 }
                 
             }
             
-            // default cases: generate BAD_OPERATION
-            ConstructorInfo badOpCtr =
-                typeof(omg.org.CORBA.BAD_OPERATION).GetConstructor(new Type[] { ReflectionHelper.Int32Type, 
-                                                                                typeof(omg.org.CORBA.CompletionStatus) });
-            serReqArgsIl.Emit(OpCodes.Ldc_I4, 11);
-            serReqArgsIl.Emit(OpCodes.Ldc_I4, (int)omg.org.CORBA.CompletionStatus.Completed_No); // TODO
-            serReqArgsIl.Emit(OpCodes.Newobj, badOpCtr);
-            serReqArgsIl.Emit(OpCodes.Throw);
+            // default cases: generate BAD_OPERATION: TODO
+            context.SerializeRequestArgsContext.EmitThrowBadOperation(10, omg.org.CORBA.CompletionStatus.Completed_No);
+            context.DeserializeRequestArgsContext.EmitThrowBadOperation(11, omg.org.CORBA.CompletionStatus.Completed_No);
+            context.SerializeResponseArgsContext.EmitThrowBadOperation(12, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+            context.DeserializeResponseArgsContext.EmitThrowBadOperation(13, omg.org.CORBA.CompletionStatus.Completed_MayBe);
             
-            deserReqArgsIl.Emit(OpCodes.Ldc_I4, 11);
-            deserReqArgsIl.Emit(OpCodes.Ldc_I4, (int)omg.org.CORBA.CompletionStatus.Completed_No); // TODO
-            deserReqArgsIl.Emit(OpCodes.Newobj, badOpCtr);
-            deserReqArgsIl.Emit(OpCodes.Throw);
-
-            serRespArgsIl.Emit(OpCodes.Ldc_I4, 11);
-            serRespArgsIl.Emit(OpCodes.Ldc_I4, (int)omg.org.CORBA.CompletionStatus.Completed_MayBe); // TODO
-            serRespArgsIl.Emit(OpCodes.Newobj, badOpCtr);
-            serRespArgsIl.Emit(OpCodes.Throw);
-
-            deserRespArgsIl.Emit(OpCodes.Ldc_I4, 11);
-            deserRespArgsIl.Emit(OpCodes.Ldc_I4, (int)omg.org.CORBA.CompletionStatus.Completed_MayBe); // TODO
-            deserRespArgsIl.Emit(OpCodes.Newobj, badOpCtr);                                   
-            deserRespArgsIl.Emit(OpCodes.Throw);
-            
-            // the labels after all tests
-            serReqArgsIl.MarkLabel(endLabelSerReqArgs);
-            deserReqArgsIl.MarkLabel(endLabelDeserReqArgs);
-            serRespArgsIl.MarkLabel(endLabelSerRespArgs);
-            deserRespArgsIl.MarkLabel(endLabelDeserRespArgs);            
-            
-            serReqArgsIl.Emit(OpCodes.Ret);
-            deserReqArgsIl.Emit(OpCodes.Ret);
-            serRespArgsIl.Emit(OpCodes.Ret);
-            deserRespArgsIl.Emit(OpCodes.Ret);            
+            // the labels after all tests and return
+            context.SerializeRequestArgsContext.End();
+            context.DeserializeRequestArgsContext.End();
+            context.SerializeResponseArgsContext.End();
+            context.DeserializeResponseArgsContext.End();            
         }
         
-        private Type CreateArgumentsSerialiser(Type forType, string serTypeName) {
-            if (!(forType.IsInterface || forType.IsMarshalByRef)) {
-                Debug.WriteLine("Can't create an argument serializer for : " + forType.FullName);
+        private Type CreateArgumentsSerialiser(ArgSerializationGenerationContext context, string serTypeName) {
+            if (!(context.ForType.IsInterface || context.ForType.IsMarshalByRef)) {
+                Debug.WriteLine("Can't create an argument serializer for : " + context.ForType.FullName);
                 throw new omg.org.CORBA.BAD_PARAM(745, omg.org.CORBA.CompletionStatus.Completed_MayBe);
             }
             
@@ -560,8 +694,9 @@ namespace Ch.Elca.Iiop.Marshalling {
             deserRespArgs.DefineParameter(2, ParameterAttributes.In, "sourceStream");
             deserRespArgs.DefineParameter(3, ParameterAttributes.Out, "outArgs");
 
-            DefineArgumentsSerialiserMethods(serReqArgs, deserReqArgs, 
-                                             serRespArgs, deserRespArgs, forType);                                                                
+            context.InitalizeArgSerializerMethodContext(serReqArgs, deserReqArgs,
+                                                        serRespArgs, deserRespArgs);
+            DefineArgumentsSerialiserMethods(context);
     
             Type result = resultBuilder.CreateType();
             return result;
