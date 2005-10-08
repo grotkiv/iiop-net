@@ -183,6 +183,12 @@ namespace Ch.Elca.Iiop.Benchmarks {
             m_testService.DoubleArrEcho(arg);
         }
 
+        void CallDoubleSeqEcho() {
+            double[] arg = new double[5000];
+            m_testService.DoubleIdlSeqEcho(arg);
+        }
+
+
         void CallDoubleArrCountElems() {
             double[] arg = new double[5000];
             m_testService.DoubleArrCountElems(arg);
@@ -247,6 +253,7 @@ namespace Ch.Elca.Iiop.Benchmarks {
             tc.ExecuteTest(false, "()double[]", new TestProcedure(tc.CallDoulbeArrCreate));
             tc.ExecuteTest(false, "(double[])double[]", new TestProcedure(tc.CallDoubleArrEcho));
             tc.ExecuteTest(false, "(double[])V", new TestProcedure(tc.CallDoubleArrCountElems));
+            tc.ExecuteTest(false, "(double_sq)double_sq", new TestProcedure(tc.CallDoubleSeqEcho));
 
             tc.TearDownEnvironment();
 

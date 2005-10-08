@@ -114,6 +114,9 @@ namespace Ch.Elca.Iiop.Benchmarks {
         double[] DoubleArrEcho(double[] arg);
         int DoubleArrCountElems(double[] arg);
                 
+        [return: IdlSequence(0L)]
+        double[] DoubleIdlSeqEcho([IdlSequence(0L)] double[] arg);
+
     }
 
 }
