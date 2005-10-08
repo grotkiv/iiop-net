@@ -112,6 +112,11 @@ namespace Ch.Elca.Iiop.Benchmarks {
         public int DoubleArrCountElems(double[] arg) {
             return arg.Length;
         }
+
+        [return: IdlSequence(0L)]
+        public double[] DoubleIdlSeqEcho([IdlSequence(0L)] double[] arg) {
+            return arg;
+        }
         
         public override object InitializeLifetimeService() {
             // live forever
