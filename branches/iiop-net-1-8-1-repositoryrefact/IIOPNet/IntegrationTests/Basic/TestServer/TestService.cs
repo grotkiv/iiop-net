@@ -62,6 +62,13 @@ namespace Ch.Elca.Iiop.IntegrationTests {
     }
 
     [Serializable]
+    [IdlStruct]
+    public struct TestStructAIdl {
+        public System.Int32 X;
+        public System.Int32 Y;
+    }
+
+    [Serializable]
     public class TestSerializableClassB1 {
         public System.String Msg;
     }
@@ -402,6 +409,10 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         public TestStructA TestEchoStruct(TestStructA arg) {
+            return arg;
+        }
+
+        public TestStructAIdl TestEchoIdlStruct(TestStructAIdl arg) {
             return arg;
         }
 
