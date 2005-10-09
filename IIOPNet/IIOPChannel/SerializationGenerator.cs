@@ -171,10 +171,74 @@ namespace Ch.Elca.Iiop.Marshalling {
             
         }
         
+        private class StaticConstructorContext {
+            
+            private ILGenerator m_staticConstructorIlGen;
+            
+            private LocalBuilder m_forTypeLocal;
+            private LocalBuilder m_typeArrayLocal;
+                       
+            internal StaticConstructorContext(ILGenerator gen) {
+                m_staticConstructorIlGen = gen;
+            }
+            
+            internal ILGenerator Generator {
+                get {
+                    return m_staticConstructorIlGen;
+                }
+            }
+            
+            /// <summary>
+            /// the local containing the type for which the arg ser is.
+            /// </summary>
+            internal LocalBuilder ForTypeLocal {
+                get {
+                    if (m_forTypeLocal == null) {
+                        // not yet setup
+                        throw new omg.org.CORBA.INTERNAL(4765, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+                    }
+                    return m_forTypeLocal;                    
+                }
+            }
+            
+            /// <summary>
+            /// a local variable for use to store array of types inside
+            /// </summary>
+            internal LocalBuilder TypeArrayLocal {
+                get {
+                    if (m_typeArrayLocal == null) {
+                        // not yet setup
+                        throw new omg.org.CORBA.INTERNAL(4765, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+                    }
+                    return m_typeArrayLocal;
+                }
+            }            
+            
+            internal void Setup(Type forType, FieldBuilder typeTypeField, TypeBuilder serType) {                
+                
+                IlEmitHelper.GetSingleton().EmitLoadType(m_staticConstructorIlGen, serType);
+                m_staticConstructorIlGen.Emit(OpCodes.Stsfld, typeTypeField);
+                m_forTypeLocal = m_staticConstructorIlGen.DeclareLocal(ReflectionHelper.TypeType);
+                IlEmitHelper.GetSingleton().EmitLoadType(m_staticConstructorIlGen, forType);
+                m_staticConstructorIlGen.Emit(OpCodes.Stloc, m_forTypeLocal);
+                m_typeArrayLocal = m_staticConstructorIlGen.DeclareLocal(typeof(Type[]));
+                m_staticConstructorIlGen.Emit(OpCodes.Ldnull);
+                m_staticConstructorIlGen.Emit(OpCodes.Stloc, m_typeArrayLocal);
+            }
+            
+            internal void End() {
+                m_staticConstructorIlGen.Emit(OpCodes.Ret);
+            }
+            
+        }
+        
         private class ArgSerializationGenerationContext {           
             
             private Type m_forType;
+            private TypeBuilder m_typeBuilder;
             
+            private StaticConstructorContext m_staticConstrContext;
+            private FieldBuilder m_typetypeField;
             private ArgSerializerMethodContext m_serializeRequestArgsContext;
             private ArgSerializerMethodContext m_deserializeRequestArgsContext;
             private ArgSerializerMethodContext m_serializeResponseArgsContext;
@@ -190,6 +254,23 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             }
             
+            internal TypeBuilder TypeBuilder {
+                get {
+                    return m_typeBuilder;
+                }
+            }            
+            
+            internal FieldBuilder TypeTypeField {
+                get {
+                    return m_typetypeField;
+                }
+            }
+            
+            internal StaticConstructorContext StaticConstrContext {
+                get {
+                    return m_staticConstrContext;
+                }
+            }
             
             internal ArgSerializerMethodContext SerializeRequestArgsContext {
                 get {
@@ -215,10 +296,12 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             }                                                    
             
-            internal void InitalizeArgSerializerMethodContext(MethodBuilder serializeRequestArgs,
-                                                              MethodBuilder deserializeRequestArgs,
-                                                              MethodBuilder serializeResponseArgs,
-                                                              MethodBuilder deserializeResponseArgs) {
+            internal void InitalizeContext(MethodBuilder serializeRequestArgs,
+                                           MethodBuilder deserializeRequestArgs,
+                                           MethodBuilder serializeResponseArgs,
+                                           MethodBuilder deserializeResponseArgs,
+                                           ConstructorBuilder staticConstructor,
+                                           TypeBuilder typeBuilder) {
                 m_serializeRequestArgsContext = 
                     new ArgSerializerMethodContext(serializeRequestArgs.GetILGenerator());
                 m_deserializeRequestArgsContext =
@@ -227,6 +310,17 @@ namespace Ch.Elca.Iiop.Marshalling {
                     new ArgSerializerMethodContext(serializeResponseArgs.GetILGenerator());
                 m_deserializeResponseArgsContext =
                     new ArgSerializerMethodContext(deserializeResponseArgs.GetILGenerator());
+                m_typeBuilder = typeBuilder;
+                m_typetypeField = typeBuilder.DefineField("ClassType", ReflectionHelper.TypeType,
+                                                           FieldAttributes.Public | FieldAttributes.InitOnly |
+                                                           FieldAttributes.Static);
+                                                           
+                m_staticConstrContext = new StaticConstructorContext(staticConstructor.GetILGenerator());
+                m_staticConstrContext.Setup(m_forType, m_typetypeField, typeBuilder);
+            }
+            
+            internal void Complete() {
+                m_staticConstrContext.End();
             }
             
         }
@@ -522,17 +616,53 @@ namespace Ch.Elca.Iiop.Marshalling {
                 IdlNaming.GetRequestMethodName(method, isMethodOverloaded);    
             return mappedName;
         }
+        
+        private void DefineMethodInfoFieldFor(MethodInfo method, string mappedName,
+                                              ArgSerializationGenerationContext context) {
+            string fieldName = ArgumentsSerializer.CACHED_METHOD_INFO_PREFIX + mappedName; // mapped name is unique
+            FieldBuilder field = context.TypeBuilder.DefineField(fieldName, 
+                                            typeof(MethodInfo), FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly);
+            
+            // init in static constr
+            ILGenerator gen = context.StaticConstrContext.Generator;
+            gen.Emit(OpCodes.Ldloc, context.StaticConstrContext.ForTypeLocal);
+            gen.Emit(OpCodes.Ldstr, method.Name);
+            gen.Emit(OpCodes.Ldc_I4, (int)(BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Ldnull); // binder
+            ParameterInfo[] parameters = method.GetParameters();
+            gen.Emit(OpCodes.Ldc_I4, parameters.Length);
+            gen.Emit(OpCodes.Newarr, ReflectionHelper.TypeType);
+            gen.Emit(OpCodes.Stloc, context.StaticConstrContext.TypeArrayLocal);
+            for (int i = 0; i < parameters.Length; i++) {
+                gen.Emit(OpCodes.Ldloc, context.StaticConstrContext.TypeArrayLocal);
+                gen.Emit(OpCodes.Ldc_I4, i);
+                IlEmitHelper.GetSingleton().EmitLoadType(gen, parameters[i].ParameterType);
+                gen.Emit(OpCodes.Stelem_Ref);                
+            }
+            gen.Emit(OpCodes.Ldloc, context.StaticConstrContext.TypeArrayLocal);
+            gen.Emit(OpCodes.Ldnull);
+            MethodInfo getMethodFromType =
+                ReflectionHelper.TypeType.GetMethod("GetMethod", BindingFlags.Instance | BindingFlags.Public,
+                                                    null, new Type[] { ReflectionHelper.StringType, typeof(BindingFlags),
+                                                                      typeof(Binder), typeof(Type[]), typeof(ParameterModifier[]) },
+                                                    null);
+            gen.Emit(OpCodes.Call, getMethodFromType);
+            gen.Emit(OpCodes.Stsfld, field);            
+        }
                
         private void GenerateArgumentSerialisationsForMethod(ArgSerializationGenerationContext context,
                                                              MethodInfo method) {
-    
+        
+                string mappedName = DetermineMethodName(method);
+                
+                DefineMethodInfoFieldFor(method, mappedName, context);
+                
                 // the label after the code for the given method
                 Label nextBranchLabelSerReqArgs = context.SerializeRequestArgsContext.Generator.DefineLabel();
                 Label nextBranchLabelDeserReqArgs = context.DeserializeRequestArgsContext.Generator.DefineLabel();
                 Label nextBranchLabelSerRespArgs = context.SerializeResponseArgsContext.Generator.DefineLabel();
                 Label nextBranchLabelDeserRespArgs = context.DeserializeResponseArgsContext.Generator.DefineLabel();
-
-                string mappedName = DetermineMethodName(method);
+                
                 GenerateMethodNameCompare(context.SerializeRequestArgsContext.Generator, 
                                           mappedName, nextBranchLabelSerReqArgs);
                 GenerateMethodNameCompare(context.DeserializeRequestArgsContext.Generator, 
@@ -562,7 +692,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 context.DeserializeRequestArgsContext.Generator.MarkLabel(nextBranchLabelDeserReqArgs);
                 context.SerializeResponseArgsContext.Generator.MarkLabel(nextBranchLabelSerRespArgs);
                 context.DeserializeResponseArgsContext.Generator.MarkLabel(nextBranchLabelDeserRespArgs);    
-        }
+        }        
         
         /// <summary>
         /// returns true, if no serialization code should be generated for a method;
@@ -633,7 +763,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                     continue;
                 }                
                 MethodInfo getter = properties[i].GetGetMethod();
-                MethodInfo setter = properties[i].GetGetMethod();
+                MethodInfo setter = properties[i].GetSetMethod();
                 if (getter != null) {
                     GenerateArgumentSerialisationsForMethod(context,
                                                             getter);
@@ -657,6 +787,14 @@ namespace Ch.Elca.Iiop.Marshalling {
             context.DeserializeRequestArgsContext.End();
             context.SerializeResponseArgsContext.End();
             context.DeserializeResponseArgsContext.End();            
+        }
+        
+        private void DefineGetMethodInfoFor(MethodBuilder getMethodInfoFor, ArgSerializationGenerationContext context) {
+            ILGenerator gen = getMethodInfoFor.GetILGenerator();
+            gen.Emit(OpCodes.Ldarg_1); // name argument
+            gen.Emit(OpCodes.Ldsfld, context.TypeTypeField);
+            gen.Emit(OpCodes.Call, ArgumentsSerializer.GET_METHOD_INFO_FOR_INTERNAL_MI);
+            gen.Emit(OpCodes.Ret);            
         }
         
         private Type CreateArgumentsSerialiser(ArgSerializationGenerationContext context, string serTypeName) {
@@ -734,10 +872,29 @@ namespace Ch.Elca.Iiop.Marshalling {
             deserRespArgs.DefineParameter(1, ParameterAttributes.In, "targetMethod");
             deserRespArgs.DefineParameter(2, ParameterAttributes.In, "sourceStream");
             deserRespArgs.DefineParameter(3, ParameterAttributes.Out, "outArgs");
-
-            context.InitalizeArgSerializerMethodContext(serReqArgs, deserReqArgs,
-                                                        serRespArgs, deserRespArgs);
+            
+            ConstructorBuilder staticConstr = resultBuilder.DefineConstructor(MethodAttributes.Static | MethodAttributes.Private |
+                                                                              MethodAttributes.HideBySig,
+                                                                              CallingConventions.Standard,
+                                                                              Type.EmptyTypes);
+            
+            resultBuilder.DefineDefaultConstructor(MethodAttributes.Public);
+            
+            context.InitalizeContext(serReqArgs, deserReqArgs,
+                                     serRespArgs, deserRespArgs, 
+                                     staticConstr,
+                                     resultBuilder);
             DefineArgumentsSerialiserMethods(context);
+            
+            // public abstract MethodInfo GetMethodInfoFor(string method);
+            MethodBuilder getMethodInfoFor = resultBuilder.DefineMethod("GetMethodInfoFor",
+                                                                        MethodAttributes.Public | MethodAttributes.Virtual |
+                                                                        MethodAttributes.Final | MethodAttributes.HideBySig,
+                                                                        typeof(MethodInfo),
+                                                                        new Type[] { ReflectionHelper.StringType });
+            DefineGetMethodInfoFor(getMethodInfoFor, context);
+            
+            context.Complete();
     
             Type result = resultBuilder.CreateType();
             return result;
