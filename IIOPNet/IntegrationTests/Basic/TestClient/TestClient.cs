@@ -586,6 +586,16 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Assertion.AssertEquals(arg.Y, result.Y);
         }
 
+        [Test]
+        public void TestStructIdl() {
+            TestStructAIdl arg = new TestStructAIdl();
+            arg.X = 11;
+            arg.Y = -15;
+            TestStructAIdl result = m_testService.TestEchoIdlStruct(arg);
+            Assertion.AssertEquals(arg.X, result.X);
+            Assertion.AssertEquals(arg.Y, result.Y);
+        }
+
         /// <summary>
         /// Checks, if the repository id of the value-type itself is used and not the rep-id 
         /// for the implementation class
