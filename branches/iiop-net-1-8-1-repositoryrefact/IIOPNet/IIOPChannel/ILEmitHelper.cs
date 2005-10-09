@@ -195,6 +195,8 @@ namespace Ch.Elca.Iiop.Idl {
         private static ConstructorInfo s_paramBuildConstr;
         
         private static MethodInfo s_getTypeFromHandleMethod;
+        
+        private static MethodInfo s_typeGetTypeMethod;
     
         #endregion SFields
         #region IFields
@@ -214,6 +216,11 @@ namespace Ch.Elca.Iiop.Idl {
                                                                             ReflectionHelper.StringType }, 
                                                                null);
             s_getTypeFromHandleMethod = ReflectionHelper.TypeType.GetMethod("GetTypeFromHandle", BindingFlags.Public | BindingFlags.Static);
+            s_typeGetTypeMethod = ReflectionHelper.TypeType.GetMethod("GetType",
+                                                                      BindingFlags.Public | BindingFlags.Static,
+                                                                      null,
+                                                                      new Type[] { ReflectionHelper.StringType },
+                                                                      null);
         }
 
         #endregion SConstructor
@@ -527,8 +534,13 @@ namespace Ch.Elca.Iiop.Idl {
         /// emit instructions to load type
         /// </summary>
         public void EmitLoadType(ILGenerator gen, Type type) {
-            gen.Emit(OpCodes.Ldtoken, type);
-            gen.Emit(OpCodes.Call, s_getTypeFromHandleMethod);
+            if (!type.IsByRef) {
+                gen.Emit(OpCodes.Ldtoken, type);
+                gen.Emit(OpCodes.Call, s_getTypeFromHandleMethod);
+            } else {
+                gen.Emit(OpCodes.Ldstr, type.AssemblyQualifiedName); // contains already & at the end
+                gen.Emit(OpCodes.Call, s_typeGetTypeMethod);
+            }
         }
         
         #endregion IMethods
