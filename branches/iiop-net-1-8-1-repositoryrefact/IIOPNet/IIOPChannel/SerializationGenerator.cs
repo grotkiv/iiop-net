@@ -523,7 +523,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                     AttributeExtCollection paramAttrs = ReflectionHelper.CollectParameterAttributes(paramInfo, 
                                                                                                     method);
                     gen.Emit(OpCodes.Ldarg_3);
-                    gen.Emit(OpCodes.Ldc_I4, actualParamNr);
+                    gen.Emit(OpCodes.Ldc_I4, outParamNr);
                     gen.Emit(OpCodes.Ldelem_Ref); 
                     gen.Emit(OpCodes.Stloc, context.WorkingLocal); // store actual to serialise in local variable                    
                     s_marshaller.GenerateMarshallingCodeFor(paramInfo.ParameterType, paramAttrs, gen,
