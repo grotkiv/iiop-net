@@ -46,7 +46,7 @@ namespace Ch.Elca.Iiop.Marshalling {
 
     /// <summary>
     /// base class for all Serializer.
-    /// </summary>
+    /// </summary>        
     internal abstract class Serialiser {
 
         #region IConstructors
@@ -640,7 +640,7 @@ namespace Ch.Elca.Iiop.Marshalling {
     
     /// <summary>serializes object references</summary>
     internal class ObjRefSerializer : Serialiser {
-
+        
         #region IMethods
         
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
@@ -690,8 +690,6 @@ namespace Ch.Elca.Iiop.Marshalling {
             ior.WriteToStream(targetStream); // write the null reference to the stream
         }
                 
-
-
         internal override object Deserialise(Type formal, AttributeExtCollection attributes,
                                            CdrInputStream sourceStream) {
             // reads the encoded IOR from this stream
@@ -715,12 +713,35 @@ namespace Ch.Elca.Iiop.Marshalling {
             return proxy;
         }
         
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {            
+            MethodInfo serMethod = TypeSerializationHelper.ClassType.GetMethod("SerialiseObjRef", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Call, serMethod);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            MethodInfo deserMethod = TypeSerializationHelper.ClassType.GetMethod("DeserialiseObjRef", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Call, deserMethod);
+        }        
+        
         internal override bool IsSimpleTypeSerializer() {
             return false;
-        }  
+        }                  
         
         #endregion IMethods
-
+        
     }
 
     #endregion

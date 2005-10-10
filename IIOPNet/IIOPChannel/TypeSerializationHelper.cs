@@ -45,12 +45,25 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         public static readonly Type ClassType = typeof(TypeSerializationHelper);
         
+        private ObjRefSerializer m_objRefSerializer = new ObjRefSerializer();
+        
         #endregion SFields
         #region IMethods
                 
         public abstract void SerializeInstance(object actual, CdrOutputStream targetStream);
                 
         public abstract object DeserializeInstance(CdrInputStream sourceStream);
+        
+        
+        protected void SerialiseObjRef(Type formal, object actual,
+                                       CdrOutputStream targetStream) {            
+            m_objRefSerializer.Serialise(formal, actual, null, targetStream);
+        }
+        
+        protected object DeserialiseObjRef(Type formal,
+                                           CdrInputStream sourceStream) {            
+            return m_objRefSerializer.Deserialise(formal, null, sourceStream);
+        }
         
         #endregion IMethods
         
