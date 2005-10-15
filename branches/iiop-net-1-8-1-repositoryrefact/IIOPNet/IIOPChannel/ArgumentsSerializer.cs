@@ -43,19 +43,10 @@ namespace Ch.Elca.Iiop.Marshalling {
     [CLSCompliant(false)]
     public abstract class ArgumentsSerializer {
         
-        #region Constants
-        
-        public const string CACHED_METHOD_INFO_PREFIX = "s_mi_";
-        
-        #endregion Constants
         #region SFields
         
         public static readonly Type ClassType = typeof(ArgumentsSerializer);
-        
-        public static MethodInfo GET_METHOD_INFO_FOR_INTERNAL_MI =
-            typeof(ArgumentsSerializer).GetMethod("GetMethodInfoForInternal", 
-                                                  BindingFlags.NonPublic | BindingFlags.Static);
-        
+                
         #endregion SFields
         #region IMethods                        
         
@@ -76,19 +67,6 @@ namespace Ch.Elca.Iiop.Marshalling {
         public abstract string GetRequestNameFor(MethodInfo method);
         
         #endregion IMethods        
-
-        /// <summary>
-        /// helper method called by generated subclasses
-        /// </summary>
-        protected static MethodInfo GetMethodInfoForInternal(string method, Type type) {
-            string fieldName = CACHED_METHOD_INFO_PREFIX + method;
-            FieldInfo field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.Static);
-            if (field != null) {
-                return (MethodInfo)field.GetValue(null);
-            } else {
-                throw new omg.org.CORBA.BAD_OPERATION(22, omg.org.CORBA.CompletionStatus.Completed_MayBe);
-            }
-        }        
                 
         
     }

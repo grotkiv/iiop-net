@@ -177,6 +177,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             
             private LocalBuilder m_forTypeLocal;
             private LocalBuilder m_typeArrayLocal;
+            private LocalBuilder m_methodInfoLocal;
                        
             internal StaticConstructorContext(ILGenerator gen) {
                 m_staticConstructorIlGen = gen;
@@ -212,10 +213,24 @@ namespace Ch.Elca.Iiop.Marshalling {
                     }
                     return m_typeArrayLocal;
                 }
-            }            
+            }    
+
+            /// <summary>
+            /// a local variable for use to store methodinfos inside
+            /// </summary>            
+            internal LocalBuilder MethodInfoLocal {
+                get {
+                    if (m_methodInfoLocal == null) {
+                        // not yet setup
+                        throw new omg.org.CORBA.INTERNAL(4765, omg.org.CORBA.CompletionStatus.Completed_MayBe);                        
+                    }
+                    return m_methodInfoLocal;
+                }
+            }
             
             internal void Setup(Type forType, FieldBuilder typeTypeField, 
-                                FieldBuilder requestNameForHtField,
+                                FieldBuilder requestNameForInfoHtField,
+                                FieldBuilder methodInfoForNameHtField,
                                 TypeBuilder serType) {
                 
                 IlEmitHelper.GetSingleton().EmitLoadType(m_staticConstructorIlGen, serType);
@@ -223,12 +238,17 @@ namespace Ch.Elca.Iiop.Marshalling {
                 m_forTypeLocal = m_staticConstructorIlGen.DeclareLocal(ReflectionHelper.TypeType);
                 IlEmitHelper.GetSingleton().EmitLoadType(m_staticConstructorIlGen, forType);
                 m_staticConstructorIlGen.Emit(OpCodes.Stloc, m_forTypeLocal);
-                m_typeArrayLocal = m_staticConstructorIlGen.DeclareLocal(typeof(Type[]));
+                m_typeArrayLocal = m_staticConstructorIlGen.DeclareLocal(typeof(Type[]));                
                 m_staticConstructorIlGen.Emit(OpCodes.Ldnull);
                 m_staticConstructorIlGen.Emit(OpCodes.Stloc, m_typeArrayLocal);
+                m_methodInfoLocal = m_staticConstructorIlGen.DeclareLocal(typeof(MethodInfo));
+                m_staticConstructorIlGen.Emit(OpCodes.Ldnull);
+                m_staticConstructorIlGen.Emit(OpCodes.Stloc, m_methodInfoLocal);
                 
                 m_staticConstructorIlGen.Emit(OpCodes.Newobj, typeof(Hashtable).GetConstructor(Type.EmptyTypes));
-                m_staticConstructorIlGen.Emit(OpCodes.Stsfld, requestNameForHtField);
+                m_staticConstructorIlGen.Emit(OpCodes.Stsfld, requestNameForInfoHtField);
+                m_staticConstructorIlGen.Emit(OpCodes.Newobj, typeof(Hashtable).GetConstructor(Type.EmptyTypes));
+                m_staticConstructorIlGen.Emit(OpCodes.Stsfld, methodInfoForNameHtField);                                
             }
             
             internal void End() {
@@ -245,6 +265,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             private StaticConstructorContext m_staticConstrContext;
             private FieldBuilder m_typetypeField;
             private FieldBuilder m_nameForInfoField;
+            private FieldBuilder m_methodInfoForNameField;
             private ArgSerializerMethodContext m_serializeRequestArgsContext;
             private ArgSerializerMethodContext m_deserializeRequestArgsContext;
             private ArgSerializerMethodContext m_serializeResponseArgsContext;
@@ -273,11 +294,20 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             
             /// <summary>
-            /// contains a Hashtable with key MethodInfo value requestname
+            /// contains a Hashtable with key MethodInfo and value requestname
             /// </summary>
             internal FieldBuilder NameForInfoField {
                 get {
                     return m_nameForInfoField;
+                }
+            }
+
+            /// <summary>
+            /// contains a Hashtable with key requestName and value MethodInfo
+            /// </summary>            
+            internal FieldBuilder MethodInfoForNameField {
+                get {
+                    return m_methodInfoForNameField;
                 }
             }
             
@@ -334,8 +364,13 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                              FieldAttributes.Private | FieldAttributes.InitOnly |
                                                              FieldAttributes.Static);
                 
+                m_methodInfoForNameField = typeBuilder.DefineField("s_InfoForRequestName", typeof(Hashtable),
+                                                             FieldAttributes.Private | FieldAttributes.InitOnly |
+                                                             FieldAttributes.Static);
+                
                 m_staticConstrContext = new StaticConstructorContext(staticConstructor.GetILGenerator());
-                m_staticConstrContext.Setup(m_forType, m_typetypeField, m_nameForInfoField, typeBuilder);
+                m_staticConstrContext.Setup(m_forType, m_typetypeField, m_nameForInfoField, m_methodInfoForNameField,
+                                            typeBuilder);
             }
             
             internal void Complete() {
@@ -637,11 +672,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         private void DefineMethodInfoToNameMapping(MethodInfo method, string mappedName,
-                                                    ArgSerializationGenerationContext context) {
-            string fieldName = ArgumentsSerializer.CACHED_METHOD_INFO_PREFIX + mappedName; // mapped name is unique
-            FieldBuilder field = context.TypeBuilder.DefineField(fieldName, 
-                                            typeof(MethodInfo), FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly);
-            
+                                                    ArgSerializationGenerationContext context) {           
             // init in static constr
             ILGenerator gen = context.StaticConstrContext.Generator;
             gen.Emit(OpCodes.Ldloc, context.StaticConstrContext.ForTypeLocal);
@@ -666,12 +697,19 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                                       typeof(Binder), typeof(Type[]), typeof(ParameterModifier[]) },
                                                     null);
             gen.Emit(OpCodes.Call, getMethodFromType);
-            gen.Emit(OpCodes.Stsfld, field);        
+            gen.Emit(OpCodes.Stloc, context.StaticConstrContext.MethodInfoLocal);            
             
             // insert into hashtable the mapping from methodinfo to idl request name
             gen.Emit(OpCodes.Ldsfld, context.NameForInfoField);
-            gen.Emit(OpCodes.Ldsfld, field); // the methodinfo from above
+            gen.Emit(OpCodes.Ldloc, context.StaticConstrContext.MethodInfoLocal); // key is the methodinfo from above
             gen.Emit(OpCodes.Ldstr, mappedName);
+            gen.Emit(OpCodes.Callvirt, 
+                     typeof(Hashtable).GetProperty("Item", BindingFlags.Public | BindingFlags.Instance).GetSetMethod());            
+            
+            // insert into hashtable the mapping from idl request name to methodinfo
+            gen.Emit(OpCodes.Ldsfld, context.MethodInfoForNameField);
+            gen.Emit(OpCodes.Ldstr, mappedName); // key is the name
+            gen.Emit(OpCodes.Ldloc, context.StaticConstrContext.MethodInfoLocal); // the methodinfo from above
             gen.Emit(OpCodes.Callvirt, 
                      typeof(Hashtable).GetProperty("Item", BindingFlags.Public | BindingFlags.Instance).GetSetMethod());            
         }
@@ -817,10 +855,13 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         private void DefineGetMethodInfoFor(MethodBuilder getMethodInfoFor, ArgSerializationGenerationContext context) {
-            ILGenerator gen = getMethodInfoFor.GetILGenerator();
+            ILGenerator gen = getMethodInfoFor.GetILGenerator();            
+            gen.Emit(OpCodes.Ldsfld, context.MethodInfoForNameField);
             gen.Emit(OpCodes.Ldarg_1); // name argument
-            gen.Emit(OpCodes.Ldsfld, context.TypeTypeField);
-            gen.Emit(OpCodes.Call, ArgumentsSerializer.GET_METHOD_INFO_FOR_INTERNAL_MI);
+            PropertyInfo htItem = 
+                typeof(Hashtable).GetProperty("Item", BindingFlags.Public | BindingFlags.Instance);
+            gen.Emit(OpCodes.Callvirt, htItem.GetGetMethod());
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, typeof(MethodInfo));
             gen.Emit(OpCodes.Ret);            
         }
         
