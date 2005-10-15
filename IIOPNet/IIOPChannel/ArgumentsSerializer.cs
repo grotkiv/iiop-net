@@ -32,6 +32,7 @@
 using System;
 using System.Reflection;
 using System.Collections;
+using System.Runtime.Remoting.Messaging;
 using Ch.Elca.Iiop.Cdr;
 
 namespace Ch.Elca.Iiop.Marshalling {
@@ -58,7 +59,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion SFields
         #region IMethods                        
         
-        public abstract void SerializeRequestArgs(string targetMethod, object[] actual, CdrOutputStream targetStream);
+        public abstract void SerializeRequestArgs(string targetMethod, object[] actual, CdrOutputStream targetStream,
+                                                  LogicalCallContext callContext);
         
         public abstract object[] DeserializeRequestArgs(string targetMethod, CdrInputStream sourceStream,
                                                         out IDictionary contextElements);
@@ -70,6 +72,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                        out object[] outArgs);
         
         public abstract MethodInfo GetMethodInfoFor(string method);
+        
+        public abstract string GetRequestNameFor(MethodInfo method);
         
         #endregion IMethods        
 
