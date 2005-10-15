@@ -247,8 +247,7 @@ namespace Ch.Elca.Iiop.Idl {
         private void AddFromIdlNameAttribute(PropertyBuilder propBuild, string forIdlAttributeName) {
             propBuild.SetCustomAttribute(
                 new FromIdlNameAttribute(forIdlAttributeName).CreateAttributeBuilder());
-        }        
-
+        }
 
         /// <summary>adds a method to a type, setting the attributes on the parameters</summary>
         /// <remarks>forgeign method: should be better on TypeBuilder, but not possible</remarks>
@@ -359,9 +358,9 @@ namespace Ch.Elca.Iiop.Idl {
         /// </summary>
         /// <param name="attrs">MethodAttributes, automatically adds HideBySig and SpecialName</param>
         public MethodBuilder AddPropertySetter(TypeBuilder builder, string propertyName, 
-                                               string forIdlAttributeName,
+                                               string forIdlSetterName,
                                                TypeContainer propertyType, MethodAttributes attrs) {
-            return AddPropertySetterInternal(builder, propertyName, forIdlAttributeName, 
+            return AddPropertySetterInternal(builder, propertyName, forIdlSetterName, 
                                              propertyType, attrs);
         }        
         
@@ -371,7 +370,7 @@ namespace Ch.Elca.Iiop.Idl {
         /// </summary>
         private MethodBuilder AddPropertySetterInternal(TypeBuilder builder,
                                                         string propertyName,
-                                                        string forIdlAttributeName, 
+                                                        string forIdlSetterName, 
                                                         TypeContainer propertyType, 
                                                         MethodAttributes attrs) {
             Type propTypeCls = propertyType.GetSeparatedClsType();
@@ -385,8 +384,8 @@ namespace Ch.Elca.Iiop.Idl {
                 valParam.SetCustomAttribute(propertyType.GetSeparatedAttrs()[j]);
             }
             
-            if (forIdlAttributeName != null) {
-                AddFromIdlNameAttribute(setAccessor, "_set_" + forIdlAttributeName);    
+            if (forIdlSetterName != null) {
+                AddFromIdlNameAttribute(setAccessor, forIdlSetterName);    
             }            
             return setAccessor;                                                                                                                                    
         }
@@ -406,15 +405,15 @@ namespace Ch.Elca.Iiop.Idl {
         /// </summary>
         /// <param name="attrs">MethodAttributes, automatically adds HideBySig and SpecialName</param>
         public MethodBuilder AddPropertyGetter(TypeBuilder builder, string propertyName,
-                                               string forIdlAttributeName,
+                                               string forIdlGetterName,
                                                TypeContainer propertyType, MethodAttributes attrs) {
-            return AddPropertyGetterInternal(builder, propertyName, forIdlAttributeName, 
+            return AddPropertyGetterInternal(builder, propertyName, forIdlGetterName, 
                                              propertyType, attrs);
         }
 
         
         private MethodBuilder AddPropertyGetterInternal(TypeBuilder builder, string propertyName,
-                                                       string forIdlAttributeName, 
+                                                       string forIdlGetterName, 
                                                        TypeContainer propertyType, MethodAttributes attrs) {
             Type propTypeCls = propertyType.GetSeparatedClsType();
             MethodBuilder getAccessor = builder.DefineMethod("get_" + propertyName, 
@@ -426,8 +425,8 @@ namespace Ch.Elca.Iiop.Idl {
             for (int j = 0; j < propertyType.GetSeparatedAttrs().Length; j++) {                
                 retParamGet.SetCustomAttribute(propertyType.GetSeparatedAttrs()[j]);
             }
-            if (forIdlAttributeName != null) {
-                AddFromIdlNameAttribute(getAccessor, "_get_" + forIdlAttributeName);    
+            if (forIdlGetterName != null) {
+                AddFromIdlNameAttribute(getAccessor, forIdlGetterName);    
             }
             return getAccessor;                                                           
         }
