@@ -43,24 +43,75 @@ namespace Ch.Elca.Iiop.Marshalling {
     [CLSCompliant(false)]
     public abstract class ArgumentsSerializer {
         
+        #region Types
+
+        public delegate void SerializeRequestArgsFor(object[] actual, CdrOutputStream targetStream,
+                                                     LogicalCallContext callContext);
+
+        public delegate object[] DeserializeRequestArgsFor(CdrInputStream sourceStream,
+                                                           out IDictionary contextElements);
+        
+        public delegate void SerializeResponseArgsFor(object retValue, object[] outArgs,
+                                                      CdrOutputStream targetStream);
+        
+        public delegate object DeserializeResponseArgsFor(CdrInputStream sourceStream,
+                                                          out object[] outArgs);
+        
+        #endregion Types               
+        #region Constants
+        
+        public const string SER_REQ_ARGS_METHOD_PREFIX = "SerReqArgsFor_";
+        public const string DESER_REQ_ARGS_METHOD_PREFIX = "DeserReqArgsFor_";
+        public const string SER_RESP_ARGS_METHOD_PREFIX = "SerRespArgsFor_";
+        public const string DESER_RESP_ARGS_METHOD_PREFIX = "DeserRespArgsFor_";
+        
+        #endregion Constants
         #region SFields
         
         public static readonly Type ClassType = typeof(ArgumentsSerializer);
+        
+        internal static readonly Type SerializeRequestArgsForType =
+            typeof(SerializeRequestArgsFor);
+
+        internal static readonly Type DeserializeRequestArgsForType =
+            typeof(DeserializeRequestArgsFor);
+
+        internal static readonly Type SerializeResponseArgsForType =
+            typeof(SerializeResponseArgsFor);
+
+        internal static readonly Type DeserializeResponseArgsForType =
+            typeof(DeserializeResponseArgsFor);
                 
         #endregion SFields
         #region IMethods                        
         
-        public abstract void SerializeRequestArgs(string targetMethod, object[] actual, CdrOutputStream targetStream,
-                                                  LogicalCallContext callContext);
+        public void SerializeRequestArgs(string targetMethod, object[] actual, CdrOutputStream targetStream,
+                                         LogicalCallContext callContext) {
+            SerializeRequestArgsFor del = (SerializeRequestArgsFor)Delegate.CreateDelegate(SerializeRequestArgsForType, this,
+                                                   SER_REQ_ARGS_METHOD_PREFIX + targetMethod);
+            del(actual, targetStream, callContext);
+        }
         
-        public abstract object[] DeserializeRequestArgs(string targetMethod, CdrInputStream sourceStream,
-                                                        out IDictionary contextElements);
+        public object[] DeserializeRequestArgs(string targetMethod, CdrInputStream sourceStream,
+                                               out IDictionary contextElements) {
+            DeserializeRequestArgsFor del = (DeserializeRequestArgsFor)Delegate.CreateDelegate(DeserializeRequestArgsForType, this,
+                                                   DESER_REQ_ARGS_METHOD_PREFIX + targetMethod);
+            return del(sourceStream, out contextElements);
+        }
                 
-        public abstract void SerializeResponseArgs(string targetMethod, object retValue, object[] outArgs,
-                                                   CdrOutputStream targetStream);
+        public void SerializeResponseArgs(string targetMethod, object retValue, object[] outArgs,
+                                          CdrOutputStream targetStream) {
+            SerializeResponseArgsFor del = (SerializeResponseArgsFor)Delegate.CreateDelegate(SerializeResponseArgsForType, this,
+                                                   SER_RESP_ARGS_METHOD_PREFIX + targetMethod);
+            del(retValue, outArgs, targetStream);
+        }
         
-        public abstract object DeserializeResponseArgs(string targetMethod, CdrInputStream sourceStream,
-                                                       out object[] outArgs);
+        public object DeserializeResponseArgs(string targetMethod, CdrInputStream sourceStream,
+                                              out object[] outArgs) {
+            DeserializeResponseArgsFor del = (DeserializeResponseArgsFor)Delegate.CreateDelegate(DeserializeResponseArgsForType, this,
+                                                   DESER_RESP_ARGS_METHOD_PREFIX + targetMethod);
+            return del(sourceStream, out outArgs);
+        }
         
         public abstract MethodInfo GetMethodInfoFor(string method);
         
