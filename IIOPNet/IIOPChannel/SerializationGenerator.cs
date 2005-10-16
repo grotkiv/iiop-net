@@ -746,7 +746,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         private Type CreateArgumentsSerialiser(ArgSerializationGenerationContext context, string serTypeName) {
-            if (!(context.ForType.IsInterface || context.ForType.IsMarshalByRef)) {
+            if (!(context.ForType.IsInterface || context.ForType.IsMarshalByRef || context.ForType.Equals(ReflectionHelper.ObjectType))) {
+                // to allow calling e.g. the equals method; allow object type here too and dont throw exception for object type
                 Debug.WriteLine("Can't create an argument serializer for : " + context.ForType.FullName);
                 throw new omg.org.CORBA.BAD_PARAM(745, omg.org.CORBA.CompletionStatus.Completed_MayBe);
             }
