@@ -117,6 +117,15 @@ namespace Ch.Elca.Iiop.Benchmarks {
         public double[] DoubleIdlSeqEcho([IdlSequence(0L)] double[] arg) {
             return arg;
         }
+
+        public IdlStructA EchoStruct(IdlStructA arg) {
+            return arg;
+        }
+
+        public EnumA EchoEnum(EnumA arg) {
+            return arg;
+        }
+
         
         public override object InitializeLifetimeService() {
             // live forever
