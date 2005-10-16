@@ -50,6 +50,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         private static AnySerializer s_anySerializer = new AnySerializer();
         private static TypeCodeSerializer s_tcSerializer = new TypeCodeSerializer();
         private static TypeSerializer s_typeSerializer = new TypeSerializer();
+        private static AbstractInterfaceSerializer s_abstractIfSerializer = new AbstractInterfaceSerializer();
         
         #endregion SFields
         #region IMethods
@@ -98,6 +99,16 @@ namespace Ch.Elca.Iiop.Marshalling {
                                          CdrInputStream sourceStream) {
             return s_typeSerializer.Deserialise(formal, AttributeExtCollection.EmptyCollection, sourceStream);
         }                        
+        
+        protected void SerialiseAbstractIf(Type formal, object actual,
+                                           CdrOutputStream targetStream) {            
+            s_abstractIfSerializer.Serialise(formal, actual, AttributeExtCollection.EmptyCollection, targetStream);
+        }
+        
+        protected object DeserialiseAbstractIf(Type formal,
+                                               CdrInputStream sourceStream) {
+            return s_abstractIfSerializer.Deserialise(formal, AttributeExtCollection.EmptyCollection, sourceStream);
+        }                                
         
         #endregion IMethods
         
