@@ -32,6 +32,7 @@
 using System;
 using System.Diagnostics;
 using System.Collections;
+using System.Collections.Specialized;
 using System.Reflection;
 using System.Reflection.Emit;
 using Ch.Elca.Iiop.Util;
@@ -231,6 +232,10 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         private AssemblyBuilder m_asmBuilder;
         private ModuleBuilder m_modBuilder;
+        
+        private AttributeExtCollection m_oneSeqAttrColl = new AttributeExtCollection(new Attribute[] { new IdlSequenceAttribute(0L),
+                                                                                                       new StringValueAttribute(), 
+                                                                                                       new WideCharAttribute(false) });
 
         #endregion IFields
         #region IConstructors
@@ -255,7 +260,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             m_asmBuilder = System.Threading.Thread.GetDomain().
                 DefineDynamicAssembly(asmname, AssemblyBuilderAccess.RunAndSave);
             m_modBuilder = m_asmBuilder.DefineDynamicModule("dynSerializationHelpers.netmodule", 
-                                                            "dynSerializationHelpers.dll");            
+                                                            "dynSerializationHelpers.dll");                        
         }
         
         private string GetArgumentSerializerTypeName(Type forType) {
@@ -357,8 +362,50 @@ namespace Ch.Elca.Iiop.Marshalling {
                 // move to next parameter
                 // out-args are also part of the actual array -> move to next for those whithout doing something
             }
+            
+            GenerateSerializeContextElements(gen, method, actualLocal, streamLocal, tempForTypeSerDeser);
             gen.Emit(OpCodes.Ret);
         }
+
+        private void GenerateSerializeContextElements(ILGenerator gen, MethodInfo method,
+                                                      LocalBuilder actualLocal, LocalBuilder streamLocal,
+                                                      LocalBuilder tempForTypeSerDeser) {        
+            AttributeExtCollection methodAttrs =
+                ReflectionHelper.GetCustomAttriutesForMethod(method, true,
+                                                             ReflectionHelper.ContextElementAttributeType);
+            if (methodAttrs.Count > 0) {
+                LocalBuilder contextSeqLocal = gen.DeclareLocal(typeof(string[]));
+                gen.Emit(OpCodes.Ldc_I4, methodAttrs.Count * 2);
+                gen.Emit(OpCodes.Newarr, ReflectionHelper.StringType);
+                gen.Emit(OpCodes.Stloc, contextSeqLocal);                
+                for (int i = 0; i < methodAttrs.Count; i++) {
+                    string contextKey =
+                        ((ContextElementAttribute)methodAttrs.GetAttributeAt(i)).ContextElementKey;
+                    // store context key at place i*2
+                    gen.Emit(OpCodes.Ldloc, contextSeqLocal);
+                    gen.Emit(OpCodes.Ldc_I4, i * 2);
+                    gen.Emit(OpCodes.Ldstr, contextKey);
+                    gen.Emit(OpCodes.Stelem_Ref);
+                    // store context Value at place i*2 + 1
+                    gen.Emit(OpCodes.Ldloc, contextSeqLocal);
+                    gen.Emit(OpCodes.Ldc_I4, i * 2 + 1);
+                    gen.Emit(OpCodes.Ldarg_0); // arg0 for GetContextElementFromCallContext
+                    gen.Emit(OpCodes.Ldarg_3); // call context
+                    gen.Emit(OpCodes.Ldstr, contextKey); // context key
+                    gen.Emit(OpCodes.Call,
+                             ArgumentsSerializer.ClassType.
+                                 GetMethod("GetContextElementFromCallContext", 
+                                           BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance));
+                    gen.Emit(OpCodes.Stelem_Ref);
+                }
+                // serialise the context seq                
+                gen.Emit(OpCodes.Ldloc, contextSeqLocal);
+                gen.Emit(OpCodes.Stloc, actualLocal);
+                s_marshaller.GenerateMarshallingCodeFor(typeof(string[]), m_oneSeqAttrColl, gen, actualLocal,
+                                                        streamLocal, tempForTypeSerDeser, this);
+            }    
+        }
+        
         
         /// <summary>
         /// generates the code for demarshalling requests arguments for a call to the given method
@@ -406,8 +453,93 @@ namespace Ch.Elca.Iiop.Marshalling {
                 } // else: null for an out parameter
             }           
             
+            // Deserialise context elements
+            GenerateDeserializeContextElements(gen, method, streamLocal, tempForTypeSerDeser);
+            
             gen.Emit(OpCodes.Ldloc, resultLocal); // push result onto the stack
             gen.Emit(OpCodes.Ret);
+        }
+        
+        private void GenerateDeserializeContextElements(ILGenerator gen, MethodInfo method,
+                                                        LocalBuilder streamLocal, LocalBuilder tempForTypeSerDeser) {
+            AttributeExtCollection methodAttrs =
+                ReflectionHelper.GetCustomAttriutesForMethod(method, true,
+                                                             ReflectionHelper.ContextElementAttributeType);
+            if (methodAttrs.Count > 0) {
+                LocalBuilder contextSeqLocal = gen.DeclareLocal(typeof(string[]));
+                
+                s_marshaller.GenerateUnmarshallingCodeFor(typeof(string[]), m_oneSeqAttrColl, gen,
+                                                          streamLocal, tempForTypeSerDeser, this);
+                IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, typeof(string[]));
+                gen.Emit(OpCodes.Stloc, contextSeqLocal);
+                
+                // store a new HybridDictionary in contextElements out param
+                gen.Emit(OpCodes.Ldarg_2);
+                gen.Emit(OpCodes.Newobj, typeof(HybridDictionary).GetConstructor(Type.EmptyTypes));
+                gen.Emit(OpCodes.Stind_Ref);
+                
+                // compare, if number of context element is a multiple of 2 (i.e. contextElems.Length % 2 == 0)
+                Label lengthCheckOk = gen.DefineLabel();
+                gen.Emit(OpCodes.Ldloc, contextSeqLocal);
+                gen.Emit(OpCodes.Ldlen);
+                gen.Emit(OpCodes.Conv_I4);
+                gen.Emit(OpCodes.Ldc_I4_2);
+                gen.Emit(OpCodes.Rem);
+                gen.Emit(OpCodes.Brfalse, lengthCheckOk); // i.e. branch if reminder is 0
+                // if not 0, throw exception:
+                gen.Emit(OpCodes.Ldc_I4, 67);
+                gen.Emit(OpCodes.Ldc_I4, (int)omg.org.CORBA.CompletionStatus.Completed_No);
+                gen.Emit(OpCodes.Newobj, typeof(omg.org.CORBA.MARSHAL).GetConstructor(new Type[] { ReflectionHelper.Int32Type,
+                                                                                          typeof(omg.org.CORBA.CompletionStatus) } ));
+                gen.Emit(OpCodes.Throw);
+                // now check and extract deserialised context elements                
+                gen.MarkLabel(lengthCheckOk);
+                LocalBuilder loopVar = gen.DeclareLocal(ReflectionHelper.Int32Type);
+                gen.Emit(OpCodes.Ldc_I4_0);
+                gen.Emit(OpCodes.Stloc, loopVar);
+                Label loopCompare = gen.DefineLabel();                
+                gen.Emit(OpCodes.Br, loopCompare);
+                Label loopBegin = gen.DefineLabel();
+                gen.MarkLabel(loopBegin);
+                Label loopIncrement = gen.DefineLabel();
+                // loop over received elements, and check if key is specified in signature; otherwise ignore element
+                foreach (ContextElementAttribute attr in methodAttrs) {
+                    // compare key strings
+                    gen.Emit(OpCodes.Ldstr, attr.ContextElementKey);
+                    gen.Emit(OpCodes.Ldloc, contextSeqLocal);
+                    gen.Emit(OpCodes.Ldloc, loopVar);
+                    gen.Emit(OpCodes.Ldelem_Ref);                    
+                    gen.Emit(OpCodes.Call, ReflectionHelper.StringType.GetMethod("op_Equality", BindingFlags.Static | BindingFlags.Public));
+                    Label nextCheck = gen.DefineLabel();
+                    gen.Emit(OpCodes.Brfalse, nextCheck);
+                    // store in dictionary
+                    gen.Emit(OpCodes.Ldarg_2);
+                    gen.Emit(OpCodes.Ldind_Ref); // array
+                    gen.Emit(OpCodes.Ldstr, attr.ContextElementKey); // key
+                    gen.Emit(OpCodes.Ldloc, contextSeqLocal); // val
+                    gen.Emit(OpCodes.Ldloc, loopVar);
+                    gen.Emit(OpCodes.Ldc_I4_1);
+                    gen.Emit(OpCodes.Add);
+                    gen.Emit(OpCodes.Ldelem_Ref); // val froms seq
+                    gen.Emit(OpCodes.Callvirt, typeof(IDictionary).GetMethod("set_Item", BindingFlags.Public | BindingFlags.Instance));                    
+                    gen.Emit(OpCodes.Br, loopIncrement); // ok, branch to loop increment                    
+                    gen.MarkLabel(nextCheck);                    
+                }
+                gen.Emit(OpCodes.Br, loopIncrement); // ok, branch to loop increment
+                gen.MarkLabel(loopIncrement);
+                // increment loop var
+                gen.Emit(OpCodes.Ldloc, loopVar);
+                gen.Emit(OpCodes.Ldc_I4_2);
+                gen.Emit(OpCodes.Add);
+                gen.Emit(OpCodes.Stloc, loopVar);
+                // compare loop var
+                gen.MarkLabel(loopCompare);
+                gen.Emit(OpCodes.Ldloc, loopVar);
+                gen.Emit(OpCodes.Ldloc, contextSeqLocal);
+                gen.Emit(OpCodes.Ldlen);
+                gen.Emit(OpCodes.Conv_I4);
+                gen.Emit(OpCodes.Blt, loopBegin);                            
+            }            
         }
 
         /// <summary>

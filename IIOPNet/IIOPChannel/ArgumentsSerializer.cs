@@ -34,6 +34,7 @@ using System.Reflection;
 using System.Collections;
 using System.Runtime.Remoting.Messaging;
 using Ch.Elca.Iiop.Cdr;
+using Ch.Elca.Iiop.Idl;
 
 namespace Ch.Elca.Iiop.Marshalling {
 
@@ -116,6 +117,14 @@ namespace Ch.Elca.Iiop.Marshalling {
         public abstract MethodInfo GetMethodInfoFor(string method);
         
         public abstract string GetRequestNameFor(MethodInfo method);
+                       
+        protected string GetContextElementFromCallContext(LogicalCallContext callContext, string contextKey) {
+            if (callContext.GetData(contextKey) != null) {
+                return callContext.GetData(contextKey).ToString();
+            } else {
+                return String.Empty;
+            }
+        }
         
         #endregion IMethods        
                 
