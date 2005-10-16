@@ -32,6 +32,7 @@
 using System;
 using System.Collections;
 using Ch.Elca.Iiop.Cdr;
+using Ch.Elca.Iiop.Util;
 
 namespace Ch.Elca.Iiop.Marshalling {
 
@@ -45,7 +46,10 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         public static readonly Type ClassType = typeof(TypeSerializationHelper);
         
-        private ObjRefSerializer m_objRefSerializer = new ObjRefSerializer();
+        private static ObjRefSerializer s_objRefSerializer = new ObjRefSerializer();
+        private static AnySerializer s_anySerializer = new AnySerializer();
+        private static TypeCodeSerializer s_tcSerializer = new TypeCodeSerializer();
+        private static TypeSerializer s_typeSerializer = new TypeSerializer();
         
         #endregion SFields
         #region IMethods
@@ -57,13 +61,43 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         protected void SerialiseObjRef(Type formal, object actual,
                                        CdrOutputStream targetStream) {            
-            m_objRefSerializer.Serialise(formal, actual, null, targetStream);
+            s_objRefSerializer.Serialise(formal, actual, AttributeExtCollection.EmptyCollection, targetStream);
         }
         
         protected object DeserialiseObjRef(Type formal,
                                            CdrInputStream sourceStream) {            
-            return m_objRefSerializer.Deserialise(formal, null, sourceStream);
+            return s_objRefSerializer.Deserialise(formal, AttributeExtCollection.EmptyCollection, sourceStream);
         }
+        
+        protected void SerialiseAny(Type formal, object actual,
+                                    CdrOutputStream targetStream) {            
+            s_anySerializer.Serialise(formal, actual, AttributeExtCollection.EmptyCollection, targetStream);
+        }
+        
+        protected object DeserialiseAny(Type formal,
+                                        CdrInputStream sourceStream) {
+            return s_anySerializer.Deserialise(formal, AttributeExtCollection.EmptyCollection, sourceStream);
+        }        
+        
+        protected void SerialiseTC(Type formal, object actual,
+                                    CdrOutputStream targetStream) {            
+            s_tcSerializer.Serialise(formal, actual, AttributeExtCollection.EmptyCollection, targetStream);
+        }
+        
+        protected object DeserialiseTC(Type formal,
+                                        CdrInputStream sourceStream) {
+            return s_tcSerializer.Deserialise(formal, AttributeExtCollection.EmptyCollection, sourceStream);
+        }                
+        
+        protected void SerialiseType(Type formal, object actual,
+                                     CdrOutputStream targetStream) {            
+            s_typeSerializer.Serialise(formal, actual, AttributeExtCollection.EmptyCollection, targetStream);
+        }
+        
+        protected object DeserialiseType(Type formal,
+                                         CdrInputStream sourceStream) {
+            return s_typeSerializer.Deserialise(formal, AttributeExtCollection.EmptyCollection, sourceStream);
+        }                        
         
         #endregion IMethods
         
