@@ -1403,7 +1403,29 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override bool IsSimpleTypeSerializer() {
             return false;
         }        
-
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {            
+            MethodInfo serMethod = TypeSerializationHelper.ClassType.GetMethod("SerialiseAbstractVt", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Call, serMethod);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            MethodInfo deserMethod = TypeSerializationHelper.ClassType.GetMethod("DeserialiseAbstractVt", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Call, deserMethod);
+        }
 
         #endregion IMethods
 
