@@ -71,16 +71,16 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         public static readonly Type ClassType = typeof(ArgumentsSerializer);
         
-        internal static readonly Type SerializeRequestArgsForType =
+        public static readonly Type SerializeRequestArgsForType =
             typeof(SerializeRequestArgsFor);
 
-        internal static readonly Type DeserializeRequestArgsForType =
+        public static readonly Type DeserializeRequestArgsForType =
             typeof(DeserializeRequestArgsFor);
 
-        internal static readonly Type SerializeResponseArgsForType =
+        public static readonly Type SerializeResponseArgsForType =
             typeof(SerializeResponseArgsFor);
 
-        internal static readonly Type DeserializeResponseArgsForType =
+        public static readonly Type DeserializeResponseArgsForType =
             typeof(DeserializeResponseArgsFor);
                 
         #endregion SFields
@@ -88,31 +88,36 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         public void SerializeRequestArgs(string targetMethod, object[] actual, CdrOutputStream targetStream,
                                          LogicalCallContext callContext) {
-            SerializeRequestArgsFor del = (SerializeRequestArgsFor)Delegate.CreateDelegate(SerializeRequestArgsForType, this,
-                                                   SER_REQ_ARGS_METHOD_PREFIX + targetMethod);
+            SerializeRequestArgsFor del = 
+                (SerializeRequestArgsFor)GetDelegateFor(SER_REQ_ARGS_METHOD_PREFIX + targetMethod);
             del(actual, targetStream, callContext);
         }
         
         public object[] DeserializeRequestArgs(string targetMethod, CdrInputStream sourceStream,
                                                out IDictionary contextElements) {
-            DeserializeRequestArgsFor del = (DeserializeRequestArgsFor)Delegate.CreateDelegate(DeserializeRequestArgsForType, this,
-                                                   DESER_REQ_ARGS_METHOD_PREFIX + targetMethod);
+            DeserializeRequestArgsFor del = 
+                (DeserializeRequestArgsFor)GetDelegateFor(DESER_REQ_ARGS_METHOD_PREFIX + targetMethod);
             return del(sourceStream, out contextElements);
         }
                 
         public void SerializeResponseArgs(string targetMethod, object retValue, object[] outArgs,
                                           CdrOutputStream targetStream) {
-            SerializeResponseArgsFor del = (SerializeResponseArgsFor)Delegate.CreateDelegate(SerializeResponseArgsForType, this,
-                                                   SER_RESP_ARGS_METHOD_PREFIX + targetMethod);
+            SerializeResponseArgsFor del = 
+                (SerializeResponseArgsFor)GetDelegateFor(SER_RESP_ARGS_METHOD_PREFIX + targetMethod);
             del(retValue, outArgs, targetStream);
         }
         
         public object DeserializeResponseArgs(string targetMethod, CdrInputStream sourceStream,
                                               out object[] outArgs) {
-            DeserializeResponseArgsFor del = (DeserializeResponseArgsFor)Delegate.CreateDelegate(DeserializeResponseArgsForType, this,
-                                                   DESER_RESP_ARGS_METHOD_PREFIX + targetMethod);
+            DeserializeResponseArgsFor del = 
+                (DeserializeResponseArgsFor)GetDelegateFor(DESER_RESP_ARGS_METHOD_PREFIX + targetMethod);
             return del(sourceStream, out outArgs);
         }
+        
+        /// <summary>
+        /// retrieves the cached delegate for the given delegate id.
+        /// </summary>
+        protected abstract Delegate GetDelegateFor(string delegateId);
         
         public abstract MethodInfo GetMethodInfoFor(string method);
         

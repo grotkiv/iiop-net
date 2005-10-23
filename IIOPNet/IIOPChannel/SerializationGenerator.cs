@@ -134,15 +134,87 @@ namespace Ch.Elca.Iiop.Marshalling {
             
         }
         
+        private class InstanceConstructorContext {
+            
+            private static MethodInfo s_createDelegateMethod = 
+                typeof(Delegate).GetMethod("CreateDelegate", BindingFlags.Public | BindingFlags.Static,
+                                           null, new Type[] { ReflectionHelper.TypeType, ReflectionHelper.ObjectType, ReflectionHelper.StringType },
+                                           null);
+                                                                                                           
+            
+            private ILGenerator m_instanceConstructorIlGen;
+            
+            private LocalBuilder m_delegateCacheLocal;
+                       
+            internal InstanceConstructorContext(ILGenerator gen) {
+                m_instanceConstructorIlGen = gen;
+            }
+            
+            internal ILGenerator Generator {
+                get {
+                    return m_instanceConstructorIlGen;
+                }
+            }
+            
+            /// <summary>
+            /// the local containing the type for which the arg ser is.
+            /// </summary>
+            internal LocalBuilder DelegateCacheLocal {
+                get {
+                    if (m_delegateCacheLocal == null) {
+                        // not yet setup
+                        throw new omg.org.CORBA.INTERNAL(4767, omg.org.CORBA.CompletionStatus.Completed_MayBe);
+                    }
+                    return m_delegateCacheLocal;                    
+                }
+            }
+                        
+            internal void Setup(FieldBuilder serDeserDelegatesField) {                
+                m_instanceConstructorIlGen.Emit(OpCodes.Ldarg_0);
+                m_instanceConstructorIlGen.Emit(OpCodes.Newobj, typeof(Hashtable).GetConstructor(Type.EmptyTypes));
+                m_instanceConstructorIlGen.Emit(OpCodes.Stfld, serDeserDelegatesField);
+                
+                m_delegateCacheLocal = m_instanceConstructorIlGen.DeclareLocal(typeof(Hashtable));
+                m_instanceConstructorIlGen.Emit(OpCodes.Ldarg_0);
+                m_instanceConstructorIlGen.Emit(OpCodes.Ldfld, serDeserDelegatesField);
+                m_instanceConstructorIlGen.Emit(OpCodes.Stloc, m_delegateCacheLocal);
+            }
+            
+            internal void EmitCacheDelegate(string cachedDelegateFieldTypeName, string targetMethod)  {
+                // hashtable
+                m_instanceConstructorIlGen.Emit(OpCodes.Ldloc, m_delegateCacheLocal);
+                // key
+                m_instanceConstructorIlGen.Emit(OpCodes.Ldstr, targetMethod);
+                // val
+                FieldInfo delegateTypeField =
+                    ArgumentsSerializer.ClassType.GetField(cachedDelegateFieldTypeName, 
+                                                           BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                m_instanceConstructorIlGen.Emit(OpCodes.Ldsfld, delegateTypeField);
+                m_instanceConstructorIlGen.Emit(OpCodes.Ldarg_0);
+                m_instanceConstructorIlGen.Emit(OpCodes.Ldstr, targetMethod);
+                m_instanceConstructorIlGen.Emit(OpCodes.Call, s_createDelegateMethod);
+                
+                m_instanceConstructorIlGen.Emit(OpCodes.Callvirt, 
+                     typeof(Hashtable).GetProperty("Item", BindingFlags.Public | BindingFlags.Instance).GetSetMethod());                
+            }
+            
+            internal void End() {
+                m_instanceConstructorIlGen.Emit(OpCodes.Ret);
+            }
+            
+        }        
+        
         private class ArgSerializationGenerationContext {           
             
             private Type m_forType;
             private TypeBuilder m_typeBuilder;
             
             private StaticConstructorContext m_staticConstrContext;
+            private InstanceConstructorContext m_instanceContrContext;
             private FieldBuilder m_typetypeField;
             private FieldBuilder m_nameForInfoField;
             private FieldBuilder m_methodInfoForNameField;
+            private FieldBuilder m_serDeserDelegatesField;
         
             internal ArgSerializationGenerationContext(Type forType) {
                 m_forType = forType;
@@ -184,13 +256,26 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             }
             
+            internal FieldBuilder SerDeserDelegatesField {
+                get {            
+                    return m_serDeserDelegatesField;
+                }
+            }
+            
             internal StaticConstructorContext StaticConstrContext {
                 get {
                     return m_staticConstrContext;
                 }
             }
+            
+            internal InstanceConstructorContext InstanceConstrContext {
+                get {
+                    return m_instanceContrContext;
+                }
+            }
                         
             internal void InitalizeContext(ConstructorBuilder staticConstructor,
+                                           ConstructorBuilder instanceConstructor,
                                            TypeBuilder typeBuilder) {
                 m_typeBuilder = typeBuilder;
                 m_typetypeField = typeBuilder.DefineField("ClassType", ReflectionHelper.TypeType,
@@ -208,10 +293,18 @@ namespace Ch.Elca.Iiop.Marshalling {
                 m_staticConstrContext = new StaticConstructorContext(staticConstructor.GetILGenerator());
                 m_staticConstrContext.Setup(m_forType, m_typetypeField, m_nameForInfoField, m_methodInfoForNameField,
                                             typeBuilder);
+                
+                m_serDeserDelegatesField = typeBuilder.DefineField("m_serDeserdelegates", typeof(Hashtable),
+                                                                   FieldAttributes.Private | FieldAttributes.InitOnly);
+
+                
+                m_instanceContrContext = new InstanceConstructorContext(instanceConstructor.GetILGenerator());
+                m_instanceContrContext.Setup(m_serDeserDelegatesField);
             }
             
             internal void Complete() {
                 m_staticConstrContext.End();
+                m_instanceContrContext.End();
             }
             
         }
@@ -731,11 +824,29 @@ namespace Ch.Elca.Iiop.Marshalling {
             gen.Emit(OpCodes.Callvirt, 
                      typeof(Hashtable).GetProperty("Item", BindingFlags.Public | BindingFlags.Instance).GetSetMethod());            
         }
+        
+        private void CacheDelegatesToSerDeserMethods(MethodBuilder serReqArgs, MethodBuilder deserReqArgs, 
+                                                     MethodBuilder serRespArgs, MethodBuilder deserRespArgs,
+                                                     ArgSerializationGenerationContext context) {
+            // cache the delegate for serReqArgs
+            context.InstanceConstrContext.EmitCacheDelegate("SerializeRequestArgsForType",
+                                                            serReqArgs.Name);
+            // cache the delegate for serReqArgs
+            context.InstanceConstrContext.EmitCacheDelegate("DeserializeRequestArgsForType",
+                                                            deserReqArgs.Name);
+            // cache the delegate for serReqArgs
+            context.InstanceConstrContext.EmitCacheDelegate("SerializeResponseArgsForType",
+                                                            serRespArgs.Name);
+            // cache the delegate for serReqArgs
+            context.InstanceConstrContext.EmitCacheDelegate("DeserializeResponseArgsForType",
+                                                            deserRespArgs.Name);                    
+        }
+
                
         private void GenerateArgumentSerialisationsForMethod(ArgSerializationGenerationContext context,
                                                              MethodInfo method, string mappedName) {
                        
-                DefineMethodInfoToNameMapping(method, mappedName, context);
+                DefineMethodInfoToNameMapping(method, mappedName, context);                
                 
                 // generate the ser/deser methods for the passed method.                
 
@@ -799,6 +910,9 @@ namespace Ch.Elca.Iiop.Marshalling {
                 deserRespArgs.DefineParameter(2, ParameterAttributes.Out, "outArgs");                
                 
                 GenerateDeserializeResponseArgsForMethod(deserRespArgs.GetILGenerator(), method);
+                
+                CacheDelegatesToSerDeserMethods(serReqArgs, deserReqArgs, serRespArgs, deserRespArgs,
+                                                context);
         }        
         
         /// <summary>
@@ -862,6 +976,18 @@ namespace Ch.Elca.Iiop.Marshalling {
             }            
         }
         
+        private void DefineGetCachedDelegate(MethodBuilder getCachedDelegate, ArgSerializationGenerationContext context) {
+            ILGenerator gen = getCachedDelegate.GetILGenerator();            
+            gen.Emit(OpCodes.Ldarg_0);
+            gen.Emit(OpCodes.Ldfld, context.SerDeserDelegatesField);
+            gen.Emit(OpCodes.Ldarg_1); // name argument
+            PropertyInfo htItem = 
+                typeof(Hashtable).GetProperty("Item", BindingFlags.Public | BindingFlags.Instance);
+            gen.Emit(OpCodes.Callvirt, htItem.GetGetMethod());
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, typeof(Delegate));
+            gen.Emit(OpCodes.Ret);
+        }        
+        
         private void DefineGetMethodInfoFor(MethodBuilder getMethodInfoFor, ArgSerializationGenerationContext context) {
             ILGenerator gen = getMethodInfoFor.GetILGenerator();            
             gen.Emit(OpCodes.Ldsfld, context.MethodInfoForNameField);
@@ -901,10 +1027,12 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                                               MethodAttributes.HideBySig,
                                                                               CallingConventions.Standard,
                                                                               Type.EmptyTypes);
-            
-            resultBuilder.DefineDefaultConstructor(MethodAttributes.Public);
+            ConstructorBuilder instanceConstr =
+                resultBuilder.DefineConstructor(MethodAttributes.Public | MethodAttributes.HideBySig,
+                                                CallingConventions.Standard, Type.EmptyTypes);
             
             context.InitalizeContext(staticConstr,
+                                     instanceConstr,
                                      resultBuilder);
             DefineArgumentsSerialiserMethods(context);
             
@@ -924,6 +1052,14 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                                         new Type[] { typeof(MethodInfo) });
             
             DefineGetRequestNameForMethodInfo(getRequestNameFor, context);
+            
+            // protected abstract Delegate GetDelegateFor(string delegateId);
+            MethodBuilder getCachedDelegate = resultBuilder.DefineMethod("GetDelegateFor",
+                                                                        MethodAttributes.Family | MethodAttributes.Virtual |
+                                                                        MethodAttributes.Final | MethodAttributes.HideBySig,
+                                                                        typeof(Delegate),
+                                                                        new Type[] { ReflectionHelper.StringType });            
+            DefineGetCachedDelegate(getCachedDelegate, context);
             
             context.Complete();
     
