@@ -56,7 +56,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                       CdrOutputStream targetStream);
         
         public delegate object DeserializeResponseArgsFor(CdrInputStream sourceStream,
-                                                          out object[] outArgs);
+                                                          out object[] outArgs);                        
         
         #endregion Types               
         #region Constants
@@ -84,6 +84,12 @@ namespace Ch.Elca.Iiop.Marshalling {
             typeof(DeserializeResponseArgsFor);
                 
         #endregion SFields
+        #region IConstructors
+        
+        protected ArgumentsSerializer() {        
+        }
+        
+        #endregion IConstructors
         #region IMethods                        
         
         public void SerializeRequestArgs(string targetMethod, object[] actual, CdrOutputStream targetStream,
