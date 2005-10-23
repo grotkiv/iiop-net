@@ -170,6 +170,12 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
                         
             internal void Setup(FieldBuilder serDeserDelegatesField) {                
+                // base constructor
+                m_instanceConstructorIlGen.Emit(OpCodes.Ldarg_0);
+                m_instanceConstructorIlGen.Emit(OpCodes.Call, 
+                                                ArgumentsSerializer.ClassType.GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance,
+                                                                                             null, Type.EmptyTypes, null));
+                // delegate hashtable                
                 m_instanceConstructorIlGen.Emit(OpCodes.Ldarg_0);
                 m_instanceConstructorIlGen.Emit(OpCodes.Newobj, typeof(Hashtable).GetConstructor(Type.EmptyTypes));
                 m_instanceConstructorIlGen.Emit(OpCodes.Stfld, serDeserDelegatesField);
