@@ -236,6 +236,11 @@ namespace Ch.Elca.Iiop.Marshalling {
         private AttributeExtCollection m_oneSeqAttrColl = new AttributeExtCollection(new Attribute[] { new IdlSequenceAttribute(0L),
                                                                                                        new StringValueAttribute(), 
                                                                                                        new WideCharAttribute(false) });
+        
+        /// <summary>
+        /// caches the created arguments-serializers, because Activator.CreateInstance is an expensive operation.
+        /// </summary>        
+        private Hashtable /* <Type, ArgumentsSerializer> */ m_argumentsSerializers = new Hashtable();
 
         #endregion IFields
         #region IConstructors
@@ -292,15 +297,17 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal ArgumentsSerializer GetArgumentsSerialiser(Type forType) {
             string argSerTypeName = GetArgumentSerializerTypeName(forType);
             lock(this) {
-                Type ser = m_asmBuilder.GetType(argSerTypeName);
+                ArgumentsSerializer ser = (ArgumentsSerializer)m_argumentsSerializers[forType];
                 if (ser == null) {
-                    ser = CreateArgumentsSerialiser(new ArgSerializationGenerationContext(forType),
-                                                    argSerTypeName);
+                    Type serType = CreateArgumentsSerialiser(new ArgSerializationGenerationContext(forType),
+                                                             argSerTypeName);
+                    ser = (ArgumentsSerializer)Activator.CreateInstance(serType);
+                    m_argumentsSerializers[forType] = ser;
                 }
                 if (forType.Name == "_XYZYu") {
                     m_asmBuilder.Save("dynSerializationHelpers.dll");
                 }
-                return (ArgumentsSerializer)Activator.CreateInstance(ser);
+                return ser;
             }
         }
         
