@@ -92,14 +92,22 @@ namespace Ch.Elca.Iiop.Marshalling {
                 serialiser.GenerateSerialisationCode(formal, attributes, gen, actualObject, targetStream,
                                                      temporaryLocal, helperTypeGenerator);
             } else {
-                Type helperType =
-                    helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser);
-                // call the instance serialization helper
-                gen.Emit(OpCodes.Newobj, helperType.GetConstructor(Type.EmptyTypes));
-                gen.Emit(OpCodes.Ldloc, actualObject);
-                gen.Emit(OpCodes.Ldloc, targetStream);
-                gen.Emit(OpCodes.Callvirt, helperType.GetMethod("SerializeInstance", BindingFlags.Public | BindingFlags.Instance));
+                GenerateInstanceMarshallingCode(formal, attributes, gen, serialiser,
+                                                actualObject, targetStream, helperTypeGenerator);
             }
+        }
+        
+        internal void GenerateInstanceMarshallingCode(Type formal, AttributeExtCollection attributes, 
+                                                      ILGenerator gen, Serialiser serialiser, 
+                                                      LocalBuilder actualObject, LocalBuilder targetStream,
+                                                      SerializationGenerator helperTypeGenerator) {
+            Type helperType =
+                helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser);
+            // call the instance serialization helper
+            gen.Emit(OpCodes.Newobj, helperType.GetConstructor(Type.EmptyTypes));
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Callvirt, helperType.GetMethod("SerializeInstance", BindingFlags.Public | BindingFlags.Instance));            
         }
         
         /// <summary>
@@ -118,14 +126,22 @@ namespace Ch.Elca.Iiop.Marshalling {
                 serialiser.GenerateDeserialisationCode(formalNew, attributes, gen, sourceStream,
                                                        temporaryLocal, helperTypeGenerator);
             } else {
-                Type helperType =
-                    helperTypeGenerator.GetInstanceSerialiser(formalNew, attributes, serialiser);
-                // call the instance serialization helper
-                gen.Emit(OpCodes.Newobj, helperType.GetConstructor(Type.EmptyTypes));                
-                gen.Emit(OpCodes.Ldloc, sourceStream);
-                gen.Emit(OpCodes.Callvirt, helperType.GetMethod("DeserializeInstance", BindingFlags.Public | BindingFlags.Instance));                
+                GenerateInstanceUnmarshallingCodeFor(formalNew, attributes, gen,
+                                                     serialiser, sourceStream, helperTypeGenerator);
             }
             // TODO: custom marshalling support; e.g. call ArgumentSerializer base class method
+        }
+        
+        internal void GenerateInstanceUnmarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
+                                                           Serialiser serialiser,
+                                                           LocalBuilder sourceStream,                                                           
+                                                           SerializationGenerator helperTypeGenerator) {
+            Type helperType =
+                helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser);
+            // call the instance serialization helper
+            gen.Emit(OpCodes.Newobj, helperType.GetConstructor(Type.EmptyTypes));                
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, helperType.GetMethod("DeserializeInstance", BindingFlags.Public | BindingFlags.Instance));                
         }
         
         
