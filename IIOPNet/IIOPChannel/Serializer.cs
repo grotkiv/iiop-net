@@ -1090,25 +1090,26 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IConstructors
         #region IMethods
         
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                         CdrOutputStream targetStream) {
+        private void CheckFormalIsBoxedValueType(Type formal) {
             if (!formal.IsSubclassOf(ReflectionHelper.BoxedValueBaseType)) { 
                 // BoxedValueSerializer can only serialize formal types, 
                 // which are subclasses of BoxedValueBase
                 throw new INTERNAL(10041, CompletionStatus.Completed_MayBe);
-            }
-
-            if (m_convertMultiDimArray) {
-                // actual is a multi dimensional array, which must be first converted to a jagged array
-                if ((actual != null) && (!actual.GetType().IsArray) && (!(actual.GetType().GetArrayRank() > 1))) {
-                    throw new BAD_PARAM(9004, CompletionStatus.Completed_MayBe);
-                }
-                actual = BoxedArrayHelper.ConvertMoreDimToNestedOneDim((Array)actual);
-            }
+            }            
+        }
+        
+        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+                                         CdrOutputStream targetStream) {
+            CheckFormalIsBoxedValueType(formal);
 
             // perform a boxing
             object boxed = null;
             if (actual != null) {
+                if (m_convertMultiDimArray) {
+                    // actual is a multi dimensional array, which must be first converted to a jagged array
+                    actual = 
+                        BoxedArrayHelper.ConvertMoreDimToNestedOneDimChecked(actual);
+                }
                 boxed = Activator.CreateInstance(formal, new object[] { actual } );
             }
             m_valueSer.Serialise(formal, boxed, attributes, targetStream);
@@ -1117,33 +1118,98 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override object Deserialise(Type formal, AttributeExtCollection attributes, 
                                              CdrInputStream sourceStream) {
             Debug.WriteLine("deserialise boxed value, formal: " + formal);
-            if (!formal.IsSubclassOf(ReflectionHelper.BoxedValueBaseType)) { 
-                // BoxedValueSerializer can only serialize formal types,
-                // which are subclasses of BoxedValueBase
-                throw new INTERNAL(10041, CompletionStatus.Completed_MayBe);
-            }
+            CheckFormalIsBoxedValueType(formal);
 
             BoxedValueBase boxedResult = (BoxedValueBase) m_valueSer.Deserialise(formal, attributes, sourceStream);
             object result = null;
             if (boxedResult != null) {
                 // perform an unboxing
                 result = boxedResult.Unbox();
-            }
-
-            if (m_convertMultiDimArray) {
-                // result is a jagged arary, which must be converted to a true multidimensional array
-                if ((result != null) && (!result.GetType().IsArray)) {
-                    throw new BAD_PARAM(9004, CompletionStatus.Completed_MayBe);
-                }
-                result = BoxedArrayHelper.ConvertNestedOneDimToMoreDim((Array)result);
-            }
+                if (m_convertMultiDimArray) {
+                    // result is a jagged arary, which must be converted to a true multidimensional array
+                    result = BoxedArrayHelper.ConvertNestedOneDimToMoreDimChecked(result);
+                }                
+            }         
 
             Debug.WriteLine("unboxed result of boxedvalue-ser: " + result);
             return result;
         }
         
         internal override bool IsSimpleTypeSerializer() {
-            return false;
+            return true;
+        }        
+        
+        private ConstructorInfo FindBestBoxedValConstructor(Type formal) {
+            ConstructorInfo[] constructors =
+                formal.GetConstructors();
+            for (int i = 0; i < constructors.Length; i++) {
+                if (constructors[i].GetParameters().Length == 1) {
+                    return constructors[i];
+                }
+            }
+            throw new INTERNAL(7543, CompletionStatus.Completed_MayBe);
+        }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            CheckFormalIsBoxedValueType(formal);
+                       
+            // if actualObject is != null, box it
+            Label isNull = gen.DefineLabel();
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Brfalse, isNull);            
+            // != null, check if needed to convert array
+            if (m_convertMultiDimArray) {                
+                gen.Emit(OpCodes.Ldloc, actualObject);
+                gen.Emit(OpCodes.Call, 
+                         typeof(BoxedArrayHelper).GetMethod("ConvertMoreDimToNestedOneDimChecked",
+                                                            BindingFlags.Static | BindingFlags.Public));
+                gen.Emit(OpCodes.Stloc, actualObject);
+            }            
+            // != null -> box            
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            ConstructorInfo ctr = FindBestBoxedValConstructor(formal);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ctr.GetParameters()[0].ParameterType);
+            gen.Emit(OpCodes.Newobj, ctr);
+            gen.Emit(OpCodes.Stloc, actualObject);
+            gen.MarkLabel(isNull);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            marshaller.GenerateInstanceMarshallingCode(formal, attributes, gen, m_valueSer, 
+                                                       actualObject, targetStream, 
+                                                       helperTypeGenerator);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            CheckFormalIsBoxedValueType(formal);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            marshaller.GenerateInstanceUnmarshallingCodeFor(formal, attributes, gen,
+                                                            m_valueSer, sourceStream, helperTypeGenerator);
+            // store result in temp var
+            gen.Emit(OpCodes.Stloc, temporaryLocal);
+            Label isNull = gen.DefineLabel();
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            gen.Emit(OpCodes.Brfalse, isNull);
+            // != null, perform unboxing
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.BoxedValueBaseType);
+            gen.Emit(OpCodes.Call,
+                     ReflectionHelper.BoxedValueBaseType.GetMethod("Unbox", 
+                                                                   BindingFlags.Public | BindingFlags.Instance));
+            // check if result is a jagged arary, which must be converted to a true multidimensional array
+            if (m_convertMultiDimArray) {                
+                gen.Emit(OpCodes.Call,
+                         typeof(BoxedArrayHelper).GetMethod("ConvertNestedOneDimToMoreDimChecked",
+                                                            BindingFlags.Public | BindingFlags.Static));
+            }            
+            gen.Emit(OpCodes.Stloc, temporaryLocal);
+            gen.MarkLabel(isNull);
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            // result is on stack
         }        
 
         #endregion IMethods

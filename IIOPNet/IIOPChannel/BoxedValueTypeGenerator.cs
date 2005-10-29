@@ -72,10 +72,11 @@ namespace Ch.Elca.Iiop.Idl {
 
         private void Initalize() {
             AssemblyName asmname = new AssemblyName();
-            asmname.Name = "dynBoxed.dll";        
+            asmname.Name = "dynBoxed";        
             m_asmBuilder = System.Threading.Thread.GetDomain().
-                DefineDynamicAssembly(asmname, AssemblyBuilderAccess.Run);
-            m_modBuilder = m_asmBuilder.DefineDynamicModule("boxedTypes");            
+                DefineDynamicAssembly(asmname, AssemblyBuilderAccess.RunAndSave);
+            m_modBuilder = m_asmBuilder.DefineDynamicModule("dynBoxed.netmodule",
+                                                            "dynBoxed.dll");
         }
 
         /// <summar>check if the type with the name fullname is defined among the generated boxed value
