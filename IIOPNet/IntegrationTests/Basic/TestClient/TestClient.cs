@@ -1223,7 +1223,8 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             short argVal = 12;
             arg.Setval0(argVal);
             TestUnionLD result = m_testIdlTypesService.EchoLDUnion(arg);
-            Assertion.AssertEquals("wrong union val returned", argVal, arg.Getval0());
+            Assertion.AssertEquals("Wrong disc val returned", arg.Discriminator, result.Discriminator);
+            Assertion.AssertEquals("wrong union val returned", argVal, result.Getval0());
         }
 
         #endregion IMethods
