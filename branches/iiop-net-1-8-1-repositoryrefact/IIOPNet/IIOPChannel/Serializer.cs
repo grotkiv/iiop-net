@@ -1826,11 +1826,11 @@ namespace Ch.Elca.Iiop.Marshalling {
             LocalBuilder result = gen.DeclareLocal(formal);
             // read the length
             EmitReadLength(gen, sourceStream, arrayLengthLoc);
-            EmitCheckBound(gen, temporaryLocal);
+            EmitCheckBound(gen, arrayLengthLoc);
 
             gen.Emit(OpCodes.Ldloc, arrayLengthLoc);
             gen.Emit(OpCodes.Newarr, formal.GetElementType());                        
-            gen.Emit(OpCodes.Stloc, result); // resulting array is now on top of stack
+            gen.Emit(OpCodes.Stloc, result);
                         
             // unmarshal the elements with a for loop
             LocalBuilder loopVar = gen.DeclareLocal(ReflectionHelper.Int32Type); // loop variable
@@ -1861,7 +1861,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         internal override bool IsSimpleTypeSerializer() {
-            return false;
+            return true; // simpler and a little bit more performant; 
+            // but more code because always generated instead of only a call to instance serialiser helper
         }        
 
         #endregion IMethods

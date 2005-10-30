@@ -376,9 +376,6 @@ namespace Ch.Elca.Iiop.Marshalling {
             string forTypeName = forType.Name;
             if (forType.IsArray) {
                 string arrBeginEscape = "_arrSH";
-                if (forTypeSerializer is IdlSequenceSerializer) {
-                    arrBeginEscape = "_seqSH";
-                }
                 // need to escape [ and ] and ,
                 forTypeName = forTypeName.Replace("[", arrBeginEscape);
                 forTypeName = forTypeName.Replace("]", "_");
