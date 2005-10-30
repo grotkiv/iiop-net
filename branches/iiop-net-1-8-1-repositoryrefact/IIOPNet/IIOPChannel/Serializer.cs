@@ -1248,16 +1248,40 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override bool IsSimpleTypeSerializer() {
             return true;
         }        
-        
-        private ConstructorInfo FindBestBoxedValConstructor(Type formal) {
+                
+        private void EmitCreateValueBox(Type formal, ILGenerator gen, LocalBuilder actualObject) {
+            // boxed value type has multiple constructors with one argument; instantiate with the right one            
             ConstructorInfo[] constructors =
                 formal.GetConstructors();
+            Label boxedOk = gen.DefineLabel();
+            Label nextConstructor = gen.DefineLabel();
             for (int i = 0; i < constructors.Length; i++) {
                 if (constructors[i].GetParameters().Length == 1) {
-                    return constructors[i];
-                }
+                    gen.Emit(OpCodes.Ldloc, actualObject);
+                    gen.Emit(OpCodes.Isinst, constructors[i].GetParameters()[0].ParameterType);
+                    gen.Emit(OpCodes.Brfalse, nextConstructor);
+                    // use this constructor to box
+                    gen.Emit(OpCodes.Ldloc, actualObject);
+                    IlEmitHelper.GetSingleton().
+                        GenerateCastObjectToType(gen, constructors[i].GetParameters()[0].ParameterType);
+                    gen.Emit(OpCodes.Newobj, constructors[i]);
+                    gen.Emit(OpCodes.Stloc, actualObject);
+                    gen.Emit(OpCodes.Br, boxedOk);
+                    gen.MarkLabel(nextConstructor);
+                    nextConstructor = gen.DefineLabel();
+                }                
             }
-            throw new INTERNAL(7543, CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Br, nextConstructor);
+            gen.MarkLabel(nextConstructor);
+            // internal problem, no constructor available, throw exception
+            ConstructorInfo internalCtr = 
+                typeof(INTERNAL).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+            gen.Emit(OpCodes.Ldc_I4, 1002);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, internalCtr);
+            gen.Emit(OpCodes.Throw);
+            
+            gen.MarkLabel(boxedOk);
         }
         
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
@@ -1279,11 +1303,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 gen.Emit(OpCodes.Stloc, actualObject);
             }            
             // != null -> box            
-            gen.Emit(OpCodes.Ldloc, actualObject);
-            ConstructorInfo ctr = FindBestBoxedValConstructor(formal);
-            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ctr.GetParameters()[0].ParameterType);
-            gen.Emit(OpCodes.Newobj, ctr);
-            gen.Emit(OpCodes.Stloc, actualObject);
+            EmitCreateValueBox(formal, gen, actualObject);            
             gen.MarkLabel(isNull);
             Marshaller marshaller = Marshaller.GetSingleton();
             marshaller.GenerateInstanceMarshallingCode(formal, attributes, gen, m_valueSer, 
