@@ -1906,7 +1906,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             if (m_dimensions.Length != array.Rank) {
                 throw new BAD_PARAM(3436, CompletionStatus.Completed_MayBe);
             }
-            for (int i = 0; i < array.Rank; i++) {
+            for (int i = 0; i < m_dimensions.Length; i++) {
                 if (m_dimensions[i] != array.GetLength(i)) {
                     throw new BAD_PARAM(3437, CompletionStatus.Completed_MayBe);
                 }
@@ -1965,11 +1965,36 @@ namespace Ch.Elca.Iiop.Marshalling {
             return result;
         }
         
+        private void EmitForLoopVarIncrement1AndBranchCheck(ILGenerator gen, LocalBuilder loopVar,
+                                                            int loopMax, Label loopCheck,
+                                                            Label loopBegin) {
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            gen.Emit(OpCodes.Ldc_I4_1);            
+            gen.Emit(OpCodes.Add);
+            gen.Emit(OpCodes.Stloc, loopVar);
+            // loop check
+            gen.MarkLabel(loopCheck);
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            gen.Emit(OpCodes.Ldc_I4, loopMax);
+            gen.Emit(OpCodes.Blt, loopBegin);
+        }        
+        
+        private void EmitLoopBeginBranchCheck(ILGenerator gen, LocalBuilder loopVar, 
+                                              Label loopCheck, Label loopBegin) {
+            gen.Emit(OpCodes.Ldc_I4_0);
+            gen.Emit(OpCodes.Stloc, loopVar);
+            gen.Emit(OpCodes.Br, loopCheck);
+            gen.MarkLabel(loopBegin);
+        }        
+        
         private void EmitCheckInstanceDimensions(ILGenerator gen, LocalBuilder actualObject) {            
             ConstructorInfo badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
             MethodInfo arrayRank = 
                 typeof(Array).GetProperty("Rank", BindingFlags.Public |
                                                                      BindingFlags.Instance).GetGetMethod();
+            MethodInfo getLength = 
+                typeof(Array).GetMethod("GetLength", BindingFlags.Public |
+                                                     BindingFlags.Instance);
             // check rank of array
             gen.Emit(OpCodes.Ldc_I4, m_dimensions.Length);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -1983,36 +2008,75 @@ namespace Ch.Elca.Iiop.Marshalling {
             gen.Emit(OpCodes.Newobj, badParamCtr);
             gen.Emit(OpCodes.Throw);            
             gen.MarkLabel(rankAndDimEqual);
-            // check every dimension of array
-            // TODO
-//            for (int i = 0; i < array.Rank; i++) {
-//                if (m_dimensions[i] != array.GetLength(i)) {
-//                    throw new BAD_PARAM(3437, CompletionStatus.Completed_MayBe);
-//                }
-//            }
-            
+            // check every dimension of array            
+            // because m_dimensions is not available at runtime, don't emit a for loop for check
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                gen.Emit(OpCodes.Ldloc, actualObject);
+                IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, typeof(Array));
+                gen.Emit(OpCodes.Ldc_I4, i);
+                gen.Emit(OpCodes.Call, getLength);
+                gen.Emit(OpCodes.Ldc_I4, m_dimensions[i]);
+                Label dimensionOk = gen.DefineLabel();
+                gen.Emit(OpCodes.Beq, dimensionOk);
+                // m_dimensions[i] != array.GetLength(i)
+                gen.Emit(OpCodes.Ldc_I4, 3437);
+                gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+                gen.Emit(OpCodes.Newobj, badParamCtr);
+                gen.Emit(OpCodes.Throw);                        
+                gen.MarkLabel(dimensionOk);
+                // this dimension is ok
+            }            
         }
         
-        private void EmitSerialiseDimension(ILGenerator gen, LocalBuilder actualObject,
-                                            LocalBuilder targetStream,
-                                            int[] indices, int currentDimension) {
-        
-//       
-//            if (currentDimension == array.Rank) {
-//                object value = array.GetValue(indices);
-//                marshaller.Marshal(value, targetStream);
-//            } else {
-//                // the first dimension index in the array is increased slower than the second and so on ...
-//                for (int j = 0; j < array.GetLength(currentDimension); j++) {
-//                    indices[currentDimension] = j;                    
-//                    SerialiseDimension(array, marshaller, targetStream, indices, currentDimension + 1);
-//                }
-//            }
-        
+        private void EmitSerialiseDimension(ILGenerator gen, 
+                                            Type formal, AttributeExtCollection attributes,
+                                            SerializationGenerator helperTypeGenerator,
+                                            LocalBuilder actualObject, LocalBuilder targetStream,
+                                            LocalBuilder temporaryLocal,
+                                            LocalBuilder[] loopVars, int currentDimension) {
+            if (currentDimension == m_dimensions.Length) {
+                LocalBuilder elemVar = gen.DeclareLocal(ReflectionHelper.ObjectType);
+                // serialise element
+                gen.Emit(OpCodes.Ldloc, actualObject);
+                IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal);
+                for (int i = 0; i < loopVars.Length; i++) {
+                    gen.Emit(OpCodes.Ldloc, loopVars[i]);
+                }
+                gen.Emit(OpCodes.Call, GetGetMethod(formal));
+                if (formal.GetElementType().IsValueType) {
+                    gen.Emit(OpCodes.Box, formal.GetElementType()); // elemVar is object
+                }
+                gen.Emit(OpCodes.Stloc, elemVar);
+                Marshaller.GetSingleton().GenerateMarshallingCodeFor(formal.GetElementType(), attributes,
+                                                                     gen, elemVar, targetStream, 
+                                                                     temporaryLocal, helperTypeGenerator);                
+            } else {
+                // emit for loop for current dimension
+                Label loopCheck = gen.DefineLabel();
+                Label loopBegin = gen.DefineLabel();
+                EmitLoopBeginBranchCheck(gen, loopVars[currentDimension], loopCheck, loopBegin);
+                EmitSerialiseDimension(gen, formal, attributes, helperTypeGenerator,
+                                       actualObject, targetStream, temporaryLocal,
+                                       loopVars,
+                                       currentDimension + 1);
+                EmitForLoopVarIncrement1AndBranchCheck(gen, loopVars[currentDimension],
+                                                       m_dimensions[currentDimension],
+                                                       loopCheck, loopBegin);
+            }
         }
+        
+        private MethodInfo GetGetMethod(Type formal) {
+            Type[] getMethodArgs = new Type[m_dimensions.Length];
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                getMethodArgs[i] = formal.GetElementType();
+            }
+            return formal.GetMethod("Get", BindingFlags.Public | BindingFlags.Instance,
+                                    null, getMethodArgs, null);
+        }        
         
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
-                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                ILGenerator gen, LocalBuilder actualObject, 
+                                                LocalBuilder targetStream,
                                                 LocalBuilder temporaryLocal,
                                                 SerializationGenerator helperTypeGenerator) {
             // null not allowed for an array:
@@ -2020,21 +2084,48 @@ namespace Ch.Elca.Iiop.Marshalling {
             // check, that array has correct rank and every dimension has the right length
             EmitCheckInstanceDimensions(gen, actualObject);
             // serialise the elements
-            EmitSerialiseDimension(gen, actualObject, targetStream, new int[m_dimensions.Length], 0);            
+            // emit a nested for loop to serialise elements           
+            LocalBuilder[] loopVarsForDimensions = new LocalBuilder[m_dimensions.Length];
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                loopVarsForDimensions[i] = gen.DeclareLocal(ReflectionHelper.Int32Type);
+            }                        
+            EmitSerialiseDimension(gen, formal, attributes, helperTypeGenerator,
+                                   actualObject, targetStream, temporaryLocal,
+                                   loopVarsForDimensions, 0);            
         }
         
-        private void EmitDeserialiseDimension(ILGenerator gen, LocalBuilder result, LocalBuilder sourceStream,
-                                              int[] indices, int currentDimension) {
-//            if (currentDimension == array.Rank) {
-//                object entry = marshaller.Unmarshal(sourceStream);
-//                array.SetValue(entry, indices);
-//            } else {
-//                // the first dimension index in the array is increased slower than the second and so on ...
-//                for (int j = 0; j < m_dimensions[currentDimension]; j++) {
-//                    indices[currentDimension] = j;                    
-//                    DeserialiseDimension(array, marshaller, sourceStream, indices, currentDimension + 1);
-//                }
-//            }            
+        private void EmitDeserialiseDimension(ILGenerator gen, 
+                                              Type formal, AttributeExtCollection attributes,
+                                              SerializationGenerator helperTypeGenerator,
+                                              LocalBuilder result, LocalBuilder sourceStream,
+                                              LocalBuilder temporaryLocal,
+                                              LocalBuilder[] loopVars, int currentDimension) {            
+            if (currentDimension == m_dimensions.Length) {
+                gen.Emit(OpCodes.Ldloc, result);
+                IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal);
+                for (int i = 0; i < loopVars.Length; i++) {
+                    gen.Emit(OpCodes.Ldloc, loopVars[i]);
+                }
+                // deserialise element
+                Marshaller.GetSingleton().GenerateUnmarshallingCodeFor(formal.GetElementType(), attributes,
+                                                                       gen, sourceStream, 
+                                                                       temporaryLocal, helperTypeGenerator);
+                IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal.GetElementType());
+                // store element                
+                gen.Emit(OpCodes.Call, GetSetMethod(formal));
+            } else {
+                // emit for loop for current dimension
+                Label loopCheck = gen.DefineLabel();
+                Label loopBegin = gen.DefineLabel();
+                EmitLoopBeginBranchCheck(gen, loopVars[currentDimension], loopCheck, loopBegin);
+                EmitDeserialiseDimension(gen, formal, attributes, helperTypeGenerator,
+                                         result, sourceStream, temporaryLocal,
+                                         loopVars,
+                                         currentDimension + 1);
+                EmitForLoopVarIncrement1AndBranchCheck(gen, loopVars[currentDimension],
+                                                       m_dimensions[currentDimension],
+                                                       loopCheck, loopBegin);
+            }
         }
         
         private ConstructorInfo GetArrayConstructor(Type formal) {
@@ -2043,6 +2134,15 @@ namespace Ch.Elca.Iiop.Marshalling {
                 constrArgs[i] = formal.GetElementType();
             }
             return formal.GetConstructor(constrArgs);
+        }
+        
+        private MethodInfo GetSetMethod(Type formal) {
+            Type[] setMethodArgs = new Type[m_dimensions.Length + 1];
+            for (int i = 0; i < m_dimensions.Length + 1; i++) {
+                setMethodArgs[i] = formal.GetElementType();
+            }
+            return formal.GetMethod("Set", BindingFlags.Public | BindingFlags.Instance,
+                                    null, setMethodArgs, null);
         }
         
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
@@ -2054,8 +2154,15 @@ namespace Ch.Elca.Iiop.Marshalling {
                 gen.Emit(OpCodes.Ldc_I4, m_dimensions[i]);
             }
             gen.Emit(OpCodes.Newobj, GetArrayConstructor(formal));
-            gen.Emit(OpCodes.Stloc, result);            
-            EmitDeserialiseDimension(gen, result, sourceStream, new int[m_dimensions.Length], 0);            
+            gen.Emit(OpCodes.Stloc, result);  
+            // emit a nested for loop to serialise elements           
+            LocalBuilder[] loopVarsForDimensions = new LocalBuilder[m_dimensions.Length];
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                loopVarsForDimensions[i] = gen.DeclareLocal(ReflectionHelper.Int32Type);
+            }            
+            EmitDeserialiseDimension(gen, formal, attributes, helperTypeGenerator,
+                                     result, sourceStream, temporaryLocal,
+                                     loopVarsForDimensions, 0);
             // push result on the stack; no boxing needed, because array is a ref type.
             gen.Emit(OpCodes.Ldloc, result);
         }
