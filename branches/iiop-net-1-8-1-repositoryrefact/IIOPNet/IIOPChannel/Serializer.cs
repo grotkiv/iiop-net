@@ -133,6 +133,32 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// decide, if a serialization helper class is useful or not.
         /// </summary>
         internal abstract bool IsSimpleTypeSerializer();
+        
+        
+        protected void CheckActualNotNull(object actual) {            
+            if (actual == null) {
+                // not allowed
+                throw new BAD_PARAM(3433, CompletionStatus.Completed_MayBe);
+            }
+            // ok
+        }
+        
+        /// <summary>
+        /// Emit code to check, that actual object is not null.
+        /// </summary>
+        protected void EmitActualNotNullCheck(ILGenerator gen, LocalBuilder actualObject) {
+            // non null check
+            Label notNullLabel = gen.DefineLabel();
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Brtrue, notNullLabel);
+            // null not allowed for a sequence:
+            ConstructorInfo badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+            gen.Emit(OpCodes.Ldc_I4, 3433);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, badParamCtr);
+            gen.Emit(OpCodes.Throw);            
+            gen.MarkLabel(notNullLabel);            
+        }
 
         #endregion IMethods
 
@@ -572,10 +598,8 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                        CdrOutputStream targetStream) {            
-            if (actual == null) { 
-                // string may not be null, if StringValueAttriubte is set"
-                throw new BAD_PARAM(10040, CompletionStatus.Completed_MayBe);
-            }
+            // string may not be null, if StringValueAttriubte is set"
+            CheckActualNotNull(actual);
             if (m_useWide) {
                 targetStream.WriteWString((string)actual);
             } else {
@@ -603,6 +627,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                          ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
                                                          LocalBuilder temporaryLocal,
                                                          SerializationGenerator helperTypeGenerator) {
+            // null not allowed for a string, if StringValueAttribute is set
+            EmitActualNotNullCheck(gen, actualObject);
             gen.Emit(OpCodes.Ldloc, targetStream);
             gen.Emit(OpCodes.Ldloc, actualObject);
             IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.StringType);
@@ -1702,10 +1728,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                        CdrOutputStream targetStream) {
             Array array = (Array) actual;
-            if (array == null) {
-                // not allowed for a sequence:
-                throw new BAD_PARAM(3433, CompletionStatus.Completed_MayBe);
-            }
+            // not allowed for a sequence:
+            CheckActualNotNull(array);
             CheckBound((uint)array.Length);
             targetStream.WriteULong((uint)array.Length);
             // get marshaller for elemtype
@@ -1761,17 +1785,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                 ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
                                                 LocalBuilder temporaryLocal,
                                                 SerializationGenerator helperTypeGenerator) {
-            // non null check
-            Label notNullLabel = gen.DefineLabel();
-            gen.Emit(OpCodes.Ldloc, actualObject);
-            gen.Emit(OpCodes.Brtrue, notNullLabel);
             // null not allowed for a sequence:
-            ConstructorInfo badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
-            gen.Emit(OpCodes.Ldc_I4, 3433);
-            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
-            gen.Emit(OpCodes.Newobj, badParamCtr);
-            gen.Emit(OpCodes.Throw);            
-            gen.MarkLabel(notNullLabel);            
+            EmitActualNotNullCheck(gen, actualObject);
             // check now bound
             LocalBuilder arrayLengthLoc = gen.DeclareLocal(ReflectionHelper.Int32Type);
             gen.Emit(OpCodes.Ldloc, actualObject);
@@ -1887,7 +1902,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IConstructors
         #region IMethods
 
-        private void CheckInstance(Array array) {
+        private void CheckInstanceDimensions(Array array) {
             if (m_dimensions.Length != array.Rank) {
                 throw new BAD_PARAM(3436, CompletionStatus.Completed_MayBe);
             }
@@ -1901,12 +1916,12 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         private void SerialiseDimension(Array array, MarshallerForType marshaller, CdrOutputStream targetStream,
                                         int[] indices, int currentDimension) {
-            if (currentDimension == array.Rank) {
+            if (currentDimension == m_dimensions.Length) {
                 object value = array.GetValue(indices);
                 marshaller.Marshal(value, targetStream);
             } else {
                 // the first dimension index in the array is increased slower than the second and so on ...
-                for (int j = 0; j < array.GetLength(currentDimension); j++) {
+                for (int j = 0; j < m_dimensions[currentDimension]; j++) {
                     indices[currentDimension] = j;                    
                     SerialiseDimension(array, marshaller, targetStream, indices, currentDimension + 1);
                 }
@@ -1916,15 +1931,13 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                          CdrOutputStream targetStream) {
             Array array = (Array) actual;
-            if (array == null) {
-                // not allowed for an idl array:
-                throw new BAD_PARAM(3433, CompletionStatus.Completed_MayBe);
-            }
-            CheckInstance(array);
+            // not allowed for an idl array:
+            CheckActualNotNull(array);
+            CheckInstanceDimensions(array);
             // get marshaller for elemtype
             Type elemType = formal.GetElementType();
             MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            SerialiseDimension(array, marshaller, targetStream, new int[array.Rank], 0);
+            SerialiseDimension(array, marshaller, targetStream, new int[m_dimensions.Length], 0);
         }
 
         private void DeserialiseDimension(Array array, MarshallerForType marshaller, CdrInputStream sourceStream,
@@ -1934,7 +1947,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 array.SetValue(entry, indices);
             } else {
                 // the first dimension index in the array is increased slower than the second and so on ...
-                for (int j = 0; j < array.GetLength(currentDimension); j++) {                    
+                for (int j = 0; j < m_dimensions[currentDimension]; j++) {
                     indices[currentDimension] = j;                    
                     DeserialiseDimension(array, marshaller, sourceStream, indices, currentDimension + 1);
                 }
@@ -1948,12 +1961,108 @@ namespace Ch.Elca.Iiop.Marshalling {
             // get marshaller for array element type
             Type elemType = formal.GetElementType();
             MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            DeserialiseDimension(result, marshaller, sourceStream, new int[result.Rank], 0);
+            DeserialiseDimension(result, marshaller, sourceStream, new int[m_dimensions.Length], 0);
             return result;
         }
         
+        private void EmitCheckInstanceDimensions(ILGenerator gen, LocalBuilder actualObject) {            
+            ConstructorInfo badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+            MethodInfo arrayRank = 
+                typeof(Array).GetProperty("Rank", BindingFlags.Public |
+                                                                     BindingFlags.Instance).GetGetMethod();
+            // check rank of array
+            gen.Emit(OpCodes.Ldc_I4, m_dimensions.Length);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, typeof(Array));
+            gen.Emit(OpCodes.Callvirt, arrayRank);
+            Label rankAndDimEqual = gen.DefineLabel();
+            gen.Emit(OpCodes.Beq, rankAndDimEqual);
+            // m_dimensions.Length != array.Rank
+            gen.Emit(OpCodes.Ldc_I4, 3436);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, badParamCtr);
+            gen.Emit(OpCodes.Throw);            
+            gen.MarkLabel(rankAndDimEqual);
+            // check every dimension of array
+            // TODO
+//            for (int i = 0; i < array.Rank; i++) {
+//                if (m_dimensions[i] != array.GetLength(i)) {
+//                    throw new BAD_PARAM(3437, CompletionStatus.Completed_MayBe);
+//                }
+//            }
+            
+        }
+        
+        private void EmitSerialiseDimension(ILGenerator gen, LocalBuilder actualObject,
+                                            LocalBuilder targetStream,
+                                            int[] indices, int currentDimension) {
+        
+//       
+//            if (currentDimension == array.Rank) {
+//                object value = array.GetValue(indices);
+//                marshaller.Marshal(value, targetStream);
+//            } else {
+//                // the first dimension index in the array is increased slower than the second and so on ...
+//                for (int j = 0; j < array.GetLength(currentDimension); j++) {
+//                    indices[currentDimension] = j;                    
+//                    SerialiseDimension(array, marshaller, targetStream, indices, currentDimension + 1);
+//                }
+//            }
+        
+        }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            // null not allowed for an array:
+            EmitActualNotNullCheck(gen, actualObject);
+            // check, that array has correct rank and every dimension has the right length
+            EmitCheckInstanceDimensions(gen, actualObject);
+            // serialise the elements
+            EmitSerialiseDimension(gen, actualObject, targetStream, new int[m_dimensions.Length], 0);            
+        }
+        
+        private void EmitDeserialiseDimension(ILGenerator gen, LocalBuilder result, LocalBuilder sourceStream,
+                                              int[] indices, int currentDimension) {
+//            if (currentDimension == array.Rank) {
+//                object entry = marshaller.Unmarshal(sourceStream);
+//                array.SetValue(entry, indices);
+//            } else {
+//                // the first dimension index in the array is increased slower than the second and so on ...
+//                for (int j = 0; j < m_dimensions[currentDimension]; j++) {
+//                    indices[currentDimension] = j;                    
+//                    DeserialiseDimension(array, marshaller, sourceStream, indices, currentDimension + 1);
+//                }
+//            }            
+        }
+        
+        private ConstructorInfo GetArrayConstructor(Type formal) {
+            Type[] constrArgs = new Type[m_dimensions.Length];
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                constrArgs[i] = formal.GetElementType();
+            }
+            return formal.GetConstructor(constrArgs);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            LocalBuilder result = gen.DeclareLocal(formal);
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                gen.Emit(OpCodes.Ldc_I4, m_dimensions[i]);
+            }
+            gen.Emit(OpCodes.Newobj, GetArrayConstructor(formal));
+            gen.Emit(OpCodes.Stloc, result);            
+            EmitDeserialiseDimension(gen, result, sourceStream, new int[m_dimensions.Length], 0);            
+            // push result on the stack; no boxing needed, because array is a ref type.
+            gen.Emit(OpCodes.Ldloc, result);
+        }
+        
         internal override bool IsSimpleTypeSerializer() {
-            return true; // TODO
+            return true; // simpler and a little bit more performant; 
+            // but more code because always generated instead of only a call to instance serialiser helper
         }                
 
         #endregion IMethods        
