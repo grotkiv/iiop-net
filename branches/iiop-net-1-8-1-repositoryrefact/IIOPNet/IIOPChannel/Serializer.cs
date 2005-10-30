@@ -49,6 +49,26 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// </summary>        
     internal abstract class Serialiser {
 
+        #region SFields
+        
+        protected static MethodInfo s_setFieldValue =
+            typeof(FieldInfo).GetMethod("SetValue", BindingFlags.Public | BindingFlags.Instance,
+                                        null, new Type[] { ReflectionHelper.ObjectType, ReflectionHelper.ObjectType },
+                                        null);
+        
+        protected static MethodInfo s_getFieldValue =
+            typeof(FieldInfo).GetMethod("GetValue", BindingFlags.Public | BindingFlags.Instance,
+                                        null, new Type[] { ReflectionHelper.ObjectType },
+                                        null);   
+        
+        protected static MethodInfo s_getFieldMethod = 
+            ReflectionHelper.TypeType.GetMethod("GetField", 
+                                                BindingFlags.Public | BindingFlags.Instance,
+                                                null, new Type[] { ReflectionHelper.StringType, typeof(BindingFlags) },
+                                                null);        
+        
+        #endregion SFields
+        
         #region IConstructors
 
         internal Serialiser() {
@@ -97,6 +117,47 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                    sourceStream);
             fieldToDeser.SetValue(actual, fieldVal);
             return fieldVal;
+        }
+        
+        protected void EmitSerialiseField(FieldInfo info, ILGenerator gen,
+                                          LocalBuilder argType, LocalBuilder actualObject,
+                                          LocalBuilder fieldLocal, 
+                                          LocalBuilder targetStream, LocalBuilder temporaryLocal,
+                                          SerializationGenerator helperTypeGenerator) {
+            Marshaller marshaller = Marshaller.GetSingleton();
+            // info = formal.GetFieldInfo("name", ...);
+            gen.Emit(OpCodes.Ldloc, argType);
+            gen.Emit(OpCodes.Ldstr, info.Name);
+            gen.Emit(OpCodes.Ldc_I4, (int)(BindingFlags.Public | BindingFlags.NonPublic |
+                                           BindingFlags.Instance | BindingFlags.DeclaredOnly));
+            gen.Emit(OpCodes.Callvirt, s_getFieldMethod); // now field info on stack
+            // fieldLocal = field.GetValue(actual)
+            gen.Emit(OpCodes.Ldloc, actualObject); // actual instance
+            gen.Emit(OpCodes.Callvirt, s_getFieldValue); // set the field value via reflection
+            gen.Emit(OpCodes.Stloc, fieldLocal);
+            marshaller.GenerateMarshallingCodeFor(info.FieldType,
+                                                  ReflectionHelper.GetCustomAttriutesForField(info, true),
+                                                  gen, fieldLocal, targetStream, temporaryLocal,
+                                                  helperTypeGenerator);
+        }
+        
+        protected void EmitDeserialiseField(FieldInfo info, ILGenerator gen,
+                                            LocalBuilder resultType, LocalBuilder result,
+                                            LocalBuilder sourceStream, LocalBuilder temporaryLocal,
+                                            SerializationGenerator helperTypeGenerator) {
+            Marshaller marshaller = Marshaller.GetSingleton();
+            // info = formal.GetFieldInfo("name", ...);
+            gen.Emit(OpCodes.Ldloc, resultType);
+            gen.Emit(OpCodes.Ldstr, info.Name);
+            gen.Emit(OpCodes.Ldc_I4, (int)(BindingFlags.Public | BindingFlags.NonPublic |
+                                           BindingFlags.Instance | BindingFlags.DeclaredOnly));
+            gen.Emit(OpCodes.Callvirt, s_getFieldMethod); // now field info on stack
+            // info.SetFieldValue(result, fieldValue)
+            gen.Emit(OpCodes.Ldloc, result); // actual instance
+            marshaller.GenerateUnmarshallingCodeFor(info.FieldType,
+                                                    ReflectionHelper.GetCustomAttriutesForField(info, true), 
+                                                    gen, sourceStream, temporaryLocal, helperTypeGenerator);
+            gen.Emit(OpCodes.Callvirt, s_setFieldValue); // set the field value via reflection
         }
         
         /// <summary>
@@ -1246,23 +1307,7 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// this class serializes .NET structs, which were mapped from an IDL-struct
     /// </summary>
     internal class IdlStructSerializer : Serialiser {
-        
-        private static MethodInfo s_getFieldMethod = 
-            ReflectionHelper.TypeType.GetMethod("GetField", 
-                                                BindingFlags.Public | BindingFlags.Instance,
-                                                null, new Type[] { ReflectionHelper.StringType, typeof(BindingFlags) },
-                                                null);
-        
-        private static MethodInfo s_setFieldValue =
-            typeof(FieldInfo).GetMethod("SetValue", BindingFlags.Public | BindingFlags.Instance,
-                                        null, new Type[] { ReflectionHelper.ObjectType, ReflectionHelper.ObjectType },
-                                        null);
-        
-        private static MethodInfo s_getFieldValue =
-            typeof(FieldInfo).GetMethod("GetValue", BindingFlags.Public | BindingFlags.Instance,
-                                        null, new Type[] { ReflectionHelper.ObjectType },
-                                        null);
-
+                
         #region IMethods
     
         internal override object Deserialise(System.Type formal, AttributeExtCollection attributes,
@@ -1305,21 +1350,10 @@ namespace Ch.Elca.Iiop.Marshalling {
             LocalBuilder fieldLocal = gen.DeclareLocal(ReflectionHelper.ObjectType);
             
             foreach (FieldInfo info in fields) {
-                // info = formal.GetFieldInfo("name", ...);
-                gen.Emit(OpCodes.Ldloc, argType);
-                gen.Emit(OpCodes.Ldstr, info.Name);
-                gen.Emit(OpCodes.Ldc_I4, (int)(BindingFlags.Public | BindingFlags.NonPublic |
-                                               BindingFlags.Instance | BindingFlags.DeclaredOnly));
-                gen.Emit(OpCodes.Callvirt, s_getFieldMethod); // now field info on stack
-                // fieldLocal = field.GetValue(actual)
-                gen.Emit(OpCodes.Ldloc, actualObject); // actual instance
-                gen.Emit(OpCodes.Callvirt, s_getFieldValue); // set the field value via reflection
-                gen.Emit(OpCodes.Stloc, fieldLocal);
-                marshaller.GenerateMarshallingCodeFor(info.FieldType,
-                                                      ReflectionHelper.GetCustomAttriutesForField(info, true),
-                                                      gen, fieldLocal, targetStream, temporaryLocal,
-                                                      helperTypeGenerator);
-            }            
+                EmitSerialiseField(info, gen, argType, actualObject,
+                                   fieldLocal, targetStream, temporaryLocal,
+                                   helperTypeGenerator);                
+            }
         }
         
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
@@ -1344,18 +1378,8 @@ namespace Ch.Elca.Iiop.Marshalling {
             
             // deserialise the fields            
             foreach (FieldInfo info in fields) {    
-                // info = formal.GetFieldInfo("name", ...);
-                gen.Emit(OpCodes.Ldloc, resultType);
-                gen.Emit(OpCodes.Ldstr, info.Name);
-                gen.Emit(OpCodes.Ldc_I4, (int)(BindingFlags.Public | BindingFlags.NonPublic |
-                                               BindingFlags.Instance | BindingFlags.DeclaredOnly));
-                gen.Emit(OpCodes.Callvirt, s_getFieldMethod); // now field info on stack
-                // info.SetFieldValue(result, fieldValue)
-                gen.Emit(OpCodes.Ldloc, result); // actual instance
-                marshaller.GenerateUnmarshallingCodeFor(info.FieldType,
-                                                        ReflectionHelper.GetCustomAttriutesForField(info, true), 
-                                                        gen, sourceStream, temporaryLocal, helperTypeGenerator);
-                gen.Emit(OpCodes.Callvirt, s_setFieldValue); // set the field value via reflection
+                EmitDeserialiseField(info, gen, resultType, result,
+                                     sourceStream, temporaryLocal, helperTypeGenerator);
             }            
             // push result onto the stack
             gen.Emit(OpCodes.Ldloc, result);
@@ -1434,7 +1458,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             FieldInfo initalizedField = GetInitalizedField(formal);
             bool isInit = (bool)initalizedField.GetValue(actual);
             if (isInit == false) {
-                throw new BAD_OPERATION(34, CompletionStatus.Completed_MayBe);
+                throw new BAD_PARAM(34, CompletionStatus.Completed_MayBe);
             }
             // determine value of the discriminator
             FieldInfo discrValField = GetDiscriminatorField(formal);
@@ -1449,6 +1473,87 @@ namespace Ch.Elca.Iiop.Marshalling {
             } 
             // else:  case outside covered discr range, do not serialise value, only discriminator
         }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            MethodInfo isInit =
+                formal.GetProperty(UnionGenerationHelper.ISINIT_PROPERTY_NAME,
+                                   BindingFlags.Public | BindingFlags.Instance).GetGetMethod();
+            MethodInfo getDiscr =
+                formal.GetProperty(UnionGenerationHelper.DISCR_PROPERTY_NAME,
+                                   BindingFlags.Public | BindingFlags.Instance).GetGetMethod();
+            // check initalized
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Unbox, formal);
+            gen.Emit(OpCodes.Call, isInit);
+            Label isInitOk = gen.DefineLabel();
+            gen.Emit(OpCodes.Brtrue, isInitOk);
+            ConstructorInfo badParamCtr = 
+                typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+            gen.Emit(OpCodes.Ldc_I4, 34);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, badParamCtr);
+            gen.Emit(OpCodes.Throw);            
+            gen.MarkLabel(isInitOk);
+            // serialise
+            // discriminator
+            LocalBuilder elemVar = gen.DeclareLocal(ReflectionHelper.ObjectType);
+            FieldInfo discrValField = GetDiscriminatorField(formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Unbox, formal);
+            gen.Emit(OpCodes.Callvirt, getDiscr);
+            if (discrValField.FieldType.IsValueType) {                
+                gen.Emit(OpCodes.Box, discrValField.FieldType);
+            }
+            gen.Emit(OpCodes.Stloc, elemVar);
+            Marshaller.GetSingleton().GenerateMarshallingCodeFor(discrValField.FieldType, attributes,
+                                                                 gen, elemVar, targetStream, 
+                                                                 temporaryLocal, helperTypeGenerator);
+            // val
+            // TODO
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            // store the type of the union in local var
+            LocalBuilder resultType = gen.DeclareLocal(ReflectionHelper.TypeType);
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Stloc, resultType);
+            // instantiate the union and store it in result
+            LocalBuilder result = gen.DeclareLocal(ReflectionHelper.ObjectType);
+            LocalBuilder initUnion = gen.DeclareLocal(formal);
+            gen.Emit(OpCodes.Ldloca, initUnion);
+            gen.Emit(OpCodes.Initobj, formal); // is a valuetype -> use initobj and not newobj
+            gen.Emit(OpCodes.Ldloc, initUnion);
+            gen.Emit(OpCodes.Box, formal);
+            gen.Emit(OpCodes.Stloc, result);
+            // discriminator
+            FieldInfo discrField = GetDiscriminatorField(formal);
+            EmitDeserialiseField(discrField, gen, resultType, result,
+                                 sourceStream, temporaryLocal, helperTypeGenerator);
+            // val
+            // TODO
+            
+            // initalized
+            FieldInfo initalizedField = GetInitalizedField(formal);
+            gen.Emit(OpCodes.Ldloc, resultType);
+            gen.Emit(OpCodes.Ldstr, initalizedField.Name);
+            gen.Emit(OpCodes.Ldc_I4, (int)(BindingFlags.Public | BindingFlags.NonPublic |
+                                           BindingFlags.Instance | BindingFlags.DeclaredOnly));
+            gen.Emit(OpCodes.Callvirt, s_getFieldMethod); // now field info on stack
+            // info.SetFieldValue(result, fieldValue)
+            gen.Emit(OpCodes.Ldloc, result); // actual instance
+            gen.Emit(OpCodes.Ldc_I4, 1); // true
+            gen.Emit(OpCodes.Box, ReflectionHelper.BooleanType);
+            gen.Emit(OpCodes.Callvirt, s_setFieldValue); // set the field value via reflection            
+            // push result onto the stack
+            gen.Emit(OpCodes.Ldloc, result);
+        }
+        
         
         internal override bool IsSimpleTypeSerializer() {
             return false;
