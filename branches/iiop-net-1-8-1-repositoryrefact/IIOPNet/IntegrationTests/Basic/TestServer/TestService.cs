@@ -716,8 +716,8 @@ namespace Ch.Elca.Iiop.IntegrationTests {
     }
 
 
-    [SupportedInterface(typeof(TestBoxedValuetypeService))]
-    public class TestBoxedValuetypeServiceImpl : MarshalByRefObject, TestBoxedValuetypeService {
+    [SupportedInterface(typeof(TestIdlTypesService))]
+    public class TestIdlTypesServiceImpl : MarshalByRefObject, TestIdlTypesService {
 
         
         [return: BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_string:1.0")]
@@ -726,7 +726,11 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [return: BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_TestStruct:1.0")]
-        public Test EchoBoxedStruct([BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_TestStruct:1.0")] Test arg) {
+        public TestStructWB EchoBoxedStruct([BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_TestStruct:1.0")] TestStructWB arg) {
+            return arg;
+        }
+
+        public TestUnionLD EchoLDUnion(TestUnionLD arg) {
             return arg;
         }
         
