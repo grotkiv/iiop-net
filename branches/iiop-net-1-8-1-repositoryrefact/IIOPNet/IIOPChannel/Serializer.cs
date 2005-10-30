@@ -1433,6 +1433,27 @@ namespace Ch.Elca.Iiop.Marshalling {
             }            
             return initalizedField;
         }
+        
+        private object[] GetCoveredDiscrValues(Type formal) {
+            MethodInfo getCoveredDiscrMethod = formal.GetMethod(UnionGenerationHelper.GET_COVERED_DISCR_VALUES,
+                                                                BindingFlags.Static | BindingFlags.NonPublic |
+                                                                BindingFlags.DeclaredOnly);
+            // get all discriminator values used in switch-cases
+            object[] coveredDiscrs = (object[])getCoveredDiscrMethod.Invoke(null, new object[0]);
+            if (coveredDiscrs == null) {
+                throw new INTERNAL(898, CompletionStatus.Completed_MayBe);
+            }
+            return coveredDiscrs;
+        }
+        
+        private FieldInfo GetDefaultField(Type formal) {
+            MethodInfo getDefaultField = formal.GetMethod(UnionGenerationHelper.GET_DEFAULT_FIELD, 
+                                                          BindingFlags.Static | BindingFlags.NonPublic);
+            if (getDefaultField == null) {
+                throw new INTERNAL(898, CompletionStatus.Completed_MayBe);
+            }
+            return (FieldInfo)getDefaultField.Invoke(null, new object[0] );
+        }
 
         internal override object Deserialise(System.Type formal, AttributeExtCollection attributes,
                                            CdrInputStream sourceStream) {            
@@ -1474,6 +1495,26 @@ namespace Ch.Elca.Iiop.Marshalling {
             // else:  case outside covered discr range, do not serialise value, only discriminator
         }
         
+        private void PushDiscriminatorToStack(ILGenerator gen,
+                                              Type discrType, object val) {
+            if (discrType.Equals(ReflectionHelper.BooleanType)) {
+                gen.Emit(OpCodes.Ldc_I4, Convert.ToInt32(val));
+            } else if (discrType.Equals(ReflectionHelper.Int16Type)) {
+                gen.Emit(OpCodes.Ldc_I4, Convert.ToInt32(val));
+            } else if (discrType.Equals(ReflectionHelper.Int32Type)) {
+                gen.Emit(OpCodes.Ldc_I4, Convert.ToInt32(val));
+            } else if (discrType.Equals(ReflectionHelper.Int64Type)) {
+                gen.Emit(OpCodes.Ldc_I8, Convert.ToInt64(val));
+            } else if (discrType.Equals(ReflectionHelper.CharType)) {
+                gen.Emit(OpCodes.Ldc_I4, Convert.ToInt32(val));
+            } else if (discrType.IsEnum) {
+                // get the int value for the idl enum
+                gen.Emit(OpCodes.Ldc_I4, (System.Int32)val);
+            } else {
+                throw new INTERNAL(899, CompletionStatus.Completed_MayBe);
+            }
+        }
+        
         internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
                                                 ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
                                                 LocalBuilder temporaryLocal,
@@ -1484,6 +1525,11 @@ namespace Ch.Elca.Iiop.Marshalling {
             MethodInfo getDiscr =
                 formal.GetProperty(UnionGenerationHelper.DISCR_PROPERTY_NAME,
                                    BindingFlags.Public | BindingFlags.Instance).GetGetMethod();
+            
+            // store the type of the union in local var
+            LocalBuilder argType = gen.DeclareLocal(ReflectionHelper.TypeType);
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Stloc, argType);            
             // check initalized
             gen.Emit(OpCodes.Ldloc, actualObject);
             gen.Emit(OpCodes.Unbox, formal);
@@ -1495,16 +1541,19 @@ namespace Ch.Elca.Iiop.Marshalling {
             gen.Emit(OpCodes.Ldc_I4, 34);
             gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
             gen.Emit(OpCodes.Newobj, badParamCtr);
-            gen.Emit(OpCodes.Throw);            
+            gen.Emit(OpCodes.Throw);
             gen.MarkLabel(isInitOk);
             // serialise
             // discriminator
             LocalBuilder elemVar = gen.DeclareLocal(ReflectionHelper.ObjectType);
             FieldInfo discrValField = GetDiscriminatorField(formal);
+            LocalBuilder discrVal = gen.DeclareLocal(discrValField.FieldType);
             gen.Emit(OpCodes.Ldloc, actualObject);
             gen.Emit(OpCodes.Unbox, formal);
             gen.Emit(OpCodes.Callvirt, getDiscr);
-            if (discrValField.FieldType.IsValueType) {                
+            gen.Emit(OpCodes.Stloc, discrVal);
+            gen.Emit(OpCodes.Ldloc, discrVal);
+            if (discrValField.FieldType.IsValueType) {
                 gen.Emit(OpCodes.Box, discrValField.FieldType);
             }
             gen.Emit(OpCodes.Stloc, elemVar);
@@ -1512,13 +1561,37 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                                  gen, elemVar, targetStream, 
                                                                  temporaryLocal, helperTypeGenerator);
             // val
-            // TODO
+            object[] coveredDiscrValues = GetCoveredDiscrValues(formal);
+            Label currentLabel = gen.DefineLabel();
+            for (int i = 0; i < coveredDiscrValues.Length; i++) {
+                gen.Emit(OpCodes.Ldloc, discrVal);
+                PushDiscriminatorToStack(gen, discrValField.FieldType, coveredDiscrValues[i]);
+                gen.Emit(OpCodes.Ceq);
+                gen.Emit(OpCodes.Brfalse, currentLabel);
+                FieldInfo curField = GetValFieldForDiscriminator(formal, coveredDiscrValues[i]);
+                EmitSerialiseField(curField, gen, argType, actualObject, elemVar,
+                                   targetStream, temporaryLocal, helperTypeGenerator);
+                gen.MarkLabel(currentLabel);
+                currentLabel = gen.DefineLabel();
+            }
+            FieldInfo defaultField = GetDefaultField(formal);
+            if (defaultField != null) {
+                // default specified
+                EmitSerialiseField(defaultField, gen, argType, actualObject, elemVar,
+                                   targetStream, temporaryLocal, helperTypeGenerator);                
+            }
+            gen.Emit(OpCodes.Br, currentLabel);
+            gen.MarkLabel(currentLabel);            
         }
         
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
                                                   ILGenerator gen, LocalBuilder sourceStream,
                                                   LocalBuilder temporaryLocal,
                                                   SerializationGenerator helperTypeGenerator) {
+            MethodInfo getDiscr =
+                formal.GetProperty(UnionGenerationHelper.DISCR_PROPERTY_NAME,
+                                   BindingFlags.Public | BindingFlags.Instance).GetGetMethod();
+                        
             // store the type of the union in local var
             LocalBuilder resultType = gen.DeclareLocal(ReflectionHelper.TypeType);
             IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
@@ -1532,12 +1605,37 @@ namespace Ch.Elca.Iiop.Marshalling {
             gen.Emit(OpCodes.Box, formal);
             gen.Emit(OpCodes.Stloc, result);
             // discriminator
-            FieldInfo discrField = GetDiscriminatorField(formal);
-            EmitDeserialiseField(discrField, gen, resultType, result,
+            FieldInfo discrValField = GetDiscriminatorField(formal);
+            EmitDeserialiseField(discrValField, gen, resultType, result,
                                  sourceStream, temporaryLocal, helperTypeGenerator);
+            // store discr value in local var
+            LocalBuilder discrVal = gen.DeclareLocal(discrValField.FieldType);
+            gen.Emit(OpCodes.Ldloc, result);
+            gen.Emit(OpCodes.Unbox, formal);
+            gen.Emit(OpCodes.Callvirt, getDiscr);
+            gen.Emit(OpCodes.Stloc, discrVal);
             // val
-            // TODO
-            
+            object[] coveredDiscrValues = GetCoveredDiscrValues(formal);
+            Label currentLabel = gen.DefineLabel();
+            for (int i = 0; i < coveredDiscrValues.Length; i++) {
+                gen.Emit(OpCodes.Ldloc, discrVal);
+                PushDiscriminatorToStack(gen, discrValField.FieldType, coveredDiscrValues[i]);
+                gen.Emit(OpCodes.Ceq);
+                gen.Emit(OpCodes.Brfalse, currentLabel);
+                FieldInfo curField = GetValFieldForDiscriminator(formal, coveredDiscrValues[i]);
+                EmitDeserialiseField(curField, gen, resultType, result,
+                                   sourceStream, temporaryLocal, helperTypeGenerator);
+                gen.MarkLabel(currentLabel);
+                currentLabel = gen.DefineLabel();
+            }
+            FieldInfo defaultField = GetDefaultField(formal);
+            if (defaultField != null) {
+                // default specified
+                EmitDeserialiseField(defaultField, gen, resultType, result,
+                                     sourceStream, temporaryLocal, helperTypeGenerator);
+            }
+            gen.Emit(OpCodes.Br, currentLabel);
+            gen.MarkLabel(currentLabel);                        
             // initalized
             FieldInfo initalizedField = GetInitalizedField(formal);
             gen.Emit(OpCodes.Ldloc, resultType);
