@@ -372,7 +372,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                    "_" + forType.Name + "ArgHelper";            
         }
         
-        private string GetInstanceSerializerTypeName(Type forType, Serialiser forTypeSerializer) {            
+        private string GetInstanceSerializerTypeName(Type forType) {
             string forTypeName = forType.Name;
             if (forType.IsArray) {
                 string arrBeginEscape = "_arrSH";
@@ -413,7 +413,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// the real serialization/deserialization code</summary>        
         internal Type GetInstanceSerialiser(Type forType, AttributeExtCollection attributes,
                                             Serialiser forTypeSerializer) {
-            string instanceSerTypeName = GetInstanceSerializerTypeName(forType, forTypeSerializer);
+            string instanceSerTypeName = GetInstanceSerializerTypeName(forType);
             lock(this) {
                 Type ser = m_asmBuilder.GetType(instanceSerTypeName);
                 if (ser == null) {
