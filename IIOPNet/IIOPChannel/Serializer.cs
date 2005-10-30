@@ -1593,7 +1593,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             LocalBuilder discrVal = gen.DeclareLocal(discrValField.FieldType);
             gen.Emit(OpCodes.Ldloc, actualObject);
             gen.Emit(OpCodes.Unbox, formal);
-            gen.Emit(OpCodes.Callvirt, getDiscr);
+            gen.Emit(OpCodes.Call, getDiscr);
             gen.Emit(OpCodes.Stloc, discrVal);
             gen.Emit(OpCodes.Ldloc, discrVal);
             if (discrValField.FieldType.IsValueType) {
@@ -1655,7 +1655,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             LocalBuilder discrVal = gen.DeclareLocal(discrValField.FieldType);
             gen.Emit(OpCodes.Ldloc, result);
             gen.Emit(OpCodes.Unbox, formal);
-            gen.Emit(OpCodes.Callvirt, getDiscr);
+            gen.Emit(OpCodes.Call, getDiscr);
             gen.Emit(OpCodes.Stloc, discrVal);
             // val
             object[] coveredDiscrValues = GetCoveredDiscrValues(formal);
