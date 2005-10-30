@@ -415,7 +415,9 @@ namespace Ch.Elca.Iiop.Marshalling {
                                             Serialiser forTypeSerializer) {
             string instanceSerTypeName = GetInstanceSerializerTypeName(forType);
             lock(this) {
-                Type ser = m_asmBuilder.GetType(instanceSerTypeName);
+                // to allow instances embedded in instances, allow to get a not yet completely
+                // generated serialiser
+                Type ser = m_modBuilder.GetType(instanceSerTypeName);
                 if (ser == null) {
                     ser = CreateInstanceSerialiser(forType, attributes, instanceSerTypeName, forTypeSerializer);
                 }
