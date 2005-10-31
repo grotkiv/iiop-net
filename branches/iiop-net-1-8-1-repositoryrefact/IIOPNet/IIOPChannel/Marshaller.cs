@@ -101,13 +101,14 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                       ILGenerator gen, Serialiser serialiser, 
                                                       LocalBuilder actualObject, LocalBuilder targetStream,
                                                       SerializationGenerator helperTypeGenerator) {
+            SerializationGenerator.InstanceSerializerMethods isms;
             Type helperType =
-                helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser);
+                helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser, out isms);
             // call the instance serialization helper
-            gen.Emit(OpCodes.Newobj, helperType.GetConstructor(Type.EmptyTypes));
+            gen.Emit(OpCodes.Newobj, isms.Ctr);
             gen.Emit(OpCodes.Ldloc, actualObject);
             gen.Emit(OpCodes.Ldloc, targetStream);
-            gen.Emit(OpCodes.Callvirt, helperType.GetMethod("SerializeInstance", BindingFlags.Public | BindingFlags.Instance));            
+            gen.Emit(OpCodes.Callvirt, isms.SerMethod);
         }
         
         /// <summary>
@@ -136,12 +137,13 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                            Serialiser serialiser,
                                                            LocalBuilder sourceStream,                                                           
                                                            SerializationGenerator helperTypeGenerator) {
+            SerializationGenerator.InstanceSerializerMethods isms;
             Type helperType =
-                helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser);
+                helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser, out isms);
             // call the instance serialization helper
-            gen.Emit(OpCodes.Newobj, helperType.GetConstructor(Type.EmptyTypes));                
+            gen.Emit(OpCodes.Newobj, isms.Ctr);
             gen.Emit(OpCodes.Ldloc, sourceStream);
-            gen.Emit(OpCodes.Callvirt, helperType.GetMethod("DeserializeInstance", BindingFlags.Public | BindingFlags.Instance));                
+            gen.Emit(OpCodes.Callvirt, isms.DeserMethod);
         }
         
         

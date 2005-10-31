@@ -315,6 +315,43 @@ namespace Ch.Elca.Iiop.Marshalling {
             
         }
         
+        /// <summary>
+        /// helper class, which cached info about instance serialisers; this allows recurive call of
+        /// those
+        /// </summary>
+        internal class InstanceSerializerMethods {
+
+            private ConstructorInfo m_ctrInfo;
+            private MethodInfo m_serMethod;
+            private MethodInfo m_deserMethod;
+                        
+            internal InstanceSerializerMethods(ConstructorInfo ctrInfo, MethodInfo serMethod,
+                                               MethodInfo deserMethod) {
+                m_ctrInfo = ctrInfo;
+                m_serMethod = serMethod;
+                m_deserMethod = deserMethod;
+            }
+            
+            internal ConstructorInfo Ctr {
+                get {
+                    return m_ctrInfo;
+                }
+            }
+            
+            internal MethodInfo SerMethod {
+                get {
+                    return m_serMethod;
+                }
+            }
+            
+            internal MethodInfo DeserMethod {
+                get {
+                    return m_deserMethod;
+                }
+            }
+            
+        }
+        
         #endregion Types
         
         #region SFields
@@ -340,6 +377,13 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// caches the created arguments-serializers, because Activator.CreateInstance is an expensive operation.
         /// </summary>        
         private Hashtable /* <Type, ArgumentsSerializer> */ m_argumentsSerializers = new Hashtable();
+        
+        /// <summary>
+        /// cache the constructor and methods for instance serializers, because in case of recursive structures,
+        /// must be able to get instance ser constructor and methods; this is not supported before the type has been
+        /// created with CreateType.
+        /// </summary>
+        private Hashtable /* <string, InstanceSerializerMethods> */ m_instanceSerInfo = new Hashtable();
 
         #endregion IFields
         #region IConstructors
@@ -412,7 +456,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// serialize/deserialize the type by using reflection. It is also responsible for generating
         /// the real serialization/deserialization code</summary>        
         internal Type GetInstanceSerialiser(Type forType, AttributeExtCollection attributes,
-                                            Serialiser forTypeSerializer) {
+                                            Serialiser forTypeSerializer, 
+                                            out InstanceSerializerMethods instanceSerMethods) {
             string instanceSerTypeName = GetInstanceSerializerTypeName(forType);
             lock(this) {
                 // to allow instances embedded in instances, allow to get a not yet completely
@@ -421,6 +466,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 if (ser == null) {
                     ser = CreateInstanceSerialiser(forType, attributes, instanceSerTypeName, forTypeSerializer);
                 }
+                instanceSerMethods = (InstanceSerializerMethods)m_instanceSerInfo[instanceSerTypeName];
                 return ser;
             }            
         }        
@@ -1117,6 +1163,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                                 TypeAttributes.Public, 
                                                                 typeof(Ch.Elca.Iiop.Marshalling.TypeSerializationHelper),
                                                                 Type.EmptyTypes);
+            // default constructor
+            ConstructorInfo defaultConstr =
+                resultBuilder.DefineDefaultConstructor(MethodAttributes.Public);            
+            
             // methods to override
 
             // public abstract void SerializeInstance(object actual, CdrOutputStream targetStream);
@@ -1140,12 +1190,20 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            ReflectionHelper.ObjectType,
                                            new Type[] { typeof(Ch.Elca.Iiop.Cdr.CdrInputStream) });            
             deserInstance.DefineParameter(1, ParameterAttributes.In, "sourceStream");            
+
+            m_instanceSerInfo[serHelperTypeName] = new InstanceSerializerMethods(defaultConstr,
+                                                                                 serInstance, deserInstance);
             
 
             DefineInstanceSerialiserMethods(serInstance, deserInstance, 
                                             forType, attributes, responsibleSerializer);
-    
+                
             Type result = resultBuilder.CreateType();
+            // replace cached constructor with the one from after construction
+            m_instanceSerInfo[serHelperTypeName] = 
+                new InstanceSerializerMethods(result.GetConstructor(Type.EmptyTypes),
+                                              result.GetMethod("SerializeInstance", BindingFlags.Public | BindingFlags.Instance),
+                                              result.GetMethod("DeserializeInstance", BindingFlags.Public | BindingFlags.Instance));                                              
             return result;
         }                                                        
         

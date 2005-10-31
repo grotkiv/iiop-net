@@ -2314,7 +2314,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         private MethodInfo GetGetMethod(Type formal) {
             Type[] getMethodArgs = new Type[m_dimensions.Length];
             for (int i = 0; i < m_dimensions.Length; i++) {
-                getMethodArgs[i] = formal.GetElementType();
+                getMethodArgs[i] = ReflectionHelper.Int32Type; // index type
             }
             return formal.GetMethod("Get", BindingFlags.Public | BindingFlags.Instance,
                                     null, getMethodArgs, null);
@@ -2377,16 +2377,17 @@ namespace Ch.Elca.Iiop.Marshalling {
         private ConstructorInfo GetArrayConstructor(Type formal) {
             Type[] constrArgs = new Type[m_dimensions.Length];
             for (int i = 0; i < m_dimensions.Length; i++) {
-                constrArgs[i] = formal.GetElementType();
+                constrArgs[i] = ReflectionHelper.Int32Type; // dimension type
             }
             return formal.GetConstructor(constrArgs);
         }
         
         private MethodInfo GetSetMethod(Type formal) {
             Type[] setMethodArgs = new Type[m_dimensions.Length + 1];
-            for (int i = 0; i < m_dimensions.Length + 1; i++) {
-                setMethodArgs[i] = formal.GetElementType();
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                setMethodArgs[i] = ReflectionHelper.Int32Type; // index type
             }
+            setMethodArgs[m_dimensions.Length] = formal.GetElementType();
             return formal.GetMethod("Set", BindingFlags.Public | BindingFlags.Instance,
                                     null, setMethodArgs, null);
         }
