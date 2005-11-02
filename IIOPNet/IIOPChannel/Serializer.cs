@@ -1600,10 +1600,12 @@ namespace Ch.Elca.Iiop.Marshalling {
                 gen.Emit(OpCodes.Box, discrValField.FieldType);
             }
             gen.Emit(OpCodes.Stloc, elemVar);
-            Marshaller.GetSingleton().GenerateMarshallingCodeFor(discrValField.FieldType, attributes,
+            Marshaller.GetSingleton().GenerateMarshallingCodeFor(discrValField.FieldType, 
+                                                                 ReflectionHelper.GetCustomAttriutesForField(discrValField, true),
                                                                  gen, elemVar, targetStream, 
                                                                  temporaryLocal, helperTypeGenerator);
             // val
+            Label endLabel = gen.DefineLabel();
             object[] coveredDiscrValues = GetCoveredDiscrValues(formal);
             Label currentLabel = gen.DefineLabel();
             for (int i = 0; i < coveredDiscrValues.Length; i++) {
@@ -1614,6 +1616,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 FieldInfo curField = GetValFieldForDiscriminator(formal, coveredDiscrValues[i]);
                 EmitSerialiseField(curField, gen, argType, actualObject, elemVar,
                                    targetStream, temporaryLocal, helperTypeGenerator);
+                gen.Emit(OpCodes.Br, endLabel); // serialisation finished
                 gen.MarkLabel(currentLabel);
                 currentLabel = gen.DefineLabel();
             }
@@ -1625,6 +1628,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             gen.Emit(OpCodes.Br, currentLabel);
             gen.MarkLabel(currentLabel);            
+            gen.MarkLabel(endLabel);
         }
         
         internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
@@ -1658,6 +1662,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             gen.Emit(OpCodes.Call, getDiscr);
             gen.Emit(OpCodes.Stloc, discrVal);
             // val
+            Label deserEndLabel = gen.DefineLabel();
             object[] coveredDiscrValues = GetCoveredDiscrValues(formal);
             Label currentLabel = gen.DefineLabel();
             for (int i = 0; i < coveredDiscrValues.Length; i++) {
@@ -1668,6 +1673,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 FieldInfo curField = GetValFieldForDiscriminator(formal, coveredDiscrValues[i]);
                 EmitDeserialiseField(curField, gen, resultType, result,
                                    sourceStream, temporaryLocal, helperTypeGenerator);
+                gen.Emit(OpCodes.Br, deserEndLabel); // finished deserialsiation
                 gen.MarkLabel(currentLabel);
                 currentLabel = gen.DefineLabel();
             }
@@ -1679,6 +1685,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             gen.Emit(OpCodes.Br, currentLabel);
             gen.MarkLabel(currentLabel);                        
+            gen.MarkLabel(deserEndLabel);
             // initalized
             FieldInfo initalizedField = GetInitalizedField(formal);
             gen.Emit(OpCodes.Ldloc, resultType);
