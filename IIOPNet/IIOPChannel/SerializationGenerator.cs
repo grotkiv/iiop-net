@@ -412,7 +412,10 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         private string GetArgumentSerializerTypeName(Type forType) {
-            return "Ch.Elca.Iiop.Generators." + forType.Namespace + "." + 
+            string typeNameSpace = 
+                ((forType.Namespace != null && forType.Namespace != String.Empty) ? 
+                 forType.Namespace + "." : String.Empty);
+            return "Ch.Elca.Iiop.Generators." + typeNameSpace + 
                    "_" + forType.Name + "ArgHelper";            
         }
         
@@ -434,11 +437,11 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         /// <summar>Retrieve or generate a serialiser to use for serialising/deserialising
         /// a request/response for an object with class/interface forType</summary>
-        internal ArgumentsSerializer GetArgumentsSerialiser(Type forType) {
-            string argSerTypeName = GetArgumentSerializerTypeName(forType);
+        internal ArgumentsSerializer GetArgumentsSerialiser(Type forType) {            
             lock(this) {
                 ArgumentsSerializer ser = (ArgumentsSerializer)m_argumentsSerializers[forType];
                 if (ser == null) {
+                    string argSerTypeName = GetArgumentSerializerTypeName(forType);
                     Type serType = CreateArgumentsSerialiser(new ArgSerializationGenerationContext(forType),
                                                              argSerTypeName);
                     ser = (ArgumentsSerializer)Activator.CreateInstance(serType);
