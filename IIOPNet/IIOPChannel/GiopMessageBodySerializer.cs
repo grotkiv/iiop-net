@@ -96,6 +96,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         public const string URI_KEY = "__Uri";
         /// <summary>the key used to access the typename-property in messages</summary>
         public const string TYPENAME_KEY = "__TypeName";
+        /// <summary>the key used to access the target type property in messages</summary>
+        public const string TARGET_TYPE_KEY = "_target_type_Key";
         /// <summary>the key used to access the methodname-property in messages</summary>
         public const string METHODNAME_KEY = "__MethodName";
         /// <summary>the key used to access the argument-property in messages</summary>
@@ -376,6 +378,15 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 cdrStream.ForceWriteAlign(Aligns.Align8); 
             } // force an align on 8 for GIOP-version >= 1.2
         }
+        
+        /// <summary>
+        /// the same as AlignBodyIfNeeded, but without throwing exception, when not enough bytes.
+        /// </summary>
+        protected void TryAlignBodyIfNeeded(CdrInputStream cdrStream, GiopVersion version) {
+            if (!version.IsBeforeGiop1_2()) {
+                cdrStream.TryForceReadAlign(Aligns.Align8);
+            } // force an align on 8 for GIOP-version >= 1.2
+        }
 
         /// <summary>
         /// set the codesets for the stream after codeset service descision
@@ -459,6 +470,15 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                           clientRequest.RequestId));
             try {
                 clientRequest.SetRequestPICurrentFromThreadScopeCurrent(); // copy from thread scope picurrent before processing request
+                
+                ArgumentsSerializer ser =
+                    SerializationGenerator.GetSingleton().GetArgumentsSerialiser(clientRequest.MethodToCall.DeclaringType);
+                // determine the request method to send
+                string idlRequestName =
+                    ser.GetRequestNameFor(clientRequest.MethodToCall);
+                clientRequest.RequestMethodName = idlRequestName;
+                
+                // first interception point
                 clientRequest.InterceptSendRequest();
                 GiopVersion version = targetProfile.Version;
                 ServiceContextList cntxColl = clientRequest.RequestServiceContext;
@@ -493,7 +513,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 } else { // GIOP 1.2
                     SerialiseContext(targetStream, cntxColl); // service context
                 }
-                SerialiseRequestBody(targetStream, clientRequest, version);                
+                SerialiseRequestBody(targetStream, clientRequest, version, ser);                
             } catch (Exception ex) {
                 Debug.WriteLine("exception while serialising request: " + ex);
                 Exception newException = clientRequest.InterceptReceiveException(ex); // interception point may change exception
@@ -505,43 +525,18 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
         }
 
-        private void SerialiseContextElements(CdrOutputStream targetStream, MethodInfo methodToCall,
-                                              LogicalCallContext callContext) {
-            AttributeExtCollection methodAttrs =
-                ReflectionHelper.GetCustomAttriutesForMethod(methodToCall, true,
-                                                             ReflectionHelper.ContextElementAttributeType);
-            if (methodAttrs.Count > 0) {
-                string[] contextSeq = new string[methodAttrs.Count * 2];
-                for (int i = 0; i < methodAttrs.Count; i++) {
-                    string contextKey =
-                        ((ContextElementAttribute)methodAttrs.GetAttributeAt(i)).ContextElementKey;
-                    contextSeq[i * 2] = contextKey;
-                    if (callContext.GetData(contextKey) != null) {
-                        contextSeq[i * 2 + 1] = callContext.GetData(contextKey).ToString();
-                    } else {
-                        contextSeq[i * 2 + 1] = "";
-                    }
-                }
-                m_contextSeqMarshaller.Marshal(contextSeq, targetStream);
-            }
-        }
-
         /// <summary>serializes the request body</summary>
         /// <param name="targetStream"></param>
         /// <param name="clientRequest">the request to serialise</param>
         /// <param name="version">the GIOP-version</param>
-        private void SerialiseRequestBody(CdrOutputStream targetStream, GiopClientRequest clientRequest,
-                                          GiopVersion version) {
+        private void SerialiseRequestBody(CdrOutputStream targetStream, GiopClientRequest clientRequest,                                          
+                                          GiopVersion version, ArgumentsSerializer ser) {
             // body of request msg: serialize arguments
             // clarification from CORBA 2.6, chapter 15.4.1: no padding, when no arguments are serialised  -->
             // for backward compatibility, do it nevertheless
             AlignBodyIfNeeded(targetStream, version);
-            ParameterMarshaller marshaller = ParameterMarshaller.GetSingleton();
-            marshaller.SerialiseRequestArgs(clientRequest.MethodToCall, clientRequest.RequestArguments, 
-                                            targetStream);
-            // check for context elements
-            SerialiseContextElements(targetStream, clientRequest.MethodToCall,
-                                     clientRequest.RequestCallContext);
+            ser.SerializeRequestArgs(clientRequest.RequestMethodName, clientRequest.RequestArguments,
+                                     targetStream, clientRequest.RequestCallContext);
         }
 
         /// <summary>
@@ -594,8 +589,14 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 serverRequest.SetThreadScopeCurrentFromPICurrent(); // copy request scope picurrent to thread scope pi-current
                 
                 IDictionary contextElements;
-                serverRequest.ResolveCall(); // determine the .net target method
-                DeserialiseRequestBody(cdrStream, version, serverRequest, out contextElements);                
+
+                serverRequest.ResolveTargetType(); // determine the .net target object type and check if target object is available
+                ArgumentsSerializer argSer =
+                    SerializationGenerator.GetSingleton().GetArgumentsSerialiser(serverRequest.ServerTypeType);
+                MethodInfo called =
+                    argSer.GetMethodInfoFor(serverRequest.RequestMethodName);
+                serverRequest.ResolveCalledMethod(called); // set target method and handle special cases
+                DeserialiseRequestBody(cdrStream, version, serverRequest, argSer, out contextElements);
                 methodCallInfo = new MethodCall(serverRequest.Request);
                 if (contextElements != null) {
                     AddContextElementsToCallContext(methodCallInfo.LogicalCallContext, contextElements);
@@ -653,30 +654,16 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <param name="contextElements">the deserialised context elements, if any or null</param>        
         private void DeserialiseRequestBody(CdrInputStream cdrStream, GiopVersion version,
                                             GiopServerRequest request,
-                                            out IDictionary contextElements) {
-            // unmarshall parameters
-            ParameterMarshaller paramMarshaller = ParameterMarshaller.GetSingleton();
-            object[] args;
+                                            ArgumentsSerializer ser,
+                                            out IDictionary contextElements) {                       
             // clarification from CORBA 2.6, chapter 15.4.1: no padding, when no arguments/no context elements
             // are serialised, i.e. body empty
-            bool hasRequestArgs = paramMarshaller.HasRequestArgs(request.CalledMethod);
-            AttributeExtCollection methodAttrs =
-                ReflectionHelper.GetCustomAttriutesForMethod(request.CalledMethod, true,
-                                                             ReflectionHelper.ContextElementAttributeType);
-            contextElements = null;
-            if ((hasRequestArgs) || (methodAttrs.Count > 0)) {
-                AlignBodyIfNeeded(cdrStream, version); // aling request body
-            } else {
-                cdrStream.SkipRest(); // ignore paddings, if included    
-            }
-            if (hasRequestArgs) {
-                args = paramMarshaller.DeserialiseRequestArgs(request.CalledMethod, cdrStream);
-            } else {
-                args = new object[request.CalledMethod.GetParameters().Length];
-            }
-            if (methodAttrs.Count > 0) {
-                contextElements = DeserialseContextElements(cdrStream, methodAttrs);
-            }            
+            // ignores, if not enough bytes because no args/context; because in this case, no more bytes follow
+            TryAlignBodyIfNeeded(cdrStream, version);
+            // unmarshall parameters
+            object[] args = ser.DeserializeRequestArgs(request.RequestMethodName, cdrStream,
+                                                       out contextElements);
+
             // for standard corba ops, adapt args:
             if (request.IsStandardCorbaOperation) {
                 args = AdaptArgsForStandardOp(args, request.RequestUri);
@@ -768,9 +755,10 @@ namespace Ch.Elca.Iiop.MessageHandling {
             // for backward compatibility, do it nevertheless
             AlignBodyIfNeeded(targetStream, version);
             // marshal the parameters
-            ParameterMarshaller marshaller = ParameterMarshaller.GetSingleton();
-            marshaller.SerialiseResponseArgs(request.CalledMethod, 
-                                             request.ReturnValue, request.OutArgs, targetStream);            
+            ArgumentsSerializer ser =
+                SerializationGenerator.GetSingleton().GetArgumentsSerialiser(request.CalledMethod.DeclaringType); // TODO
+            ser.SerializeResponseArgs(request.RequestMethodName, request.ReturnValue, request.OutArgs,
+                                      targetStream);
         }                
 
         /// <summary>serialize the exception as a CORBA System exception</summary>
@@ -886,20 +874,17 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// <summary>deserialize response with ok-status.</summary>
         private IMessage DeserialiseNormalReply(CdrInputStream cdrStream, GiopVersion version, 
                                                 GiopClientRequest request) {
-            MethodInfo targetMethod = request.MethodToCall;
-            ParameterMarshaller paramMarshaller = ParameterMarshaller.GetSingleton();
+            MethodInfo targetMethod = request.MethodToCall;            
             object[] outArgs;
             object retVal = null;
             // body
             // clarification from CORBA 2.6, chapter 15.4.2: no padding, when no arguments are serialised
-            if (paramMarshaller.HasResponseArgs(targetMethod)) {
-                AlignBodyIfNeeded(cdrStream, version);
-                // read the parameters                            
-                retVal = paramMarshaller.DeserialiseResponseArgs(targetMethod, cdrStream, out outArgs);
-            } else {
-                outArgs = new object[0];
-                cdrStream.SkipRest(); // skip padding, if present
-            }
+            TryAlignBodyIfNeeded(cdrStream, version); // read alignement, if present
+            
+            ArgumentsSerializer ser =
+                SerializationGenerator.GetSingleton().GetArgumentsSerialiser(request.MethodToCall.DeclaringType); // TODO
+            retVal = ser.DeserializeResponseArgs(request.RequestMethodName, cdrStream,
+                                                 out outArgs);
             ReturnMessage response = new ReturnMessage(retVal, outArgs, outArgs.Length, null, request.Request);
             return response;
         }

@@ -528,6 +528,7 @@ namespace Ch.Elca.Iiop.Tests {
             msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = (uint)5;
             msg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY] = version;
             msg.Properties[SimpleGiopMsg.CALLED_METHOD_KEY] = methodToCall;
+            msg.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY] = methodToCall.Name; // no special transform needed here
             // create a connection context
             GiopConnectionDesc conDesc = new GiopConnectionDesc(null, null);
 
@@ -659,6 +660,7 @@ namespace Ch.Elca.Iiop.Tests {
             object[] args = new object[] { ((Int32) 1), ((Int32) 2) };
             string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
             TestMessage requestMsg = new TestMessage(methodToCall, args, uri);
+            requestMsg.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY] = methodToCall.Name; // no special transform needed here            
             // prepare connection desc
             GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, new GiopRequestNumberGenerator(), null);
             // create the reply

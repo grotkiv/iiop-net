@@ -34,6 +34,7 @@ using Ch.Elca.Iiop.Util;
 
 namespace Ch.Elca.Iiop.Idl {
 
+    
     /// <summary>
     /// This class is responsible for realising the identifier (name) mapping
     ///  in the IDL to .NET and .NET to IDL mapping.
@@ -157,28 +158,6 @@ namespace Ch.Elca.Iiop.Idl {
             return methodName;
         }
         
-        /// <summary>
-        /// determines the method name to use in a corba request.
-        /// </summary>
-        public static string GetRequestMethodName(MethodInfo method, bool isOverloaded) {
-            string methodName = method.Name;
-            
-            AttributeExtCollection methodAttributes = 
-                ReflectionHelper.GetCustomAttriutesForMethod(method, true);
-            if (methodAttributes.IsInCollection(ReflectionHelper.FromIdlNameAttributeType)) {
-                FromIdlNameAttribute idlNameAttr = 
-                    (FromIdlNameAttribute)methodAttributes.GetAttributeForType(ReflectionHelper.FromIdlNameAttributeType);
-                methodName = idlNameAttr.IdlName;
-            } else {
-                // do a CLS to IDL mapping, because .NET server expect this for every client, also for a
-                // native .NET client, which uses not CLS -> IDL -> CLS mapping                
-                methodName = IdlNaming.MapClsMethodNameToIdlName(method, 
-                                                                 isOverloaded);
-            }            
-            return methodName;
-        }
-
-
         /// <summary>gets the request method name for attribute, if possible.</summary>
         private static string GetRequestMethodNameFromAttr(MethodInfo info) {
             AttributeExtCollection methodAttributes = 
@@ -236,14 +215,14 @@ namespace Ch.Elca.Iiop.Idl {
         public static string DetermineOperationTransmissionName(string idlName) {
             return DetermineTransmissionName(idlName);
         }
-        
+
         /// <summary>
         /// Determine the attribute name to transmit for an idl attribute name
         /// </summary>
         public static string DetermineAttributeTransmissionName(string idlName) {
             return DetermineTransmissionName(idlName);
         }        
-        
+
         /// <summary>
         /// Determine the getter name to transmit for an idl attribute name
         /// </summary>
@@ -261,7 +240,7 @@ namespace Ch.Elca.Iiop.Idl {
                 DetermineTransmissionName(idlName);
             return "_set_" + attrNameToTransmit;
         }        
-
+        
         /// <summary>
         /// Determines the idl name to transmit over the wire according to 
         /// section 3.2.3.1 Escaped Identifiers, i.e. removes leading underscore.
@@ -275,31 +254,7 @@ namespace Ch.Elca.Iiop.Idl {
             }
             return result;
         }        
-
-        
-        /// <summary>
-        /// find the CLS method for the idl name of an overloaded CLS method, defined in type serverType
-        /// </summary>
-        internal static MethodInfo FindClsMethodForOverloadedMethodIdlName(string idlName,
-                                                                           Type serverType) {            
-            if (idlName.IndexOf("__") < 0) {
-                return null;
-            }
-            string methodName = idlName.Substring(0, idlName.IndexOf("__"));
-            methodName = ReverseClsToIdlNameMapping(methodName);
-            MethodInfo[] methods = serverType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
-            foreach (MethodInfo method in methods) {
-                if (method.Name.Equals(methodName)) {
-                    // method name is equal -> check if mangled method Name is the same
-                    string mappedName = MapClsMethodNameToIdlName(method, true);
-                    if (mappedName.Equals(idlName)) {
-                        return method;
-                    }
-                }
-            }
-            return null;
-        }
-        
+                        
         #endregion method name mapping
 
         /// <summary>
