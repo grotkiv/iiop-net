@@ -34,6 +34,7 @@ using System.Runtime.Remoting.Channels;
 using System.Diagnostics;
 using System.Collections;
 using System.Reflection;
+using System.Reflection.Emit;
 using Ch.Elca.Iiop.Cdr;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.Idl;
@@ -45,9 +46,29 @@ namespace Ch.Elca.Iiop.Marshalling {
 
     /// <summary>
     /// base class for all Serializer.
-    /// </summary>
+    /// </summary>        
     internal abstract class Serialiser {
 
+        #region SFields
+        
+        protected static MethodInfo s_setFieldValue =
+            typeof(FieldInfo).GetMethod("SetValue", BindingFlags.Public | BindingFlags.Instance,
+                                        null, new Type[] { ReflectionHelper.ObjectType, ReflectionHelper.ObjectType },
+                                        null);
+        
+        protected static MethodInfo s_getFieldValue =
+            typeof(FieldInfo).GetMethod("GetValue", BindingFlags.Public | BindingFlags.Instance,
+                                        null, new Type[] { ReflectionHelper.ObjectType },
+                                        null);   
+        
+        protected static MethodInfo s_getFieldMethod = 
+            ReflectionHelper.TypeType.GetMethod("GetField", 
+                                                BindingFlags.Public | BindingFlags.Instance,
+                                                null, new Type[] { ReflectionHelper.StringType, typeof(BindingFlags) },
+                                                null);        
+        
+        #endregion SFields
+        
         #region IConstructors
 
         internal Serialiser() {
@@ -97,6 +118,108 @@ namespace Ch.Elca.Iiop.Marshalling {
             fieldToDeser.SetValue(actual, fieldVal);
             return fieldVal;
         }
+        
+        protected void EmitSerialiseField(FieldInfo info, ILGenerator gen,
+                                          LocalBuilder argType, LocalBuilder actualObject,
+                                          LocalBuilder fieldLocal, 
+                                          LocalBuilder targetStream, LocalBuilder temporaryLocal,
+                                          SerializationGenerator helperTypeGenerator) {
+            Marshaller marshaller = Marshaller.GetSingleton();
+            // info = formal.GetFieldInfo("name", ...);
+            gen.Emit(OpCodes.Ldloc, argType);
+            gen.Emit(OpCodes.Ldstr, info.Name);
+            gen.Emit(OpCodes.Ldc_I4, (int)(BindingFlags.Public | BindingFlags.NonPublic |
+                                           BindingFlags.Instance | BindingFlags.DeclaredOnly));
+            gen.Emit(OpCodes.Callvirt, s_getFieldMethod); // now field info on stack
+            // fieldLocal = field.GetValue(actual)
+            gen.Emit(OpCodes.Ldloc, actualObject); // actual instance
+            gen.Emit(OpCodes.Callvirt, s_getFieldValue); // set the field value via reflection
+            gen.Emit(OpCodes.Stloc, fieldLocal);
+            marshaller.GenerateMarshallingCodeFor(info.FieldType,
+                                                  ReflectionHelper.GetCustomAttriutesForField(info, true),
+                                                  gen, fieldLocal, targetStream, temporaryLocal,
+                                                  helperTypeGenerator);
+        }
+        
+        protected void EmitDeserialiseField(FieldInfo info, ILGenerator gen,
+                                            LocalBuilder resultType, LocalBuilder result,
+                                            LocalBuilder sourceStream, LocalBuilder temporaryLocal,
+                                            SerializationGenerator helperTypeGenerator) {
+            Marshaller marshaller = Marshaller.GetSingleton();
+            // info = formal.GetFieldInfo("name", ...);
+            gen.Emit(OpCodes.Ldloc, resultType);
+            gen.Emit(OpCodes.Ldstr, info.Name);
+            gen.Emit(OpCodes.Ldc_I4, (int)(BindingFlags.Public | BindingFlags.NonPublic |
+                                           BindingFlags.Instance | BindingFlags.DeclaredOnly));
+            gen.Emit(OpCodes.Callvirt, s_getFieldMethod); // now field info on stack
+            // info.SetFieldValue(result, fieldValue)
+            gen.Emit(OpCodes.Ldloc, result); // actual instance
+            marshaller.GenerateUnmarshallingCodeFor(info.FieldType,
+                                                    ReflectionHelper.GetCustomAttriutesForField(info, true), 
+                                                    gen, sourceStream, temporaryLocal, helperTypeGenerator);
+            gen.Emit(OpCodes.Callvirt, s_setFieldValue); // set the field value via reflection
+        }
+        
+        /// <summary>
+        /// Emits code to serialise the given type.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal virtual void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            // throw new NotImplementedException();
+            gen.ThrowException(typeof(NotImplementedException));
+            
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value must be pushed onto the stack at the end.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal virtual void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            // throw new NotImplementedException();
+            gen.ThrowException(typeof(NotImplementedException));
+        }
+        
+        /// <summary>
+        /// returns true, if the serialiser is for a basic type. This is helpful to 
+        /// decide, if a serialization helper class is useful or not.
+        /// </summary>
+        internal abstract bool IsSimpleTypeSerializer();
+        
+        
+        protected void CheckActualNotNull(object actual) {            
+            if (actual == null) {
+                // not allowed
+                throw new BAD_PARAM(3433, CompletionStatus.Completed_MayBe);
+            }
+            // ok
+        }
+        
+        /// <summary>
+        /// Emit code to check, that actual object is not null.
+        /// </summary>
+        protected void EmitActualNotNullCheck(ILGenerator gen, LocalBuilder actualObject) {
+            // non null check
+            Label notNullLabel = gen.DefineLabel();
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Brtrue, notNullLabel);
+            // null not allowed for a sequence:
+            ConstructorInfo badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+            gen.Emit(OpCodes.Ldc_I4, 3433);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, badParamCtr);
+            gen.Emit(OpCodes.Throw);            
+            gen.MarkLabel(notNullLabel);            
+        }
 
         #endregion IMethods
 
@@ -119,6 +242,36 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadOctet();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.ByteType);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrOutputStream).GetMethod("WriteOctet", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrInputStream).GetMethod("ReadOctet", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.ByteType);
+        }
+        
 
         #endregion IMethods
 
@@ -139,6 +292,35 @@ namespace Ch.Elca.Iiop.Marshalling {
             return sourceStream.ReadBool();
         }
 
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.BooleanType);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrOutputStream).GetMethod("WriteBool", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrInputStream).GetMethod("ReadBool", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.BooleanType);
+        }        
+        
         #endregion IMethods
 
     }
@@ -157,6 +339,35 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadShort();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.Int16Type);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteShort", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadShort", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.Int16Type);
+        }        
 
         #endregion IMethods
 
@@ -176,6 +387,35 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadLong();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.Int32Type);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteLong", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadLong", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.Int32Type);
+        }                
 
         #endregion IMethods
 
@@ -195,6 +435,35 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadLongLong();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.Int64Type);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteLongLong", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadLongLong", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.Int64Type);
+        }                        
 
         #endregion IMethods
 
@@ -214,6 +483,35 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadFloat();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.SingleType);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteFloat", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadFloat", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.SingleType);
+        }                                
 
         #endregion IMethods
 
@@ -233,6 +531,35 @@ namespace Ch.Elca.Iiop.Marshalling {
                                            CdrInputStream sourceStream) {
             return sourceStream.ReadDouble();
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.DoubleType);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteDouble", BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadDouble", BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.DoubleType);
+        }                                        
 
         #endregion IMethods
 
@@ -275,6 +602,39 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.CharType);
+            string writeMethod = (m_useWide ? "WriteWChar" : "WriteChar");
+            Type cdrOutputStType = (m_useWide ? typeof(CdrEndianDepOutputStreamOp) : typeof(CdrOutputStream));
+            gen.Emit(OpCodes.Callvirt, cdrOutputStType.GetMethod(writeMethod, BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            string readMethod = (m_useWide ? "ReadWChar" : "ReadChar");
+            Type cdrInputStType = (m_useWide ? typeof(CdrEndianDepInputStreamOp) : typeof(CdrInputStream));
+            gen.Emit(OpCodes.Callvirt, cdrInputStType.GetMethod(readMethod, BindingFlags.Public | BindingFlags.Instance));
+            gen.Emit(OpCodes.Box, ReflectionHelper.CharType);
+        }                                                
 
         #endregion IMethods
 
@@ -299,10 +659,8 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                        CdrOutputStream targetStream) {            
-            if (actual == null) { 
-                // string may not be null, if StringValueAttriubte is set"
-                throw new BAD_PARAM(10040, CompletionStatus.Completed_MayBe);
-            }
+            // string may not be null, if StringValueAttriubte is set"
+            CheckActualNotNull(actual);
             if (m_useWide) {
                 targetStream.WriteWString((string)actual);
             } else {
@@ -321,6 +679,41 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {
+            // null not allowed for a string, if StringValueAttribute is set
+            EmitActualNotNullCheck(gen, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.StringType);
+            string writeMethod = (m_useWide ? "WriteWString" : "WriteString");
+            Type cdrOutputStType = (m_useWide ? typeof(CdrEndianDepOutputStreamOp) : typeof(CdrOutputStream));
+            gen.Emit(OpCodes.Callvirt, cdrOutputStType.GetMethod(writeMethod, BindingFlags.Public | BindingFlags.Instance));
+        }
+        
+        /// <summary>
+        /// Emits code to deserialise the given type. The result value is pushed onto the stack.
+        /// </summary>
+        /// <param name="formal">the type to serialise</param>
+        /// <param name="attributes">parameter/field attributes</param>
+        /// <param name="gen">the generator to use</param>
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            string readMethod = (m_useWide ? "ReadWString" : "ReadString");
+            Type cdrInputStType = (m_useWide ? typeof(CdrEndianDepInputStreamOp) : typeof(CdrInputStream));
+            gen.Emit(OpCodes.Callvirt, cdrInputStType.GetMethod(readMethod, BindingFlags.Public | BindingFlags.Instance));
+
+        }        
 
         #endregion IMethods
 
@@ -334,7 +727,7 @@ namespace Ch.Elca.Iiop.Marshalling {
     
     /// <summary>serializes object references</summary>
     internal class ObjRefSerializer : Serialiser {
-
+        
         #region IMethods
         
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
@@ -384,8 +777,6 @@ namespace Ch.Elca.Iiop.Marshalling {
             ior.WriteToStream(targetStream); // write the null reference to the stream
         }
                 
-
-
         internal override object Deserialise(Type formal, AttributeExtCollection attributes,
                                            CdrInputStream sourceStream) {
             // reads the encoded IOR from this stream
@@ -409,8 +800,35 @@ namespace Ch.Elca.Iiop.Marshalling {
             return proxy;
         }
         
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {            
+            MethodInfo serMethod = TypeSerializationHelper.ClassType.GetMethod("SerialiseObjRef", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Call, serMethod);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            MethodInfo deserMethod = TypeSerializationHelper.ClassType.GetMethod("DeserialiseObjRef", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Call, deserMethod);
+        }        
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }                  
+        
         #endregion IMethods
-
+        
     }
 
     #endregion
@@ -731,7 +1149,33 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             }
         }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {            
+            MethodInfo serMethod = TypeSerializationHelper.ClassType.GetMethod("SerialiseConcretetVt", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Call, serMethod);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            MethodInfo deserMethod = TypeSerializationHelper.ClassType.GetMethod("DeserialiseConcreteVt", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Call, deserMethod);
+        }        
 
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
 
         #endregion IMethods
 
@@ -756,25 +1200,26 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IConstructors
         #region IMethods
         
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                         CdrOutputStream targetStream) {
+        private void CheckFormalIsBoxedValueType(Type formal) {
             if (!formal.IsSubclassOf(ReflectionHelper.BoxedValueBaseType)) { 
                 // BoxedValueSerializer can only serialize formal types, 
                 // which are subclasses of BoxedValueBase
                 throw new INTERNAL(10041, CompletionStatus.Completed_MayBe);
-            }
-
-            if (m_convertMultiDimArray) {
-                // actual is a multi dimensional array, which must be first converted to a jagged array
-                if ((actual != null) && (!actual.GetType().IsArray) && (!(actual.GetType().GetArrayRank() > 1))) {
-                    throw new BAD_PARAM(9004, CompletionStatus.Completed_MayBe);
-                }
-                actual = BoxedArrayHelper.ConvertMoreDimToNestedOneDim((Array)actual);
-            }
+            }            
+        }
+        
+        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+                                         CdrOutputStream targetStream) {
+            CheckFormalIsBoxedValueType(formal);
 
             // perform a boxing
             object boxed = null;
             if (actual != null) {
+                if (m_convertMultiDimArray) {
+                    // actual is a multi dimensional array, which must be first converted to a jagged array
+                    actual = 
+                        BoxedArrayHelper.ConvertMoreDimToNestedOneDimChecked(actual);
+                }
                 boxed = Activator.CreateInstance(formal, new object[] { actual } );
             }
             m_valueSer.Serialise(formal, boxed, attributes, targetStream);
@@ -783,30 +1228,119 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override object Deserialise(Type formal, AttributeExtCollection attributes, 
                                              CdrInputStream sourceStream) {
             Debug.WriteLine("deserialise boxed value, formal: " + formal);
-            if (!formal.IsSubclassOf(ReflectionHelper.BoxedValueBaseType)) { 
-                // BoxedValueSerializer can only serialize formal types,
-                // which are subclasses of BoxedValueBase
-                throw new INTERNAL(10041, CompletionStatus.Completed_MayBe);
-            }
+            CheckFormalIsBoxedValueType(formal);
 
             BoxedValueBase boxedResult = (BoxedValueBase) m_valueSer.Deserialise(formal, attributes, sourceStream);
             object result = null;
             if (boxedResult != null) {
                 // perform an unboxing
                 result = boxedResult.Unbox();
-            }
-
-            if (m_convertMultiDimArray) {
-                // result is a jagged arary, which must be converted to a true multidimensional array
-                if ((result != null) && (!result.GetType().IsArray)) {
-                    throw new BAD_PARAM(9004, CompletionStatus.Completed_MayBe);
-                }
-                result = BoxedArrayHelper.ConvertNestedOneDimToMoreDim((Array)result);
-            }
+                if (m_convertMultiDimArray) {
+                    // result is a jagged arary, which must be converted to a true multidimensional array
+                    result = BoxedArrayHelper.ConvertNestedOneDimToMoreDimChecked(result);
+                }                
+            }         
 
             Debug.WriteLine("unboxed result of boxedvalue-ser: " + result);
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
+                
+        private void EmitCreateValueBox(Type formal, ILGenerator gen, LocalBuilder actualObject) {
+            // boxed value type has multiple constructors with one argument; instantiate with the right one            
+            ConstructorInfo[] constructors =
+                formal.GetConstructors();
+            Label boxedOk = gen.DefineLabel();
+            Label nextConstructor = gen.DefineLabel();
+            for (int i = 0; i < constructors.Length; i++) {
+                if (constructors[i].GetParameters().Length == 1) {
+                    gen.Emit(OpCodes.Ldloc, actualObject);
+                    gen.Emit(OpCodes.Isinst, constructors[i].GetParameters()[0].ParameterType);
+                    gen.Emit(OpCodes.Brfalse, nextConstructor);
+                    // use this constructor to box
+                    gen.Emit(OpCodes.Ldloc, actualObject);
+                    IlEmitHelper.GetSingleton().
+                        GenerateCastObjectToType(gen, constructors[i].GetParameters()[0].ParameterType);
+                    gen.Emit(OpCodes.Newobj, constructors[i]);
+                    gen.Emit(OpCodes.Stloc, actualObject);
+                    gen.Emit(OpCodes.Br, boxedOk);
+                    gen.MarkLabel(nextConstructor);
+                    nextConstructor = gen.DefineLabel();
+                }                
+            }
+            gen.Emit(OpCodes.Br, nextConstructor);
+            gen.MarkLabel(nextConstructor);
+            // internal problem, no constructor available, throw exception
+            ConstructorInfo internalCtr = 
+                typeof(INTERNAL).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+            gen.Emit(OpCodes.Ldc_I4, 1002);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, internalCtr);
+            gen.Emit(OpCodes.Throw);
+            
+            gen.MarkLabel(boxedOk);
+        }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            CheckFormalIsBoxedValueType(formal);
+                       
+            // if actualObject is != null, box it
+            Label isNull = gen.DefineLabel();
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Brfalse, isNull);            
+            // != null, check if needed to convert array
+            if (m_convertMultiDimArray) {                
+                gen.Emit(OpCodes.Ldloc, actualObject);
+                gen.Emit(OpCodes.Call, 
+                         typeof(BoxedArrayHelper).GetMethod("ConvertMoreDimToNestedOneDimChecked",
+                                                            BindingFlags.Static | BindingFlags.Public));
+                gen.Emit(OpCodes.Stloc, actualObject);
+            }            
+            // != null -> box            
+            EmitCreateValueBox(formal, gen, actualObject);            
+            gen.MarkLabel(isNull);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            marshaller.GenerateInstanceMarshallingCode(formal, attributes, gen, m_valueSer, 
+                                                       actualObject, targetStream, 
+                                                       helperTypeGenerator);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            CheckFormalIsBoxedValueType(formal);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            marshaller.GenerateInstanceUnmarshallingCodeFor(formal, attributes, gen,
+                                                            m_valueSer, sourceStream, helperTypeGenerator);
+            // store result in temp var
+            gen.Emit(OpCodes.Stloc, temporaryLocal);
+            Label isNull = gen.DefineLabel();
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            gen.Emit(OpCodes.Brfalse, isNull);
+            // != null, perform unboxing
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, ReflectionHelper.BoxedValueBaseType);
+            gen.Emit(OpCodes.Call,
+                     ReflectionHelper.BoxedValueBaseType.GetMethod("Unbox", 
+                                                                   BindingFlags.Public | BindingFlags.Instance));
+            // check if result is a jagged arary, which must be converted to a true multidimensional array
+            if (m_convertMultiDimArray) {                
+                gen.Emit(OpCodes.Call,
+                         typeof(BoxedArrayHelper).GetMethod("ConvertNestedOneDimToMoreDimChecked",
+                                                            BindingFlags.Public | BindingFlags.Static));
+            }            
+            gen.Emit(OpCodes.Stloc, temporaryLocal);
+            gen.MarkLabel(isNull);
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            // result is on stack
+        }        
 
         #endregion IMethods
 
@@ -816,7 +1350,7 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// this class serializes .NET structs, which were mapped from an IDL-struct
     /// </summary>
     internal class IdlStructSerializer : Serialiser {
-
+                
         #region IMethods
     
         internal override object Deserialise(System.Type formal, AttributeExtCollection attributes,
@@ -844,6 +1378,59 @@ namespace Ch.Elca.Iiop.Marshalling {
                                    info.GetValue(actual), targetStream);
             }
         }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(formal);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            
+            LocalBuilder argType = gen.DeclareLocal(ReflectionHelper.TypeType);
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Stloc, argType);
+            
+            LocalBuilder fieldLocal = gen.DeclareLocal(ReflectionHelper.ObjectType);
+            
+            foreach (FieldInfo info in fields) {
+                EmitSerialiseField(info, gen, argType, actualObject,
+                                   fieldLocal, targetStream, temporaryLocal,
+                                   helperTypeGenerator);                
+            }
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(formal);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            
+            // instantiate the struct and store it in result
+            LocalBuilder result = gen.DeclareLocal(ReflectionHelper.ObjectType);
+            LocalBuilder initStruct = gen.DeclareLocal(formal);
+            gen.Emit(OpCodes.Ldloca, initStruct);
+            gen.Emit(OpCodes.Initobj, formal); // is a struct -> use initobj and not newobj
+            gen.Emit(OpCodes.Ldloc, initStruct);
+            gen.Emit(OpCodes.Box, formal);
+            gen.Emit(OpCodes.Stloc, result);
+            
+            LocalBuilder resultType = gen.DeclareLocal(ReflectionHelper.TypeType);
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Stloc, resultType);
+            
+            // deserialise the fields            
+            foreach (FieldInfo info in fields) {    
+                EmitDeserialiseField(info, gen, resultType, result,
+                                     sourceStream, temporaryLocal, helperTypeGenerator);
+            }            
+            // push result onto the stack
+            gen.Emit(OpCodes.Ldloc, result);
+        }        
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
 
         #endregion IMethods
 
@@ -853,11 +1440,11 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         #region Constants
 
-        private const string GET_FIELD_FOR_DISCR_METHOD_NAME = UnionGenerationHelper.GET_FIELD_FOR_DISCR_METHOD;
+        private const string GET_FIELD_FOR_DISCR_METHOD_NAME = "GetFieldForDiscriminator";
 
-        private const string DISCR_FIELD_NAME = UnionGenerationHelper.DISCR_FIELD_NAME;
+        private const string DISCR_FIELD_NAME = "m_discriminator";
 
-        private const string INITALIZED_FIELD_NAME = UnionGenerationHelper.INIT_FIELD_NAME;
+        private const string INITALIZED_FIELD_NAME = "m_initalized";
 
         #endregion Constants
 
@@ -889,6 +1476,27 @@ namespace Ch.Elca.Iiop.Marshalling {
             }            
             return initalizedField;
         }
+        
+        private object[] GetCoveredDiscrValues(Type formal) {
+            MethodInfo getCoveredDiscrMethod = formal.GetMethod(UnionGenerationHelper.GET_COVERED_DISCR_VALUES,
+                                                                BindingFlags.Static | BindingFlags.NonPublic |
+                                                                BindingFlags.DeclaredOnly);
+            // get all discriminator values used in switch-cases
+            object[] coveredDiscrs = (object[])getCoveredDiscrMethod.Invoke(null, new object[0]);
+            if (coveredDiscrs == null) {
+                throw new INTERNAL(898, CompletionStatus.Completed_MayBe);
+            }
+            return coveredDiscrs;
+        }
+        
+        private FieldInfo GetDefaultField(Type formal) {
+            MethodInfo getDefaultField = formal.GetMethod(UnionGenerationHelper.GET_DEFAULT_FIELD, 
+                                                          BindingFlags.Static | BindingFlags.NonPublic);
+            if (getDefaultField == null) {
+                throw new INTERNAL(898, CompletionStatus.Completed_MayBe);
+            }
+            return (FieldInfo)getDefaultField.Invoke(null, new object[0] );
+        }
 
         internal override object Deserialise(System.Type formal, AttributeExtCollection attributes,
                                            CdrInputStream sourceStream) {            
@@ -914,7 +1522,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             FieldInfo initalizedField = GetInitalizedField(formal);
             bool isInit = (bool)initalizedField.GetValue(actual);
             if (isInit == false) {
-                throw new BAD_OPERATION(34, CompletionStatus.Completed_MayBe);
+                throw new BAD_PARAM(34, CompletionStatus.Completed_MayBe);
             }
             // determine value of the discriminator
             FieldInfo discrValField = GetDiscriminatorField(formal);
@@ -929,6 +1537,175 @@ namespace Ch.Elca.Iiop.Marshalling {
             } 
             // else:  case outside covered discr range, do not serialise value, only discriminator
         }
+        
+        private void PushDiscriminatorToStack(ILGenerator gen,
+                                              Type discrType, object val) {
+            if (discrType.Equals(ReflectionHelper.BooleanType)) {
+                gen.Emit(OpCodes.Ldc_I4, Convert.ToInt32(val));
+            } else if (discrType.Equals(ReflectionHelper.Int16Type)) {
+                gen.Emit(OpCodes.Ldc_I4, Convert.ToInt32(val));
+            } else if (discrType.Equals(ReflectionHelper.Int32Type)) {
+                gen.Emit(OpCodes.Ldc_I4, Convert.ToInt32(val));
+            } else if (discrType.Equals(ReflectionHelper.Int64Type)) {
+                gen.Emit(OpCodes.Ldc_I8, Convert.ToInt64(val));
+            } else if (discrType.Equals(ReflectionHelper.CharType)) {
+                gen.Emit(OpCodes.Ldc_I4, Convert.ToInt32(val));
+            } else if (discrType.IsEnum) {
+                // get the int value for the idl enum
+                gen.Emit(OpCodes.Ldc_I4, (System.Int32)val);
+            } else {
+                throw new INTERNAL(899, CompletionStatus.Completed_MayBe);
+            }
+        }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            MethodInfo isInit =
+                formal.GetProperty(UnionGenerationHelper.ISINIT_PROPERTY_NAME,
+                                   BindingFlags.Public | BindingFlags.Instance).GetGetMethod();
+            MethodInfo getDiscr =
+                formal.GetProperty(UnionGenerationHelper.DISCR_PROPERTY_NAME,
+                                   BindingFlags.Public | BindingFlags.Instance).GetGetMethod();
+            
+            // store the type of the union in local var
+            LocalBuilder argType = gen.DeclareLocal(ReflectionHelper.TypeType);
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Stloc, argType);            
+            // check initalized
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Unbox, formal);
+            gen.Emit(OpCodes.Call, isInit);
+            Label isInitOk = gen.DefineLabel();
+            gen.Emit(OpCodes.Brtrue, isInitOk);
+            ConstructorInfo badParamCtr = 
+                typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+            gen.Emit(OpCodes.Ldc_I4, 34);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, badParamCtr);
+            gen.Emit(OpCodes.Throw);
+            gen.MarkLabel(isInitOk);
+            // serialise
+            // discriminator
+            LocalBuilder elemVar = gen.DeclareLocal(ReflectionHelper.ObjectType);
+            FieldInfo discrValField = GetDiscriminatorField(formal);
+            LocalBuilder discrVal = gen.DeclareLocal(discrValField.FieldType);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Unbox, formal);
+            gen.Emit(OpCodes.Call, getDiscr);
+            gen.Emit(OpCodes.Stloc, discrVal);
+            gen.Emit(OpCodes.Ldloc, discrVal);
+            if (discrValField.FieldType.IsValueType) {
+                gen.Emit(OpCodes.Box, discrValField.FieldType);
+            }
+            gen.Emit(OpCodes.Stloc, elemVar);
+            Marshaller.GetSingleton().GenerateMarshallingCodeFor(discrValField.FieldType, 
+                                                                 ReflectionHelper.GetCustomAttriutesForField(discrValField, true),
+                                                                 gen, elemVar, targetStream, 
+                                                                 temporaryLocal, helperTypeGenerator);
+            // val
+            Label endLabel = gen.DefineLabel();
+            object[] coveredDiscrValues = GetCoveredDiscrValues(formal);
+            Label currentLabel = gen.DefineLabel();
+            for (int i = 0; i < coveredDiscrValues.Length; i++) {
+                gen.Emit(OpCodes.Ldloc, discrVal);
+                PushDiscriminatorToStack(gen, discrValField.FieldType, coveredDiscrValues[i]);
+                gen.Emit(OpCodes.Ceq);
+                gen.Emit(OpCodes.Brfalse, currentLabel);
+                FieldInfo curField = GetValFieldForDiscriminator(formal, coveredDiscrValues[i]);
+                EmitSerialiseField(curField, gen, argType, actualObject, elemVar,
+                                   targetStream, temporaryLocal, helperTypeGenerator);
+                gen.Emit(OpCodes.Br, endLabel); // serialisation finished
+                gen.MarkLabel(currentLabel);
+                currentLabel = gen.DefineLabel();
+            }
+            FieldInfo defaultField = GetDefaultField(formal);
+            if (defaultField != null) {
+                // default specified
+                EmitSerialiseField(defaultField, gen, argType, actualObject, elemVar,
+                                   targetStream, temporaryLocal, helperTypeGenerator);                
+            }
+            gen.Emit(OpCodes.Br, currentLabel);
+            gen.MarkLabel(currentLabel);            
+            gen.MarkLabel(endLabel);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            MethodInfo getDiscr =
+                formal.GetProperty(UnionGenerationHelper.DISCR_PROPERTY_NAME,
+                                   BindingFlags.Public | BindingFlags.Instance).GetGetMethod();
+                        
+            // store the type of the union in local var
+            LocalBuilder resultType = gen.DeclareLocal(ReflectionHelper.TypeType);
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Stloc, resultType);
+            // instantiate the union and store it in result
+            LocalBuilder result = gen.DeclareLocal(ReflectionHelper.ObjectType);
+            LocalBuilder initUnion = gen.DeclareLocal(formal);
+            gen.Emit(OpCodes.Ldloca, initUnion);
+            gen.Emit(OpCodes.Initobj, formal); // is a valuetype -> use initobj and not newobj
+            gen.Emit(OpCodes.Ldloc, initUnion);
+            gen.Emit(OpCodes.Box, formal);
+            gen.Emit(OpCodes.Stloc, result);
+            // discriminator
+            FieldInfo discrValField = GetDiscriminatorField(formal);
+            EmitDeserialiseField(discrValField, gen, resultType, result,
+                                 sourceStream, temporaryLocal, helperTypeGenerator);
+            // store discr value in local var
+            LocalBuilder discrVal = gen.DeclareLocal(discrValField.FieldType);
+            gen.Emit(OpCodes.Ldloc, result);
+            gen.Emit(OpCodes.Unbox, formal);
+            gen.Emit(OpCodes.Call, getDiscr);
+            gen.Emit(OpCodes.Stloc, discrVal);
+            // val
+            Label deserEndLabel = gen.DefineLabel();
+            object[] coveredDiscrValues = GetCoveredDiscrValues(formal);
+            Label currentLabel = gen.DefineLabel();
+            for (int i = 0; i < coveredDiscrValues.Length; i++) {
+                gen.Emit(OpCodes.Ldloc, discrVal);
+                PushDiscriminatorToStack(gen, discrValField.FieldType, coveredDiscrValues[i]);
+                gen.Emit(OpCodes.Ceq);
+                gen.Emit(OpCodes.Brfalse, currentLabel);
+                FieldInfo curField = GetValFieldForDiscriminator(formal, coveredDiscrValues[i]);
+                EmitDeserialiseField(curField, gen, resultType, result,
+                                   sourceStream, temporaryLocal, helperTypeGenerator);
+                gen.Emit(OpCodes.Br, deserEndLabel); // finished deserialsiation
+                gen.MarkLabel(currentLabel);
+                currentLabel = gen.DefineLabel();
+            }
+            FieldInfo defaultField = GetDefaultField(formal);
+            if (defaultField != null) {
+                // default specified
+                EmitDeserialiseField(defaultField, gen, resultType, result,
+                                     sourceStream, temporaryLocal, helperTypeGenerator);
+            }
+            gen.Emit(OpCodes.Br, currentLabel);
+            gen.MarkLabel(currentLabel);                        
+            gen.MarkLabel(deserEndLabel);
+            // initalized
+            FieldInfo initalizedField = GetInitalizedField(formal);
+            gen.Emit(OpCodes.Ldloc, resultType);
+            gen.Emit(OpCodes.Ldstr, initalizedField.Name);
+            gen.Emit(OpCodes.Ldc_I4, (int)(BindingFlags.Public | BindingFlags.NonPublic |
+                                           BindingFlags.Instance | BindingFlags.DeclaredOnly));
+            gen.Emit(OpCodes.Callvirt, s_getFieldMethod); // now field info on stack
+            // info.SetFieldValue(result, fieldValue)
+            gen.Emit(OpCodes.Ldloc, result); // actual instance
+            gen.Emit(OpCodes.Ldc_I4, 1); // true
+            gen.Emit(OpCodes.Box, ReflectionHelper.BooleanType);
+            gen.Emit(OpCodes.Callvirt, s_setFieldValue); // set the field value via reflection            
+            // push result onto the stack
+            gen.Emit(OpCodes.Ldloc, result);
+        }
+        
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
 
         #endregion IMethods
     }
@@ -967,6 +1744,33 @@ namespace Ch.Elca.Iiop.Marshalling {
             // deserialise as IDL-value-type
             return m_valObjectSer.Deserialise(formal, attributes, sourceStream);
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }        
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {            
+            MethodInfo serMethod = TypeSerializationHelper.ClassType.GetMethod("SerialiseAbstractVt", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Call, serMethod);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            MethodInfo deserMethod = TypeSerializationHelper.ClassType.GetMethod("DeserialiseAbstractVt", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Call, deserMethod);
+        }
 
         #endregion IMethods
 
@@ -999,6 +1803,33 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             return result;
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }                
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {            
+            MethodInfo serMethod = TypeSerializationHelper.ClassType.GetMethod("SerialiseType", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Call, serMethod);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            MethodInfo deserMethod = TypeSerializationHelper.ClassType.GetMethod("DeserialiseType", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Call, deserMethod);
+        }        
 
         #endregion IMethods
 
@@ -1006,6 +1837,17 @@ namespace Ch.Elca.Iiop.Marshalling {
     
     /// <summary>serializes enums</summary>
     internal class EnumSerializer : Serialiser {
+        
+        private static MethodInfo s_enumToObject = typeof(Enum).GetMethod("ToObject", BindingFlags.Public | BindingFlags.Static, null,
+                                   new Type[] { ReflectionHelper.TypeType, ReflectionHelper.ObjectType },
+                                   null);
+        
+        private static MethodInfo s_enumIsDefined = typeof(Enum).GetMethod("IsDefined", BindingFlags.Public | BindingFlags.Static, null,
+                                   new Type[] { ReflectionHelper.TypeType, ReflectionHelper.ObjectType },
+                                   null);
+
+        private static ConstructorInfo s_badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) });
+        
         
         #region IMethods
 
@@ -1046,6 +1888,50 @@ namespace Ch.Elca.Iiop.Marshalling {
                 return Enum.ToObject(formal, val);
             }
         }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            // don't handle special case idl enum here specifically, because can be handled equally to other case
+            // map to the base-type of the enum, write the value of the enum
+            Type underlyingType = Enum.GetUnderlyingType(formal);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            // marshal the enum value
+            marshaller.GenerateMarshallingCodeFor(underlyingType, attributes, gen, actualObject, targetStream,
+                                                  temporaryLocal, helperTypeGenerator);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            // don't handle special case idl enum here specifically, because can be handled equally to other case
+            Type underlyingType = Enum.GetUnderlyingType(formal);
+            Marshaller marshaller = Marshaller.GetSingleton();
+            // unmarshal the enum-value
+            marshaller.GenerateUnmarshallingCodeFor(underlyingType, attributes, gen, sourceStream, 
+                                                    temporaryLocal, helperTypeGenerator);                        
+            gen.Emit(OpCodes.Stloc, temporaryLocal);
+            Label afterCheck = gen.DefineLabel();
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal); // type argument
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            gen.Emit(OpCodes.Call, s_enumIsDefined);
+            gen.Emit(OpCodes.Brtrue, afterCheck);
+            // illegal enum value for enum: formal, val: val
+            gen.Emit(OpCodes.Ldc_I4, 10041);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, s_badParamCtr);            
+            gen.Emit(OpCodes.Throw);
+            gen.MarkLabel(afterCheck);
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal); // type argument
+            gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            gen.Emit(OpCodes.Call, s_enumToObject);
+        }        
+                        
+        internal override bool IsSimpleTypeSerializer() {
+            return true;
+        }        
     
         #endregion IMethods
 
@@ -1077,13 +1963,26 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
         
+        private void EmitCheckBound(ILGenerator gen, LocalBuilder readBound) {
+            if (IdlSequenceAttribute.IsBounded(m_bound)) {
+                Label ok = gen.DefineLabel();
+                gen.Emit(OpCodes.Ldloc, readBound);                
+                gen.Emit(OpCodes.Ldc_I4, m_bound);
+                gen.Emit(OpCodes.Ble, ok);
+                ConstructorInfo badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+                gen.Emit(OpCodes.Ldc_I4, 3434);
+                gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+                gen.Emit(OpCodes.Newobj, badParamCtr);
+                gen.Emit(OpCodes.Throw);
+                gen.MarkLabel(ok);
+            }
+        }
+        
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                        CdrOutputStream targetStream) {
             Array array = (Array) actual;
-            if (array == null) {
-                // not allowed for a sequence:
-                throw new BAD_PARAM(3433, CompletionStatus.Completed_MayBe);
-            }
+            // not allowed for a sequence:
+            CheckActualNotNull(array);
             CheckBound((uint)array.Length);
             targetStream.WriteULong((uint)array.Length);
             // get marshaller for elemtype
@@ -1112,6 +2011,127 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             return result;
         }
+        
+        private void EmitForLoopVarIncrement1AndBranchCheck(ILGenerator gen, LocalBuilder loopVar,
+                                                            LocalBuilder arrayLengthLoc, Label loopCheck,
+                                                            Label loopBegin) {
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            gen.Emit(OpCodes.Ldc_I4_1);            
+            gen.Emit(OpCodes.Add);
+            gen.Emit(OpCodes.Stloc, loopVar);
+            // loop check
+            gen.MarkLabel(loopCheck);
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            gen.Emit(OpCodes.Ldloc, arrayLengthLoc);           
+            gen.Emit(OpCodes.Blt, loopBegin);            
+        }        
+        
+        private void EmitLoopBeginBranchCheck(ILGenerator gen, LocalBuilder loopVar, 
+                                              Label loopCheck, Label loopBegin) {
+            gen.Emit(OpCodes.Ldc_I4_0);
+            gen.Emit(OpCodes.Stloc, loopVar);
+            gen.Emit(OpCodes.Br, loopCheck);
+            gen.MarkLabel(loopBegin);            
+        }
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            // null not allowed for a sequence:
+            EmitActualNotNullCheck(gen, actualObject);
+            // check now bound
+            LocalBuilder arrayLengthLoc = gen.DeclareLocal(ReflectionHelper.Int32Type);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Castclass, formal);
+            gen.Emit(OpCodes.Ldlen);
+            gen.Emit(OpCodes.Conv_I4);            
+            gen.Emit(OpCodes.Stloc, arrayLengthLoc);
+            EmitCheckBound(gen, arrayLengthLoc);
+            // write the length
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Ldloc, arrayLengthLoc);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepOutputStreamOp).GetMethod("WriteULong", BindingFlags.Public | BindingFlags.Instance));
+            
+            // marshal elements with a for loop
+            LocalBuilder loopVar = gen.DeclareLocal(ReflectionHelper.Int32Type); // loop variable
+            LocalBuilder elemVar = gen.DeclareLocal(ReflectionHelper.ObjectType);
+            Label loopBegin = gen.DefineLabel();
+            Label loopCheck = gen.DefineLabel();
+            EmitLoopBeginBranchCheck(gen, loopVar, loopCheck, loopBegin);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            if (formal.GetElementType().IsValueType) {
+                gen.Emit(OpCodes.Ldelema, formal.GetElementType());
+                gen.Emit(OpCodes.Ldobj, formal.GetElementType());
+                gen.Emit(OpCodes.Box, formal.GetElementType());
+            } else {
+                gen.Emit(OpCodes.Ldelem_Ref);
+            }
+            gen.Emit(OpCodes.Stloc, elemVar);
+            Marshaller.GetSingleton().GenerateMarshallingCodeFor(formal.GetElementType(), attributes,
+                                                                 gen, elemVar, targetStream, 
+                                                                 temporaryLocal, helperTypeGenerator);
+            // loop var increment and check
+            EmitForLoopVarIncrement1AndBranchCheck(gen, loopVar, arrayLengthLoc, 
+                                                   loopCheck, loopBegin);
+        }
+        
+        private void EmitReadLength(ILGenerator gen, LocalBuilder sourceStream,
+                                    LocalBuilder arrayLengthLoc) {
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, typeof(CdrEndianDepInputStreamOp).GetMethod("ReadULong", BindingFlags.Public | BindingFlags.Instance));            
+            gen.Emit(OpCodes.Stloc, arrayLengthLoc);            
+        }
+                
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {  
+            // mapped from an IDL-sequence
+            LocalBuilder arrayLengthLoc = gen.DeclareLocal(ReflectionHelper.Int32Type);
+            LocalBuilder result = gen.DeclareLocal(formal);
+            // read the length
+            EmitReadLength(gen, sourceStream, arrayLengthLoc);
+            EmitCheckBound(gen, arrayLengthLoc);
+
+            gen.Emit(OpCodes.Ldloc, arrayLengthLoc);
+            gen.Emit(OpCodes.Newarr, formal.GetElementType());                        
+            gen.Emit(OpCodes.Stloc, result);
+                        
+            // unmarshal the elements with a for loop
+            LocalBuilder loopVar = gen.DeclareLocal(ReflectionHelper.Int32Type); // loop variable
+            Label loopBegin = gen.DefineLabel();
+            Label loopCheck = gen.DefineLabel();
+                        
+            EmitLoopBeginBranchCheck(gen, loopVar, loopCheck, loopBegin);
+            // prepare to store in array            
+            gen.Emit(OpCodes.Ldloc, result);
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            if (formal.GetElementType().IsValueType) {
+                gen.Emit(OpCodes.Ldelema, formal.GetElementType());
+            }
+            Marshaller.GetSingleton().GenerateUnmarshallingCodeFor(formal.GetElementType(), attributes,
+                                                                 gen, sourceStream, 
+                                                                 temporaryLocal, helperTypeGenerator);            
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal.GetElementType());
+            if (formal.GetElementType().IsValueType) {
+                gen.Emit(OpCodes.Stobj, formal.GetElementType());
+            } else {
+                gen.Emit(OpCodes.Stelem_Ref);
+            }            
+            // loop var increment and check
+            EmitForLoopVarIncrement1AndBranchCheck(gen, loopVar, arrayLengthLoc, 
+                                                   loopCheck, loopBegin);
+            // at the end, push result onto the stack; arrays are always ref types, therefore no check for box needed
+            gen.Emit(OpCodes.Ldloc, result);
+        }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true; // simpler and a little bit more performant; 
+            // but more code because always generated instead of only a call to instance serialiser helper
+        }        
 
         #endregion IMethods
 
@@ -1135,11 +2155,11 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IConstructors
         #region IMethods
 
-        private void CheckInstance(Array array) {
+        private void CheckInstanceDimensions(Array array) {
             if (m_dimensions.Length != array.Rank) {
                 throw new BAD_PARAM(3436, CompletionStatus.Completed_MayBe);
             }
-            for (int i = 0; i < array.Rank; i++) {
+            for (int i = 0; i < m_dimensions.Length; i++) {
                 if (m_dimensions[i] != array.GetLength(i)) {
                     throw new BAD_PARAM(3437, CompletionStatus.Completed_MayBe);
                 }
@@ -1149,12 +2169,12 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         private void SerialiseDimension(Array array, MarshallerForType marshaller, CdrOutputStream targetStream,
                                         int[] indices, int currentDimension) {
-            if (currentDimension == array.Rank) {
+            if (currentDimension == m_dimensions.Length) {
                 object value = array.GetValue(indices);
                 marshaller.Marshal(value, targetStream);
             } else {
                 // the first dimension index in the array is increased slower than the second and so on ...
-                for (int j = 0; j < array.GetLength(currentDimension); j++) {
+                for (int j = 0; j < m_dimensions[currentDimension]; j++) {
                     indices[currentDimension] = j;                    
                     SerialiseDimension(array, marshaller, targetStream, indices, currentDimension + 1);
                 }
@@ -1164,15 +2184,13 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
                                          CdrOutputStream targetStream) {
             Array array = (Array) actual;
-            if (array == null) {
-                // not allowed for an idl array:
-                throw new BAD_PARAM(3433, CompletionStatus.Completed_MayBe);
-            }
-            CheckInstance(array);
+            // not allowed for an idl array:
+            CheckActualNotNull(array);
+            CheckInstanceDimensions(array);
             // get marshaller for elemtype
             Type elemType = formal.GetElementType();
             MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            SerialiseDimension(array, marshaller, targetStream, new int[array.Rank], 0);
+            SerialiseDimension(array, marshaller, targetStream, new int[m_dimensions.Length], 0);
         }
 
         private void DeserialiseDimension(Array array, MarshallerForType marshaller, CdrInputStream sourceStream,
@@ -1182,7 +2200,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 array.SetValue(entry, indices);
             } else {
                 // the first dimension index in the array is increased slower than the second and so on ...
-                for (int j = 0; j < array.GetLength(currentDimension); j++) {                    
+                for (int j = 0; j < m_dimensions[currentDimension]; j++) {
                     indices[currentDimension] = j;                    
                     DeserialiseDimension(array, marshaller, sourceStream, indices, currentDimension + 1);
                 }
@@ -1196,9 +2214,217 @@ namespace Ch.Elca.Iiop.Marshalling {
             // get marshaller for array element type
             Type elemType = formal.GetElementType();
             MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            DeserialiseDimension(result, marshaller, sourceStream, new int[result.Rank], 0);
+            DeserialiseDimension(result, marshaller, sourceStream, new int[m_dimensions.Length], 0);
             return result;
         }
+        
+        private void EmitForLoopVarIncrement1AndBranchCheck(ILGenerator gen, LocalBuilder loopVar,
+                                                            int loopMax, Label loopCheck,
+                                                            Label loopBegin) {
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            gen.Emit(OpCodes.Ldc_I4_1);            
+            gen.Emit(OpCodes.Add);
+            gen.Emit(OpCodes.Stloc, loopVar);
+            // loop check
+            gen.MarkLabel(loopCheck);
+            gen.Emit(OpCodes.Ldloc, loopVar);
+            gen.Emit(OpCodes.Ldc_I4, loopMax);
+            gen.Emit(OpCodes.Blt, loopBegin);
+        }        
+        
+        private void EmitLoopBeginBranchCheck(ILGenerator gen, LocalBuilder loopVar, 
+                                              Label loopCheck, Label loopBegin) {
+            gen.Emit(OpCodes.Ldc_I4_0);
+            gen.Emit(OpCodes.Stloc, loopVar);
+            gen.Emit(OpCodes.Br, loopCheck);
+            gen.MarkLabel(loopBegin);
+        }        
+        
+        private void EmitCheckInstanceDimensions(ILGenerator gen, LocalBuilder actualObject) {            
+            ConstructorInfo badParamCtr = typeof(BAD_PARAM).GetConstructor(new Type[] { ReflectionHelper.Int32Type, typeof(CompletionStatus) } );
+            MethodInfo arrayRank = 
+                typeof(Array).GetProperty("Rank", BindingFlags.Public |
+                                                                     BindingFlags.Instance).GetGetMethod();
+            MethodInfo getLength = 
+                typeof(Array).GetMethod("GetLength", BindingFlags.Public |
+                                                     BindingFlags.Instance);
+            // check rank of array
+            gen.Emit(OpCodes.Ldc_I4, m_dimensions.Length);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, typeof(Array));
+            gen.Emit(OpCodes.Callvirt, arrayRank);
+            Label rankAndDimEqual = gen.DefineLabel();
+            gen.Emit(OpCodes.Beq, rankAndDimEqual);
+            // m_dimensions.Length != array.Rank
+            gen.Emit(OpCodes.Ldc_I4, 3436);
+            gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+            gen.Emit(OpCodes.Newobj, badParamCtr);
+            gen.Emit(OpCodes.Throw);            
+            gen.MarkLabel(rankAndDimEqual);
+            // check every dimension of array            
+            // because m_dimensions is not available at runtime, don't emit a for loop for check
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                gen.Emit(OpCodes.Ldloc, actualObject);
+                IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, typeof(Array));
+                gen.Emit(OpCodes.Ldc_I4, i);
+                gen.Emit(OpCodes.Call, getLength);
+                gen.Emit(OpCodes.Ldc_I4, m_dimensions[i]);
+                Label dimensionOk = gen.DefineLabel();
+                gen.Emit(OpCodes.Beq, dimensionOk);
+                // m_dimensions[i] != array.GetLength(i)
+                gen.Emit(OpCodes.Ldc_I4, 3437);
+                gen.Emit(OpCodes.Ldc_I4, (int)CompletionStatus.Completed_MayBe);
+                gen.Emit(OpCodes.Newobj, badParamCtr);
+                gen.Emit(OpCodes.Throw);                        
+                gen.MarkLabel(dimensionOk);
+                // this dimension is ok
+            }            
+        }
+        
+        private void EmitSerialiseDimension(ILGenerator gen, 
+                                            Type formal, AttributeExtCollection attributes,
+                                            SerializationGenerator helperTypeGenerator,
+                                            LocalBuilder actualObject, LocalBuilder targetStream,
+                                            LocalBuilder temporaryLocal,
+                                            LocalBuilder[] loopVars, int currentDimension) {
+            if (currentDimension == m_dimensions.Length) {
+                LocalBuilder elemVar = gen.DeclareLocal(ReflectionHelper.ObjectType);
+                // serialise element
+                gen.Emit(OpCodes.Ldloc, actualObject);
+                IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal);
+                for (int i = 0; i < loopVars.Length; i++) {
+                    gen.Emit(OpCodes.Ldloc, loopVars[i]);
+                }
+                gen.Emit(OpCodes.Call, GetGetMethod(formal));
+                if (formal.GetElementType().IsValueType) {
+                    gen.Emit(OpCodes.Box, formal.GetElementType()); // elemVar is object
+                }
+                gen.Emit(OpCodes.Stloc, elemVar);
+                Marshaller.GetSingleton().GenerateMarshallingCodeFor(formal.GetElementType(), attributes,
+                                                                     gen, elemVar, targetStream, 
+                                                                     temporaryLocal, helperTypeGenerator);                
+            } else {
+                // emit for loop for current dimension
+                Label loopCheck = gen.DefineLabel();
+                Label loopBegin = gen.DefineLabel();
+                EmitLoopBeginBranchCheck(gen, loopVars[currentDimension], loopCheck, loopBegin);
+                EmitSerialiseDimension(gen, formal, attributes, helperTypeGenerator,
+                                       actualObject, targetStream, temporaryLocal,
+                                       loopVars,
+                                       currentDimension + 1);
+                EmitForLoopVarIncrement1AndBranchCheck(gen, loopVars[currentDimension],
+                                                       m_dimensions[currentDimension],
+                                                       loopCheck, loopBegin);
+            }
+        }
+        
+        private MethodInfo GetGetMethod(Type formal) {
+            Type[] getMethodArgs = new Type[m_dimensions.Length];
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                getMethodArgs[i] = ReflectionHelper.Int32Type; // index type
+            }
+            return formal.GetMethod("Get", BindingFlags.Public | BindingFlags.Instance,
+                                    null, getMethodArgs, null);
+        }        
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                ILGenerator gen, LocalBuilder actualObject, 
+                                                LocalBuilder targetStream,
+                                                LocalBuilder temporaryLocal,
+                                                SerializationGenerator helperTypeGenerator) {
+            // null not allowed for an array:
+            EmitActualNotNullCheck(gen, actualObject);
+            // check, that array has correct rank and every dimension has the right length
+            EmitCheckInstanceDimensions(gen, actualObject);
+            // serialise the elements
+            // emit a nested for loop to serialise elements           
+            LocalBuilder[] loopVarsForDimensions = new LocalBuilder[m_dimensions.Length];
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                loopVarsForDimensions[i] = gen.DeclareLocal(ReflectionHelper.Int32Type);
+            }                        
+            EmitSerialiseDimension(gen, formal, attributes, helperTypeGenerator,
+                                   actualObject, targetStream, temporaryLocal,
+                                   loopVarsForDimensions, 0);            
+        }
+        
+        private void EmitDeserialiseDimension(ILGenerator gen, 
+                                              Type formal, AttributeExtCollection attributes,
+                                              SerializationGenerator helperTypeGenerator,
+                                              LocalBuilder result, LocalBuilder sourceStream,
+                                              LocalBuilder temporaryLocal,
+                                              LocalBuilder[] loopVars, int currentDimension) {            
+            if (currentDimension == m_dimensions.Length) {
+                gen.Emit(OpCodes.Ldloc, result);
+                IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal);
+                for (int i = 0; i < loopVars.Length; i++) {
+                    gen.Emit(OpCodes.Ldloc, loopVars[i]);
+                }
+                // deserialise element
+                Marshaller.GetSingleton().GenerateUnmarshallingCodeFor(formal.GetElementType(), attributes,
+                                                                       gen, sourceStream, 
+                                                                       temporaryLocal, helperTypeGenerator);
+                IlEmitHelper.GetSingleton().GenerateCastObjectToType(gen, formal.GetElementType());
+                // store element                
+                gen.Emit(OpCodes.Call, GetSetMethod(formal));
+            } else {
+                // emit for loop for current dimension
+                Label loopCheck = gen.DefineLabel();
+                Label loopBegin = gen.DefineLabel();
+                EmitLoopBeginBranchCheck(gen, loopVars[currentDimension], loopCheck, loopBegin);
+                EmitDeserialiseDimension(gen, formal, attributes, helperTypeGenerator,
+                                         result, sourceStream, temporaryLocal,
+                                         loopVars,
+                                         currentDimension + 1);
+                EmitForLoopVarIncrement1AndBranchCheck(gen, loopVars[currentDimension],
+                                                       m_dimensions[currentDimension],
+                                                       loopCheck, loopBegin);
+            }
+        }
+        
+        private ConstructorInfo GetArrayConstructor(Type formal) {
+            Type[] constrArgs = new Type[m_dimensions.Length];
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                constrArgs[i] = ReflectionHelper.Int32Type; // dimension type
+            }
+            return formal.GetConstructor(constrArgs);
+        }
+        
+        private MethodInfo GetSetMethod(Type formal) {
+            Type[] setMethodArgs = new Type[m_dimensions.Length + 1];
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                setMethodArgs[i] = ReflectionHelper.Int32Type; // index type
+            }
+            setMethodArgs[m_dimensions.Length] = formal.GetElementType();
+            return formal.GetMethod("Set", BindingFlags.Public | BindingFlags.Instance,
+                                    null, setMethodArgs, null);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                  ILGenerator gen, LocalBuilder sourceStream,
+                                                  LocalBuilder temporaryLocal,
+                                                  SerializationGenerator helperTypeGenerator) {
+            LocalBuilder result = gen.DeclareLocal(formal);
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                gen.Emit(OpCodes.Ldc_I4, m_dimensions[i]);
+            }
+            gen.Emit(OpCodes.Newobj, GetArrayConstructor(formal));
+            gen.Emit(OpCodes.Stloc, result);  
+            // emit a nested for loop to serialise elements           
+            LocalBuilder[] loopVarsForDimensions = new LocalBuilder[m_dimensions.Length];
+            for (int i = 0; i < m_dimensions.Length; i++) {
+                loopVarsForDimensions[i] = gen.DeclareLocal(ReflectionHelper.Int32Type);
+            }            
+            EmitDeserialiseDimension(gen, formal, attributes, helperTypeGenerator,
+                                     result, sourceStream, temporaryLocal,
+                                     loopVarsForDimensions, 0);
+            // push result on the stack; no boxing needed, because array is a ref type.
+            gen.Emit(OpCodes.Ldloc, result);
+        }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return true; // simpler and a little bit more performant; 
+            // but more code because always generated instead of only a call to instance serialiser helper
+        }                
 
         #endregion IMethods        
 
@@ -1298,6 +2524,33 @@ namespace Ch.Elca.Iiop.Marshalling {
             } else {
                 return new Any(result, typeCode);
             }
+        }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }       
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {            
+            MethodInfo serMethod = TypeSerializationHelper.ClassType.GetMethod("SerialiseAny", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Call, serMethod);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            MethodInfo deserMethod = TypeSerializationHelper.ClassType.GetMethod("DeserialiseAny", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Call, deserMethod);
         }
         
         #endregion IMethods
@@ -1454,6 +2707,33 @@ namespace Ch.Elca.Iiop.Marshalling {
                 targetStream.WriteIndirection(tcImpl);
             }
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }   
+        
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {            
+            MethodInfo serMethod = TypeSerializationHelper.ClassType.GetMethod("SerialiseTC", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Call, serMethod);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            MethodInfo deserMethod = TypeSerializationHelper.ClassType.GetMethod("DeserialiseTC", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Call, deserMethod);
+        }        
 
         #endregion IMethods
 
@@ -1503,7 +2783,34 @@ namespace Ch.Elca.Iiop.Marshalling {
                 return result;
             }
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }                
 
+        internal override void GenerateSerialisationCode(Type formal, AttributeExtCollection attributes,
+                                                         ILGenerator gen, LocalBuilder actualObject, LocalBuilder targetStream,
+                                                         LocalBuilder temporaryLocal,
+                                                         SerializationGenerator helperTypeGenerator) {            
+            MethodInfo serMethod = TypeSerializationHelper.ClassType.GetMethod("SerialiseAbstractIf", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Call, serMethod);
+        }
+        
+        internal override void GenerateDeserialisationCode(Type formal, AttributeExtCollection attributes,
+                                                           ILGenerator gen, LocalBuilder sourceStream,
+                                                           LocalBuilder temporaryLocal,
+                                                           SerializationGenerator helperTypeGenerator) {
+            MethodInfo deserMethod = TypeSerializationHelper.ClassType.GetMethod("DeserialiseAbstractIf", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            gen.Emit(OpCodes.Ldarg_0); // this
+            IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Call, deserMethod);
+        }        
+        
         #endregion IMethods
     
     }
@@ -1561,6 +2868,10 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             }
         }
+        
+        internal override bool IsSimpleTypeSerializer() {
+            return false;
+        }                        
 
         #endregion IMethods
 

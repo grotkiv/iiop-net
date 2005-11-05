@@ -193,6 +193,10 @@ namespace Ch.Elca.Iiop.Idl {
         ///<summary>reference to one of the internal constructor of class ParameterInfo. 
         /// Used for assigning custom attributes to the return parameter</summary>
         private static ConstructorInfo s_paramBuildConstr;
+        
+        private static MethodInfo s_getTypeFromHandleMethod;
+        
+        private static MethodInfo s_typeGetTypeMethod;
     
         #endregion SFields
         #region IFields
@@ -211,6 +215,12 @@ namespace Ch.Elca.Iiop.Idl {
                                                                             typeof(ParameterAttributes),
                                                                             ReflectionHelper.StringType }, 
                                                                null);
+            s_getTypeFromHandleMethod = ReflectionHelper.TypeType.GetMethod("GetTypeFromHandle", BindingFlags.Public | BindingFlags.Static);
+            s_typeGetTypeMethod = ReflectionHelper.TypeType.GetMethod("GetType",
+                                                                      BindingFlags.Public | BindingFlags.Static,
+                                                                      null,
+                                                                      new Type[] { ReflectionHelper.StringType },
+                                                                      null);
         }
 
         #endregion SConstructor
@@ -237,8 +247,7 @@ namespace Ch.Elca.Iiop.Idl {
         private void AddFromIdlNameAttribute(PropertyBuilder propBuild, string forIdlAttributeName) {
             propBuild.SetCustomAttribute(
                 new FromIdlNameAttribute(forIdlAttributeName).CreateAttributeBuilder());
-        }        
-
+        }
 
         /// <summary>adds a method to a type, setting the attributes on the parameters</summary>
         /// <remarks>forgeign method: should be better on TypeBuilder, but not possible</remarks>
@@ -349,9 +358,9 @@ namespace Ch.Elca.Iiop.Idl {
         /// </summary>
         /// <param name="attrs">MethodAttributes, automatically adds HideBySig and SpecialName</param>
         public MethodBuilder AddPropertySetter(TypeBuilder builder, string propertyName, 
-                                               string forIdlAttributeName,
+                                               string forIdlSetterName,
                                                TypeContainer propertyType, MethodAttributes attrs) {
-            return AddPropertySetterInternal(builder, propertyName, forIdlAttributeName, 
+            return AddPropertySetterInternal(builder, propertyName, forIdlSetterName, 
                                              propertyType, attrs);
         }        
         
@@ -361,7 +370,7 @@ namespace Ch.Elca.Iiop.Idl {
         /// </summary>
         private MethodBuilder AddPropertySetterInternal(TypeBuilder builder,
                                                         string propertyName,
-                                                        string forIdlAttributeName, 
+                                                        string forIdlSetterName, 
                                                         TypeContainer propertyType, 
                                                         MethodAttributes attrs) {
             Type propTypeCls = propertyType.GetSeparatedClsType();
@@ -375,8 +384,8 @@ namespace Ch.Elca.Iiop.Idl {
                 valParam.SetCustomAttribute(propertyType.GetSeparatedAttrs()[j]);
             }
             
-            if (forIdlAttributeName != null) {
-                AddFromIdlNameAttribute(setAccessor, "_set_" + forIdlAttributeName);    
+            if (forIdlSetterName != null) {
+                AddFromIdlNameAttribute(setAccessor, forIdlSetterName);    
             }            
             return setAccessor;                                                                                                                                    
         }
@@ -396,15 +405,15 @@ namespace Ch.Elca.Iiop.Idl {
         /// </summary>
         /// <param name="attrs">MethodAttributes, automatically adds HideBySig and SpecialName</param>
         public MethodBuilder AddPropertyGetter(TypeBuilder builder, string propertyName,
-                                               string forIdlAttributeName,
+                                               string forIdlGetterName,
                                                TypeContainer propertyType, MethodAttributes attrs) {
-            return AddPropertyGetterInternal(builder, propertyName, forIdlAttributeName, 
+            return AddPropertyGetterInternal(builder, propertyName, forIdlGetterName, 
                                              propertyType, attrs);
         }
 
         
         private MethodBuilder AddPropertyGetterInternal(TypeBuilder builder, string propertyName,
-                                                       string forIdlAttributeName, 
+                                                       string forIdlGetterName, 
                                                        TypeContainer propertyType, MethodAttributes attrs) {
             Type propTypeCls = propertyType.GetSeparatedClsType();
             MethodBuilder getAccessor = builder.DefineMethod("get_" + propertyName, 
@@ -416,8 +425,8 @@ namespace Ch.Elca.Iiop.Idl {
             for (int j = 0; j < propertyType.GetSeparatedAttrs().Length; j++) {                
                 retParamGet.SetCustomAttribute(propertyType.GetSeparatedAttrs()[j]);
             }
-            if (forIdlAttributeName != null) {
-                AddFromIdlNameAttribute(getAccessor, "_get_" + forIdlAttributeName);    
+            if (forIdlGetterName != null) {
+                AddFromIdlNameAttribute(getAccessor, forIdlGetterName);    
             }
             return getAccessor;                                                           
         }
@@ -517,6 +526,19 @@ namespace Ch.Elca.Iiop.Idl {
                 gen.Emit(OpCodes.Ldobj, targetType); // load value onto stack
             } else {
                 gen.Emit(OpCodes.Castclass, targetType); // cast the reference to the correct return value
+            }
+        }
+        
+        /// <summary>
+        /// emit instructions to load type
+        /// </summary>
+        public void EmitLoadType(ILGenerator gen, Type type) {
+            if (!type.IsByRef) {
+                gen.Emit(OpCodes.Ldtoken, type);
+                gen.Emit(OpCodes.Call, s_getTypeFromHandleMethod);
+            } else {
+                gen.Emit(OpCodes.Ldstr, type.AssemblyQualifiedName); // contains already & at the end
+                gen.Emit(OpCodes.Call, s_typeGetTypeMethod);
             }
         }
         

@@ -29,6 +29,7 @@
 
 using System;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Collections;
 using System.Diagnostics;
 using Ch.Elca.Iiop.Cdr;
@@ -73,7 +74,110 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         #endregion SMethods
         #region IMethods
-
+       
+        /// <summary>
+        /// Generate code, which serialises an instance of the given type,        
+        /// </summary>
+        /// <param name="actualObject">The instance to serialise</param>
+        /// <param name="targetStream">The CdrOututStream usable the write instance to</param>
+        internal void GenerateMarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
+                                                 LocalBuilder actualObject, LocalBuilder targetStream,
+                                                 LocalBuilder temporaryLocal,
+                                                 SerializationGenerator helperTypeGenerator) {
+            Debug.WriteLine("generate marshal code for formal: " + formal);
+            CustomMappingDesc customMappingUsed;
+            Serialiser serialiser = DetermineSerialiser(ref formal, ref attributes, out customMappingUsed);
+            // check for plugged special mappings, e.g. CLS ArrayList -> java.util.ArrayList
+            // --> if present, need to convert instance before serialising                        
+            if ((customMappingUsed != null)) {
+                gen.Emit(OpCodes.Ldloc, actualObject);
+                Label isNull = gen.DefineLabel();
+                gen.Emit(OpCodes.Brfalse, isNull);
+                gen.Emit(OpCodes.Call, 
+                         CustomMapperRegistry.ClassType.GetMethod("GetSingleton", BindingFlags.Static | BindingFlags.Public));
+                gen.Emit(OpCodes.Ldloc, actualObject); // load result
+                IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+                gen.Emit(OpCodes.Call,
+                         CustomMapperRegistry.ClassType.GetMethod("CreateIdlForClsInstance", BindingFlags.Instance | BindingFlags.Public));
+                gen.Emit(OpCodes.Stloc, actualObject);
+                gen.MarkLabel(isNull);
+            }            
+            if (serialiser.IsSimpleTypeSerializer()) {
+                serialiser.GenerateSerialisationCode(formal, attributes, gen, actualObject, targetStream,
+                                                     temporaryLocal, helperTypeGenerator);
+            } else {
+                GenerateInstanceMarshallingCode(formal, attributes, gen, serialiser,
+                                                actualObject, targetStream, helperTypeGenerator);
+            }
+        }
+        
+        internal void GenerateInstanceMarshallingCode(Type formal, AttributeExtCollection attributes, 
+                                                      ILGenerator gen, Serialiser serialiser, 
+                                                      LocalBuilder actualObject, LocalBuilder targetStream,
+                                                      SerializationGenerator helperTypeGenerator) {
+            SerializationGenerator.InstanceSerializerMethods isms;
+            Type helperType =
+                helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser, out isms);
+            // call the instance serialization helper
+            gen.Emit(OpCodes.Newobj, isms.Ctr);
+            gen.Emit(OpCodes.Ldloc, actualObject);
+            gen.Emit(OpCodes.Ldloc, targetStream);
+            gen.Emit(OpCodes.Callvirt, isms.SerMethod);
+        }
+        
+        /// <summary>
+        /// generate code, which deserialises an instance of the given type
+        /// </summary>
+        /// <param name="sourceStream">The CdrInputStream usable the read instance from</param>
+        internal void GenerateUnmarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
+                                                   LocalBuilder sourceStream,
+                                                   LocalBuilder temporaryLocal,
+                                                   SerializationGenerator helperTypeGenerator) {
+            Debug.WriteLine("generate unmarshal code for formal: " + formal);
+            Type formalNew = formal;
+            // determine the serialiser
+            CustomMappingDesc customMappingUsed;
+            Serialiser serialiser = DetermineSerialiser(ref formalNew, ref attributes, out customMappingUsed);
+            if (serialiser.IsSimpleTypeSerializer()) {
+                serialiser.GenerateDeserialisationCode(formalNew, attributes, gen, sourceStream,
+                                                       temporaryLocal, helperTypeGenerator);
+            } else {
+                GenerateInstanceUnmarshallingCodeFor(formalNew, attributes, gen,
+                                                     serialiser, sourceStream, helperTypeGenerator);
+            }
+            // check for plugged special mappings, e.g. CLS ArrayList -> java.util.ArrayList
+            // --> if present, need to convert instance after deserialising
+            if ((customMappingUsed != null)) {
+                gen.Emit(OpCodes.Stloc, temporaryLocal); // store result
+                gen.Emit(OpCodes.Ldloc, temporaryLocal);
+                Label isNull = gen.DefineLabel();
+                gen.Emit(OpCodes.Brfalse, isNull);
+                gen.Emit(OpCodes.Call, 
+                         CustomMapperRegistry.ClassType.GetMethod("GetSingleton", BindingFlags.Static | BindingFlags.Public));
+                gen.Emit(OpCodes.Ldloc, temporaryLocal); // load result
+                IlEmitHelper.GetSingleton().EmitLoadType(gen, formal);
+                gen.Emit(OpCodes.Call,
+                         CustomMapperRegistry.ClassType.GetMethod("CreateClsForIdlInstance", BindingFlags.Instance | BindingFlags.Public));
+                gen.Emit(OpCodes.Stloc, temporaryLocal);
+                gen.MarkLabel(isNull);
+                gen.Emit(OpCodes.Ldloc, temporaryLocal);
+            }            
+        }
+        
+        internal void GenerateInstanceUnmarshallingCodeFor(Type formal, AttributeExtCollection attributes, ILGenerator gen,
+                                                           Serialiser serialiser,
+                                                           LocalBuilder sourceStream,                                                           
+                                                           SerializationGenerator helperTypeGenerator) {
+            SerializationGenerator.InstanceSerializerMethods isms;
+            Type helperType =
+                helperTypeGenerator.GetInstanceSerialiser(formal, attributes, serialiser, out isms);
+            // call the instance serialization helper
+            gen.Emit(OpCodes.Newobj, isms.Ctr);
+            gen.Emit(OpCodes.Ldloc, sourceStream);
+            gen.Emit(OpCodes.Callvirt, isms.DeserMethod);
+        }
+        
+        
         /// <summary>
         /// Marshals items
         /// </summary>
@@ -92,26 +196,23 @@ namespace Ch.Elca.Iiop.Marshalling {
                             CdrOutputStream targetStream) {
             Debug.WriteLine("marshal, formal: " + formal);
             // determine the serialiser
-            Serialiser serialiser = DetermineSerialiser(ref formal, ref attributes);
-            Marshal(formal, attributes, serialiser, actual, targetStream);
+            CustomMappingDesc customMappingUsed;
+            Serialiser serialiser = DetermineSerialiser(ref formal, ref attributes, out customMappingUsed);
+            Marshal(formal, attributes, serialiser, actual, customMappingUsed, targetStream);
         }
 
         /// <summary>marshals a paramter/field, using the specified serialiser</summary>
         /// <param name="attributes">the attributes used for further processing; the ones used to determine the serialiser are not part of the collection</param>
+        /// <param name="customMappingUsed">the applied custom mapping, if any; otherwise null</param>
         /// <remarks>this method is available for efficieny reason; normally other overloaded method is used</remarks>
         protected void Marshal(Type formal, AttributeExtCollection attributes, Serialiser serialiser,
-                               object actual, CdrOutputStream targetStream) {
+                               object actual, CustomMappingDesc customMappingUsed, CdrOutputStream targetStream) {
             
             // check for plugged special mappings, e.g. CLS ArrayList -> java.util.ArrayList
-            // --> if present, need to convert instance before serialising
-            CustomMapperRegistry cReg = CustomMapperRegistry.GetSingleton();
-            if ((actual != null) && (cReg.IsCustomMappingPresentForCls(actual.GetType()))) {
-                ICustomMapper mapper = cReg.GetMappingForCls(actual.GetType()).Mapper;
-                actual = mapper.CreateIdlForClsInstance(actual);
-                // check, if mapped is instance is assignable to formal -> otherwise will not work on other side ...
-                if (!formal.IsAssignableFrom(actual.GetType())) {
-                    throw new BAD_PARAM(12310, CompletionStatus.Completed_MayBe);
-                }
+            // --> if present, need to convert instance before serialising            
+            if ((actual != null) && (customMappingUsed != null)) {
+                CustomMapperRegistry cReg = CustomMapperRegistry.GetSingleton();
+                actual = cReg.CreateIdlForClsInstance(actual, formal);
             }            
             serialiser.Serialise(formal, actual, attributes, targetStream);
         }
@@ -120,8 +221,11 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="formal">The formal type. If formal is modified through mapper, result is returned in this parameter</param>
         /// <param name="attributes">the parameter/field attributes</param>
         /// <returns></returns>
-        protected Serialiser DetermineSerialiser(ref Type formal, ref AttributeExtCollection attributes) {
-            Serialiser serialiser = (Serialiser)s_mapper.MapClsTypeWithTransform(ref formal, ref attributes, s_serDetermination); // formal can be transformed
+        protected Serialiser DetermineSerialiser(ref Type formal, ref AttributeExtCollection attributes,
+                                                 out CustomMappingDesc customMappingUsed) {
+            Serialiser serialiser = 
+                (Serialiser)s_mapper.MapClsTypeWithTransform(ref formal, ref attributes,
+                                                             s_serDetermination, out customMappingUsed); // formal can be transformed
             if (serialiser == null) {
                 // no serializer present for Type: formal
                 Trace.WriteLine("no serialiser for Type: " + formal);
@@ -148,8 +252,10 @@ namespace Ch.Elca.Iiop.Marshalling {
             Debug.WriteLine("unmarshal, formal: " + formal);
             Type formalNew = formal;
             // determine the serialiser
-            Serialiser serialiser = DetermineSerialiser(ref formalNew, ref attributes);
-            return Unmarshal(formalNew, formal, attributes, serialiser, sourceStream);
+            CustomMappingDesc customMappingUsed;
+            Serialiser serialiser = DetermineSerialiser(ref formalNew, ref attributes, out customMappingUsed);
+            return Unmarshal(formalNew, formal, attributes, serialiser, customMappingUsed, 
+                             sourceStream);
         }
 
         /// <summary>unmarshals a parameter/field</summary>
@@ -157,21 +263,18 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <param name="formalSig">the type in signature/field declaration/...</param>
         /// <param name="serializer">the seriliazer to use</param>
         /// <param name="attributes">the attributes used for further processing; the ones used to determine the serialiser are not part of the collection</param>
-        /// <remarks>this method is available for efficieny reason; normally other overloaded method is used</remarks>
+        /// <param name="customMappingUsed">the applied custom mapping, if any; otherwise null</param>
+        /// <remarks>this method is available for efficieny reason; normally other overloaded method is used</remarks>        
         protected object Unmarshal(Type formalSer, Type formalSig, AttributeExtCollection attributes,
-                                   Serialiser serialiser, CdrInputStream sourceStream) {
+                                   Serialiser serialiser, CustomMappingDesc customMappingUsed,
+                                   CdrInputStream sourceStream) {
             object result = serialiser.Deserialise(formalSer, attributes, sourceStream);
             
             // check for plugged special mappings, e.g. CLS ArrayList -> java.util.ArrayList
-            // --> if present, need to convert instance after deserialising
-            CustomMapperRegistry cReg = CustomMapperRegistry.GetSingleton();
-            if ((result != null) && (cReg.IsCustomMappingPresentForIdl(result.GetType()))) {
-                ICustomMapper mapper = cReg.GetMappingForIdl(result.GetType()).Mapper;
-                result = mapper.CreateClsForIdlInstance(result);
-                // check, if mapped instance is assignable to formal in CLS signature -> otherwise will not work.
-                if (!formalSig.IsAssignableFrom(result.GetType())) {
-                    throw new BAD_PARAM(12311, CompletionStatus.Completed_MayBe);
-                }
+            // --> if present, need to convert instance after deserialising            
+            if ((result != null) && (customMappingUsed != null)) {
+                CustomMapperRegistry cReg = CustomMapperRegistry.GetSingleton();
+                result = cReg.CreateClsForIdlInstance(result, formalSig);
             }            
             return result;            
         }
@@ -191,6 +294,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         private Type m_formalToSer;
         private AttributeExtCollection m_attributes;
         private Serialiser m_ser;
+        private CustomMappingDesc m_customMappingDesc;
 
         #endregion IFields
         #region IConstructors
@@ -198,7 +302,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal MarshallerForType(Type formal, AttributeExtCollection attributes) {
             m_formal = formal;
             m_formalToSer = formal;            
-            m_ser = DetermineSerialiser(ref m_formalToSer, ref attributes);
+            m_ser = DetermineSerialiser(ref m_formalToSer, ref attributes, out m_customMappingDesc);
             m_attributes = attributes; // the attributes passed, without the ones considered for the serialiser determination
         }
 
@@ -208,13 +312,13 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal void Marshal(object actual, CdrOutputStream targetStream) {
             base.Marshal(m_formalToSer, 
                          m_attributes, // attributecollection can't be modified -> can pass it without copying
-                         m_ser, actual, targetStream);
+                         m_ser, actual, m_customMappingDesc, targetStream);
         }
 
         internal object Unmarshal(CdrInputStream sourceStream) {
             return base.Unmarshal(m_formalToSer, m_formal, 
                                   m_attributes, // attributecollection can't be modified -> can pass it without copying
-                                  m_ser, sourceStream);
+                                  m_ser, m_customMappingDesc, sourceStream);
         }
 
         #endregion IMethods

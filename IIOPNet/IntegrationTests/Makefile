@@ -17,9 +17,6 @@ build: nunit-var junit-var
     cd Direct
     $(MAKE) build
     cd ..
-    cd CodeSets
-    $(MAKE) build
-    cd ..
     cd Multithread
     $(MAKE) build
     cd ..
@@ -68,6 +65,9 @@ build: nunit-var junit-var
 #   @if not defined JACORB_HOME echo JACORB_HOME not set, skipping JACORB integration test
 #   @if defined JACORB_HOME $(MAKE) /C build
 #   cd ..
+    cd GacTest
+    $(MAKE) build
+    cd ..
 
 build-ssl:
     cd JBossSsl3.2.5
@@ -99,9 +99,6 @@ test: nunit-var junit-var
     $(MAKE) test
     cd ..
     cd Direct
-    $(MAKE) test
-    cd ..
-    cd CodeSets
     $(MAKE) test
     cd ..
     cd Callback
@@ -148,6 +145,9 @@ test: nunit-var junit-var
     @if not defined OMNIORB_HOME echo OMNIORB_HOME not set, skipping OmniORB integration test
     @if defined OMNIORB_HOME $(MAKE) /C test
     cd ..
+    cd GacTest
+    $(MAKE) test
+    cd ..
 
 test-ssl:
     cd JBossSsl3.2.5
@@ -167,12 +167,9 @@ clean:
     cd InterceptorTests
     $(MAKE) clean
     cd ..
-    cd Direct
+        cd Direct
     $(MAKE) clean
-    cd ..
-    cd CodeSets
-    $(MAKE) clean
-    cd ..
+        cd ..
     cd Callback
     $(MAKE) clean
     cd ..
@@ -217,4 +214,7 @@ clean:
 #   cd ..
     cd JBossSsl3.2.5
     $(MAKE) /C clean
+    cd ..
+    cd GacTest
+    $(MAKE) clean
     cd ..

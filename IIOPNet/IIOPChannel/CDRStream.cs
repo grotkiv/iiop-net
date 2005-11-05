@@ -427,6 +427,14 @@ namespace Ch.Elca.Iiop.Cdr {
         /// </summary>
         /// <param name="align">the requested Alignement</param>
         void ForceReadAlign(Aligns align);
+        
+        /// <summary>
+        /// forces the alignement on a boundary. Is for example useful in IIOP 1.2, where a request/response body
+        /// must be 8-aligned. This method doesn't throw an exception in conrast to ForceReadAlign,
+        /// if not enough data in the stream.
+        /// </summary>
+        /// <param name="align">the requested Alignement</param>
+        bool TryForceReadAlign(Aligns align);
 
         /// <summary>reads an encapsulation from this stream</summary>
         CdrEncapsulationInputStream ReadEncapsulation();
@@ -716,8 +724,8 @@ namespace Ch.Elca.Iiop.Cdr {
 
         private uint m_index = 0;
 
-        private int m_charSet = CodeSetService.DefaultCharSet;
-        private int m_wcharSet = CodeSetService.DefaultWCharSet;
+        private int m_charSet = CodeSetService.DEFAULT_CHAR_SET;
+        private int m_wcharSet = CodeSetService.DEFAULT_WCHAR_SET;
         
         #endregion IFields
         #region IConstructors
@@ -812,6 +820,20 @@ namespace Ch.Elca.Iiop.Cdr {
                 // big endian
                 return true;
             }        
+        }
+
+        /// <summary>
+        /// get the char encoding to use for this stream
+        /// </summary>
+        internal static Encoding GetCharEncoding(int charSet, CodeSetConversionRegistry regToUse) {
+            return regToUse.GetEncoding(charSet); // get Encoding for charSet
+        }
+        
+        /// <summary>
+        /// get the wchar encoding to use for this stream
+        /// </summary>
+        internal static Encoding GetWCharEncoding(int wcharSet, CodeSetConversionRegistry regToUse) {
+            return regToUse.GetEncoding(wcharSet); // get Encoding for wcharSet
         }
         
         #endregion IMethods
@@ -1102,6 +1124,31 @@ namespace Ch.Elca.Iiop.Cdr {
                 ReadPadding(align);
             }
         }
+        
+        /// <summary>read padding for an aligned read with the requiredAlignement;
+        /// if not enough bytes in the stream read as much as possible and return false</summary>
+        /// <param name="requiredAlignment">align to which size</param>
+        protected bool TryAlignRead(byte requiredAlignment) {
+            bool hadEnoughToRead = false;
+            // do a chunk-start check here, because it's possible, that
+            // the value, for which we align, is in a new chunk 
+            // -> therefore a chunk length tag could be in between ->
+            // the alignement must be check after the chunk-length tag.
+            UpdateAndCheckChunking(0); 
+
+            // nr of bytes the index is after the last aligned index
+            uint align = GetAlignBytes(requiredAlignment);
+            if (align != 0) {
+                if (align <= GetBytesToFollow()) {
+                    // go to the next aligned position
+                    ReadPadding(align);
+                    hadEnoughToRead = true;
+                } else {
+                    SkipRest(); // read the remaining
+                }
+            }       
+            return hadEnoughToRead;
+        }
 
         /// <summary>reads a nr of padding bytes</summary>
         public void ReadPadding(uint nrOfBytes) {
@@ -1135,7 +1182,7 @@ namespace Ch.Elca.Iiop.Cdr {
         
         public char ReadChar() {
             // char is a multibyte format with not fixed length characters, but in IDL one char is one byte
-            Encoding encoding = CodeSetService.GetCharEncoding(CharSet, false);
+            Encoding encoding = CdrStreamHelper.GetCharEncoding(CharSet, CodeSetConversionRegistry.GetRegistry());
             if (encoding == null) {
                 throw new INTERNAL(987, CompletionStatus.Completed_MayBe);
             } 
@@ -1187,7 +1234,7 @@ namespace Ch.Elca.Iiop.Cdr {
         private string ReadStringData(uint length) {
             byte[] charData = ReadOpaque((int)length - 1); // read string data
             ReadOctet(); // read terminating 0
-            Encoding encoding = CodeSetService.GetCharEncoding(CharSet, false);
+            Encoding encoding = CdrStreamHelper.GetCharEncoding(CharSet, CodeSetConversionRegistry.GetRegistry());
             if (encoding == null) {
                 throw new INTERNAL(987, CompletionStatus.Completed_MayBe);
             }
@@ -1212,6 +1259,10 @@ namespace Ch.Elca.Iiop.Cdr {
 
         public void ForceReadAlign(Aligns align) {
             AlignRead((byte)align);
+        }
+        
+        public bool TryForceReadAlign(Aligns align) {
+            return TryAlignRead((byte)align);
         }
         
         public CdrEncapsulationInputStream ReadEncapsulation() {
@@ -1529,7 +1580,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         public void WriteChar(char data) {
-            Encoding encoding = CodeSetService.GetCharEncoding(CharSet, false);
+            Encoding encoding = CdrStreamHelper.GetCharEncoding(CharSet, CodeSetConversionRegistry.GetRegistry());
             if (encoding == null) {
                 throw new INTERNAL(987, CompletionStatus.Completed_MayBe);
             } 
@@ -1575,7 +1626,7 @@ namespace Ch.Elca.Iiop.Cdr {
         #endregion the following write methods are subject to byte ordering
         
         public void WriteString(string data) {
-            Encoding encoding = CodeSetService.GetCharEncoding(CharSet, false);
+            Encoding encoding = CdrStreamHelper.GetCharEncoding(CharSet, CodeSetConversionRegistry.GetRegistry());
             if (encoding == null) {
                 throw new INTERNAL(987, CompletionStatus.Completed_MayBe);
             }
