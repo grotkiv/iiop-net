@@ -66,7 +66,27 @@ namespace Ch.Elca.Iiop.Idl {
             }
             
             private void AssemblyLoaded(object sender, AssemblyLoadEventArgs args) {
-                RegisterTypes(args.LoadedAssembly);
+                RegisterTypes(args.LoadedAssembly);                
+                AssemblyName[] refAssemblies =
+                    args.LoadedAssembly.GetReferencedAssemblies();
+                if (refAssemblies != null) {
+                    for (int i = 0; i <refAssemblies.Length; i++) {                        
+                        try {
+                            if (refAssemblies[i] != null) {
+                                Assembly.Load(refAssemblies[i]); // this will call AssemblyLoaded for this assembly
+                            }
+                        } catch (BadImageFormatException) {
+                            Trace.WriteLine("bad format -> ignoring assembly " + refAssemblies[i].FullName);
+                            // ignore assembly
+                        } catch (FileNotFoundException) {
+                            Trace.WriteLine("missing -> ignoring assembly " + refAssemblies[i].FullName);
+                            // ignore assembly
+                        } catch (System.Security.SecurityException) {
+                            Trace.WriteLine("security problem -> ignoring assembly " + refAssemblies[i].FullName);
+                            // ignore assembly
+                        }
+                    }
+                }
             }
             
             
