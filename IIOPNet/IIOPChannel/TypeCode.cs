@@ -983,7 +983,7 @@ namespace omg.org.CORBA {
             Type result = Repository.GetTypeForId(m_id);
             if (result == null) {
                 // create the type represented by this typeCode
-                string typeName = Repository.GetTypeNameForId(m_id);
+                string typeName = Repository.CreateTypeNameForId(m_id);
                 result = TypeFromTypeCodeRuntimeGenerator.GetSingleton().CreateOrGetType(typeName, this);
             }
             return result;
@@ -1075,7 +1075,7 @@ namespace omg.org.CORBA {
             Type result = Repository.GetTypeForId(m_id);
             if (result == null) {
                 // create the type represented by this typeCode
-                string typeName = Repository.GetTypeNameForId(m_id);
+                string typeName = Repository.CreateTypeNameForId(m_id);
                 result = TypeFromTypeCodeRuntimeGenerator.GetSingleton().CreateOrGetType(typeName, this);
             }
             return result;
@@ -1397,7 +1397,7 @@ namespace omg.org.CORBA {
             Type result = Repository.GetTypeForId(m_id);
             if (result == null) {
                 // create the type represented by this typeCode
-                string typeName = Repository.GetTypeNameForId(m_id);
+                string typeName = Repository.CreateTypeNameForId(m_id);
                 result = TypeFromTypeCodeRuntimeGenerator.GetSingleton().CreateOrGetType(typeName, this);
             }
             return result;
@@ -1584,7 +1584,7 @@ namespace omg.org.CORBA {
             Type result = Repository.GetTypeForId(m_id);
             if (result == null) {
                 // create the type represented by this typeCode
-                string typeName = Repository.GetTypeNameForId(m_id);
+                string typeName = Repository.CreateTypeNameForId(m_id);
                 result = TypeFromTypeCodeRuntimeGenerator.GetSingleton().CreateOrGetType(typeName, this);
             }
             return result;
@@ -1784,7 +1784,7 @@ namespace omg.org.CORBA {
             Type result = Repository.GetTypeForId(m_id);
             if (result == null) {
                 // create the type represented by this typeCode
-                string typeName = Repository.GetTypeNameForId(m_id);
+                string typeName = Repository.CreateTypeNameForId(m_id);
                 result = TypeFromTypeCodeRuntimeGenerator.GetSingleton().CreateOrGetType(typeName, this);
             }
             return result;
@@ -1795,7 +1795,7 @@ namespace omg.org.CORBA {
             if (!(m_baseClass is NullTC)) {
                 baseType = ((TypeCodeImpl)m_baseClass).GetClsForTypeCode();
             }
-            string typeName = Repository.GetTypeNameForId(m_id);
+            string typeName = Repository.CreateTypeNameForId(m_id);
             TypeAttributes attrs = TypeAttributes.Class | TypeAttributes.Serializable;
             attrs = attrs | TypeAttributes.Public;
             TypeBuilder result = modBuilder.DefineType(typeName, attrs ,baseType);

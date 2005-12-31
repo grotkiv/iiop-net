@@ -34,6 +34,7 @@ using Ch.Elca.Iiop.Util;
 
 namespace Ch.Elca.Iiop.Idl {
 
+    
     /// <summary>
     /// This class is responsible for realising the identifier (name) mapping
     ///  in the IDL to .NET and .NET to IDL mapping.
@@ -209,29 +210,6 @@ namespace Ch.Elca.Iiop.Idl {
         }
                 
         /// <summary>
-        /// find the CLS method for the idl name of an overloaded CLS method, defined in type serverType
-        /// </summary>
-        internal static MethodInfo FindClsMethodForOverloadedMethodIdlName(string idlName,
-                                                                           Type serverType) {            
-            if (idlName.IndexOf("__") < 0) {
-                return null;
-            }
-            string methodName = idlName.Substring(0, idlName.IndexOf("__"));
-            methodName = ReverseClsToIdlNameMapping(methodName);
-            MethodInfo[] methods = serverType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
-            foreach (MethodInfo method in methods) {
-                if (method.Name.Equals(methodName)) {
-                    // method name is equal -> check if mangled method Name is the same
-                    string mappedName = MapClsMethodNameToIdlName(method, true);
-                    if (mappedName.Equals(idlName)) {
-                        return method;
-                    }
-                }
-            }
-            return null;
-        }
-        
-        /// <summary>
         /// Determine the operation name to transmit for an idl operation name
         /// </summary>        
         public static string DetermineOperationTransmissionName(string idlName) {
@@ -335,16 +313,35 @@ namespace Ch.Elca.Iiop.Idl {
         }
 
         /// <summary>
-        /// map a fully qualified name for a CLS type to an IDL-name
+        /// creates a repository id for a CLS type
         /// </summary>
-        /// <param name="forType"></param>
-        /// <returns></returns>
-        public static string MapFullTypeNameToIdlRepIdTypePart(Type forType) {
-            string nameSpaceInIdl = MapNamespaceToIdl(forType, "/", false);
+        public static string MapFullTypeNameToIdlRepId(Type forType) {
+            return MapTypeNameToIdlRepId(forType.Name, forType.Namespace);
+        }
+        
+        /// <summary>
+        /// creates a repository id from a fully qualified name for a CLS type
+        /// </summary>
+        internal static string MapFullTypeNameToIdlRepId(string fullTypeName) {
+            string namespaceName = String.Empty;
+            string shortName = fullTypeName;
+            int lastSeparatorIndex = fullTypeName.LastIndexOf(".");
+            if (lastSeparatorIndex >= 0) {
+                namespaceName = fullTypeName.Substring(0, lastSeparatorIndex);
+                shortName = fullTypeName.Substring(lastSeparatorIndex + 1);
+            }
+            return MapTypeNameToIdlRepId(shortName, namespaceName);
+        }
+        
+        /// <summary>
+        /// creates a repository id from a simple type name and the namespace name for a CLS type
+        /// </summary>
+        private static string MapTypeNameToIdlRepId(string shortTypeName, string namepsaceName) {
+            string nameSpaceInIdl = MapNamespaceNameToIdl(namepsaceName, "/", false);
             if (!nameSpaceInIdl.Equals("")) {
                 nameSpaceInIdl += "/";
             }
-            return nameSpaceInIdl + MapShortTypeNameToIdl(forType);
+            return "IDL:" + nameSpaceInIdl + MapClsNameToIdlName(shortTypeName) + ":1.0";            
         }
 
         /// <summary>
@@ -355,7 +352,7 @@ namespace Ch.Elca.Iiop.Idl {
         // generator needs scoped form
         public static string MapFullTypeNameToIdlScoped(Type forType) {
             bool isTypeMappedFromIdl = ReflectionHelper.IIdlEntityType.IsAssignableFrom(forType);
-            string result = MapNamespaceToIdl(forType, "::", isTypeMappedFromIdl);
+            string result = MapNamespaceNameToIdl(forType.Namespace, "::", isTypeMappedFromIdl);
             if (result.Length > 0) { 
                 result += "::"; 
             }
@@ -377,15 +374,6 @@ namespace Ch.Elca.Iiop.Idl {
             } else {
                 return MapClsNameToIdlName(forType.Name);
             }
-        }
-
-        /// <summary>
-        /// maps a namespace name to an IDL name
-        /// </summary>
-        /// <param name="separator">separator between module parts, e.g. / or ::</param>        
-        private static string MapNamespaceToIdl(Type forType, string separator, 
-                                                bool isMappedFromIdlToCls) {
-            return MapNamespaceNameToIdl(forType.Namespace, separator, isMappedFromIdlToCls);
         }
         
         /// <summary>
