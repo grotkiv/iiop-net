@@ -46,11 +46,11 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// <summary>
     /// base class for all Serializer.
     /// </summary>
-    internal abstract class Serialiser {
+    internal abstract class Serializer {
 
         #region IConstructors
 
-        internal Serialiser() {
+        internal Serializer() {
         }
 
         #endregion IConstructors
@@ -59,41 +59,42 @@ namespace Ch.Elca.Iiop.Marshalling {
         /// <summary>
         /// serializes the actual value into the given stream
         /// </summary>
-        internal abstract void Serialise(Type formal, object actual, AttributeExtCollection attributes, 
-                                       CdrOutputStream targetStream);
+        internal abstract void Serialize(object actual, 
+                                         CdrOutputStream targetStream);
 
         /// <summary>
         /// deserialize the value from the given stream
         /// </summary>
-        /// <param name="formal">the formal type of the parameter/field/...</param>
-        /// <param name="attributes">the attributes on the parameter/field/..., but not the attributes on the formal-type</param>
         /// <param name="sourceStream"></param>
         /// <returns></returns>
-        internal abstract object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream);
+        internal abstract object Deserialize(CdrInputStream sourceStream);
+        
+        /// <summary>
+        /// Creates a serializer for serialising/deserialing a field
+        /// </summary>
+        protected static Serializer CreateSerializerForField(FieldInfo fieldToSer, SerializerFactory serFactory) {
+            Type fieldType = fieldToSer.FieldType;
+            AttributeExtCollection fieldAttrs = 
+                ReflectionHelper.GetCustomAttriutesForField(fieldToSer, true);
+            return serFactory.Create(fieldType, fieldAttrs);
+        }                
 
         /// <summary>
         /// serialises a field of a value-type
         /// </summary>
         /// <param name="fieldToSer"></param>
-        protected void SerialiseField(FieldInfo fieldToSer, object actual, CdrOutputStream targetStream) {
-            Marshaller marshaller = Marshaller.GetSingleton();
-            marshaller.Marshal(fieldToSer.FieldType, 
-                               ReflectionHelper.GetCustomAttriutesForField(fieldToSer, 
-                                                                           true),
-                               fieldToSer.GetValue(actual), targetStream);
+        protected static void SerializeField(FieldInfo fieldToSer, object actual, Serializer ser,
+                                      CdrOutputStream targetStream) {            
+            ser.Serialize(fieldToSer.GetValue(actual), targetStream);
         }
 
         /// <summary>
         /// deserialises a field of a value-type and sets the value
         /// </summary>
         /// <returns>the deserialised value</returns>
-        protected object DeserialiseField(FieldInfo fieldToDeser, object actual, CdrInputStream sourceStream) {
-            Marshaller marshaller = Marshaller.GetSingleton();
-            object fieldVal = marshaller.Unmarshal(fieldToDeser.FieldType, 
-                                                   ReflectionHelper.GetCustomAttriutesForField(fieldToDeser, 
-                                                                                               true),
-                                                   sourceStream);
+        protected static object DeserializeField(FieldInfo fieldToDeser, object actual, Serializer ser,
+                                          CdrInputStream sourceStream) {            
+            object fieldVal = ser.Deserialize(sourceStream);
             fieldToDeser.SetValue(actual, fieldVal);
             return fieldVal;
         }
@@ -106,7 +107,6 @@ namespace Ch.Elca.Iiop.Marshalling {
             // ok
         }
 
-
         #endregion IMethods
 
     }
@@ -115,17 +115,16 @@ namespace Ch.Elca.Iiop.Marshalling {
     #region serializer for primitive types
 
     /// <summary>serializes instances of System.Byte</summary>
-    internal class ByteSerialiser : Serialiser {
+    internal class ByteSerializer : Serializer {
 
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual, 
                                        CdrOutputStream targetStream) {
             targetStream.WriteOctet((byte)actual);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes, 
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             return sourceStream.ReadOctet();
         }
 
@@ -134,17 +133,16 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes instances of System.Boolean</summary> 
-    internal class BooleanSerialiser : Serialiser {
+    internal class BooleanSerializer : Serializer {
 
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual,
                                        CdrOutputStream targetStream) {
             targetStream.WriteBool((bool)actual);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             return sourceStream.ReadBool();
         }
 
@@ -153,17 +151,16 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes instances of System.Int16</summary>
-    internal class Int16Serialiser : Serialiser {
+    internal class Int16Serializer : Serializer {
 
         #region IMethods
         
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual,
                                        CdrOutputStream targetStream) {
             targetStream.WriteShort((short)actual);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             return sourceStream.ReadShort();
         }
 
@@ -172,17 +169,16 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
     
     /// <summary>serializes instances of System.Int32</summary>
-    internal class Int32Serialiser : Serialiser {
+    internal class Int32Serializer : Serializer {
 
         #region IMethods
         
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual, 
                                        CdrOutputStream targetStream) {
             targetStream.WriteLong((int)actual);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             return sourceStream.ReadLong();
         }
 
@@ -191,17 +187,16 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes instances of System.Int64</summary>
-    internal class Int64Serialiser : Serialiser {
+    internal class Int64Serializer : Serializer {
 
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual,
                                        CdrOutputStream targetStream) {
             targetStream.WriteLongLong((long)actual);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             return sourceStream.ReadLongLong();
         }
 
@@ -210,17 +205,16 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes instances of System.Single</summary>
-    internal class SingleSerialiser : Serialiser {
+    internal class SingleSerializer : Serializer {
 
         #region IMethods
     
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual,
                                        CdrOutputStream targetStream) {
             targetStream.WriteFloat((float)actual);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             return sourceStream.ReadFloat();
         }
 
@@ -229,17 +223,16 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes instances of System.Double</summary>
-    internal class DoubleSerialiser : Serialiser {
+    internal class DoubleSerializer : Serializer {
 
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual,
                                        CdrOutputStream targetStream) {
             targetStream.WriteDouble((double)actual);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             return sourceStream.ReadDouble();
         }
 
@@ -248,7 +241,7 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes instances of System.Char</summary>
-    internal class CharSerialiser : Serialiser {
+    internal class CharSerializer : Serializer {
 
         #region IFields
         
@@ -257,14 +250,14 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IFields
         #region IConstructors
         
-        public CharSerialiser(bool useWide) {
+        public CharSerializer(bool useWide) {
             m_useWide = useWide;
         }
         
         #endregion IConstructors
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual,
                                        CdrOutputStream targetStream) {            
             if (m_useWide) {
                 targetStream.WriteWChar((char)actual);
@@ -274,8 +267,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {            
+        internal override object Deserialize(CdrInputStream sourceStream) {            
             char result;
             if (m_useWide) {
                 result = sourceStream.ReadWChar();
@@ -290,7 +282,7 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes instances of System.String which are serialized as string values</summary>
-    internal class StringSerialiser : Serialiser {
+    internal class StringSerializer : Serializer {
 
         #region IFields
         
@@ -299,16 +291,16 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IFields
         #region IConstructors
         
-        public StringSerialiser(bool useWide) {
+        public StringSerializer(bool useWide) {
             m_useWide = useWide;
         }
         
         #endregion IConstructors
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual,
                                        CdrOutputStream targetStream) {            
-                // string may not be null, if StringValueAttriubte is set"
+            // string may not be null, if StringValueAttriubte is set
             CheckActualNotNull(actual);
             if (m_useWide) {
                 targetStream.WriteWString((string)actual);
@@ -318,8 +310,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             object result = "";
             if (m_useWide) {
                 result = sourceStream.ReadWString();
@@ -340,12 +331,23 @@ namespace Ch.Elca.Iiop.Marshalling {
     #region serializer for marshalbyref types
     
     /// <summary>serializes object references</summary>
-    internal class ObjRefSerializer : Serialiser {
+    internal class ObjRefSerializer : Serializer {
 
+        #region IFields
+        
+        private Type m_forType;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        public ObjRefSerializer(Type forType) {
+            m_forType = forType;
+        }
+        
+        #endregion IConstructors
         #region IMethods
         
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                       CdrOutputStream targetStream) {
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {
             if (actual == null) { 
                 WriteNullReference(targetStream); // null must be handled specially
                 return;
@@ -363,11 +365,11 @@ namespace Ch.Elca.Iiop.Marshalling {
                 Debug.WriteLine("marshal object reference (from a proxy) with url " + url);
                 Type actualType = actual.GetType();
                 if (actualType.Equals(ReflectionHelper.MarshalByRefObjectType) &&
-                    formal.IsInterface && formal.IsInstanceOfType(actual)) {
+                    m_forType.IsInterface && m_forType.IsInstanceOfType(actual)) {
                     // when marshalling a proxy, without having adequate type information from an IOR
                     // and formal is an interface, use interface type instead of MarshalByRef to
                     // prevent problems on server
-                    actualType = formal;
+                    actualType = m_forType;
                 }
                 // get the repository id for the type of this MarshalByRef object
                 string repositoryID = Repository.GetRepositoryID(actualType);
@@ -390,11 +392,8 @@ namespace Ch.Elca.Iiop.Marshalling {
             Ior ior = new Ior("", new IorProfile[0]);
             ior.WriteToStream(targetStream); // write the null reference to the stream
         }
-                
 
-
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             // reads the encoded IOR from this stream
             Ior ior = new Ior(sourceStream);
             if (ior.IsNullReference()) { 
@@ -403,13 +402,13 @@ namespace Ch.Elca.Iiop.Marshalling {
             // create a url from this ior:
             string url = ior.ToString(); // use stringified form of IOR as url --> do not lose information
             Type interfaceType;
-            if (!Repository.IsInterfaceCompatible(formal, ior.TypID, out interfaceType)) {
+            if (!Repository.IsInterfaceCompatible(m_forType, ior.TypID, out interfaceType)) {
                 // will be checked on first call remotely with is_a; don't do a remote check here, 
                 // because not an appropriate place for a remote call; also safes call if ior not used.
                 Trace.WriteLine(String.Format("ObjRef deser, not locally verifiable, that ior type-id " +
                                               "{0} is compatible to required formal type {1}. " + 
                                               "Remote check will be done on first call to this ior.",
-                                              ior.TypID, formal.FullName));                
+                                              ior.TypID, m_forType.FullName));                
             }                        
             // create a proxy
             object proxy = RemotingServices.Connect(interfaceType, url);
@@ -428,80 +427,159 @@ namespace Ch.Elca.Iiop.Marshalling {
 
     /// <summary>standard serializer for pass by value object</summary>
     /// <remarks>if a CLS struct should be serialized as IDL struct and not as ValueType, use the IDLStruct Serializer</remarks>
-    internal class ValueObjectSerializer : Serialiser {
+    internal class ValueObjectSerializer : Serializer {
 
-        #region IMethods
-
-        /// <summary>checks, if custom marshalling must be used</summary>
-        private bool CheckForCustomMarshalled(Type forType) {
-            // subclasses of a custom marshalled type are automatically also custom marshalled: CORBA-spec-99-10-07: page 3-27
-            return ReflectionHelper.ICustomMarshalledType.IsAssignableFrom(forType);
-        }
-
-        /// <summary>checks, if the type is an implementation of a value-type</summary>
-        /// <remarks>fields of implementation classes are not serialized/deserialized</remarks>
-        private bool IsImplClass(Type forType) {
-            Type baseType = forType.BaseType;
-            if (baseType != null) {
-                AttributeExtCollection attrs = AttributeExtCollection.ConvertToAttributeCollection(
-                                                    baseType.GetCustomAttributes(false));
-                if (attrs.IsInCollection(ReflectionHelper.ImplClassAttributeType)) {
-                    ImplClassAttribute implAttr = (ImplClassAttribute)
-                                                  attrs.GetAttributeForType(ReflectionHelper.ImplClassAttributeType);
-                    Type implClass = Repository.GetValueTypeImplClass(implAttr.ImplClass);
-                    if (implClass == null) {
-                        Trace.WriteLine("implementation class : " + implAttr.ImplClass +
-                                    " of value-type: " + baseType + " couldn't be found");
-                        throw new NO_IMPLEMENT(1, CompletionStatus.Completed_MayBe, implAttr.ImplClass);
-                    }
-                    if (implClass.Equals(forType)) {
-                        return true;
-                    }
+        #region Types
+        
+        /// <summary>
+        /// Serialises/deserialises a concrete instance of a value type.
+        /// This is a helper to improve performance, and is only used by the ValueObjectSerializer.
+        /// It's not directly selected by the SerializerFactory as Serializer.        
+        /// </summary>
+        /// <remarks>
+        /// This class can't inherit from the Serializer base class, because additional
+        /// context information are needed.
+        /// This class additionally doesn't inherit from Serializer base class, because 
+        /// it should not be used like other Serializers.
+        /// </remarks>
+        internal class ValueConcreteInstanceSerializer {
+            
+            private Type m_forConcreteType;            
+            private Type m_forConcreteInstanceType;  
+            private bool m_isCustomMarshalled;
+            private FieldInfo[] m_fieldInfos;
+            private Serializer[] m_fieldSerializers;
+            private SerializerFactory m_serFactory;
+            
+            internal ValueConcreteInstanceSerializer(Type concreteType, SerializerFactory serFactory) {
+                m_forConcreteType = concreteType;
+                m_serFactory = serFactory;
+                // determine instance to instantiate for concreteType: 
+                // check for a value type implementation class
+                m_forConcreteInstanceType = DetermineInstanceToCreateType(m_forConcreteType);
+                m_isCustomMarshalled = CheckForCustomMarshalled(m_forConcreteType);
+                if (!m_isCustomMarshalled) {
+                    DetermineFieldSerializers(m_serFactory);
                 }
             }
-            return false;
-        }
+            
+            private Type DetermineInstanceToCreateType(Type concreteType) {
+                Type result = concreteType;
+                object[] implAttr =
+                    result.GetCustomAttributes(ReflectionHelper.ImplClassAttributeType, false);
+                if ((implAttr != null) && (implAttr.Length > 0)) {
+                    if (implAttr.Length > 1) {
+                        // invalid type: actualType, only one ImplClassAttribute allowed
+                        throw new INTERNAL(923, CompletionStatus.Completed_MayBe);
+                    }
+                    ImplClassAttribute implCl = (ImplClassAttribute)implAttr[0];
+                    // get the type
+                    result = Repository.GetValueTypeImplClass(implCl.ImplClass);
+                    if (result == null) {
+                        Trace.WriteLine("implementation class : " + implCl.ImplClass +
+                                        " of value-type: " + concreteType + " couldn't be found");
+                        throw new NO_IMPLEMENT(1, CompletionStatus.Completed_MayBe, implCl.ImplClass);
+                    }
+                }
+                // type must not be abstract for beeing instantiable
+                if (result.IsAbstract) {
+                    // value-type couln't be instantiated: actualType
+                    throw new NO_IMPLEMENT(931, CompletionStatus.Completed_MayBe);
+                }
+                return result;
+            }
+            
+            /// <summary>checks, if custom marshalling must be used</summary>
+            private bool CheckForCustomMarshalled(Type forType) {
+                // subclasses of a custom marshalled type are automatically also custom marshalled: CORBA-spec-99-10-07: page 3-27
+                return ReflectionHelper.ICustomMarshalledType.IsAssignableFrom(forType);
+            }
+            
+            /// <summary>checks, if the type is an implementation of a value-type</summary>
+            /// <remarks>fields of implementation classes are not serialized/deserialized</remarks>
+            private bool IsImplClass(Type forType) {
+                Type baseType = forType.BaseType;
+                if (baseType != null) {
+                    AttributeExtCollection attrs = AttributeExtCollection.ConvertToAttributeCollection(
+                                                        baseType.GetCustomAttributes(false));
+                    if (attrs.IsInCollection(ReflectionHelper.ImplClassAttributeType)) {
+                        ImplClassAttribute implAttr = (ImplClassAttribute)
+                                                      attrs.GetAttributeForType(ReflectionHelper.ImplClassAttributeType);
+                        Type implClass = Repository.GetValueTypeImplClass(implAttr.ImplClass);
+                        if (implClass == null) {
+                            Trace.WriteLine("implementation class : " + implAttr.ImplClass +
+                                        " of value-type: " + baseType + " couldn't be found");
+                            throw new NO_IMPLEMENT(1, CompletionStatus.Completed_MayBe, implAttr.ImplClass);
+                        }
+                        if (implClass.Equals(forType)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }            
+            
+            private void DetermineFieldSerializers(SerializerFactory serFactory) {
+                ArrayList allFields = new ArrayList();
+                ArrayList allSerializers = new ArrayList();
+                Stack typeHierarchy = CreateTypeHirarchyStack(m_forConcreteType);
+                while (typeHierarchy.Count > 0) {
+                    Type demarshalType = (Type)typeHierarchy.Pop();
+                    // reads all fields declared in the Type: no inherited fields
+                    FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(demarshalType);
+                    allFields.AddRange(fields);
+                    for (int i = 0; i < fields.Length; i++) {
+                        allSerializers.Add(Serializer.CreateSerializerForField(fields[i], serFactory));
+                    }
+                }
+                m_fieldInfos = (FieldInfo[])allFields.ToArray(typeof(FieldInfo));
+                m_fieldSerializers =(Serializer[]) allSerializers.ToArray(typeof(Serializer));
+            }
 
-        /// <summary>
-        /// creates a Stack with the inheritance information for the Type forType.
-        /// </summary>
-        private Stack CreateTypeHirarchyStack(Type forType) {
-            Stack typeHierarchy = new Stack();
-            Type currentType = forType;
-            while (currentType != null) {
-                if (!IsImplClass(currentType)) { // ignore impl-classes in serialization code
-                    typeHierarchy.Push(currentType);
-                    if (CheckForCustomMarshalled(currentType)) {
+            /// <summary>
+            /// creates a Stack with the inheritance information for the Type forType.
+            /// </summary>
+            private Stack CreateTypeHirarchyStack(Type forType) {
+                Stack typeHierarchy = new Stack();
+                Type currentType = forType;
+                while (currentType != null) {
+                    if (!IsImplClass(currentType)) { // ignore impl-classes in serialization code
+                        typeHierarchy.Push(currentType);
+                    }
+    
+                    currentType = currentType.BaseType;
+                    if (currentType == ReflectionHelper.ObjectType || currentType == ReflectionHelper.ValueTypeType ||
+                       (ClsToIdlMapper.IsMappedToAbstractValueType(currentType,
+                                                                   AttributeExtCollection.EmptyCollection))) { // abstract value types are not serialized
                         break;
                     }
                 }
-
-                currentType = currentType.BaseType;
-                if (currentType == ReflectionHelper.ObjectType || currentType == ReflectionHelper.ValueTypeType ||
-                   (ClsToIdlMapper.IsMappedToAbstractValueType(currentType,
-                                                               AttributeExtCollection.EmptyCollection))) { // abstract value types are not serialized
-                    break;
+                return typeHierarchy;
+            }
+            
+            /// <summary>writes all the fields of the instance</summary>
+            private void WriteFields(object instance, 
+                                     CdrOutputStream targetStream) {
+                for (int i = 0; i < m_fieldInfos.Length; i++) {
+                    if (!m_fieldInfos[i].IsNotSerialized) { // do not serialize transient fields
+                        Serializer.SerializeField(m_fieldInfos[i], instance, m_fieldSerializers[i],
+                                                  targetStream);
+                    }
                 }
             }
-            return typeHierarchy;
-        }
-
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                       CdrOutputStream targetStream) {
-            if (actual == null) {
-                targetStream.WriteULong(0); // write a null-value
-                return;
-            }
-
-            // if value is already in indirection table, write indirection
-            if (targetStream.IsPreviouslyMarshalled(actual,
-                                                    IndirectionType.IndirValue,
-                                                    IndirectionUsage.ValueType)) {
-                // write indirection
-                targetStream.WriteIndirection(actual);
-                return; // write completed
-            } else {
-
+                        
+            /// <summary>reads and sets the all the fields of the instance</summary>
+            private void ReadFields(object instance,
+                                    CdrInputStream sourceStream) {
+                for (int i = 0; i < m_fieldInfos.Length; i++) {
+                    if (!m_fieldInfos[i].IsNotSerialized) { // do not serialize transient fields
+                        Serializer.DeserializeField(m_fieldInfos[i], instance, m_fieldSerializers[i],
+                                                    sourceStream);
+                    }
+                }                                
+            }                                    
+            
+            internal void Serialize(object actual, CdrOutputStream targetStream) {
                 uint valueTag = CdrStreamHelper.MIN_VALUE_TAG; // value-tag with no option set
                 // attentition here: if formal type represents an IDL abstract interface, writing no type information is not ok.
                 // do not use no typing information option, because java orb can't handle it
@@ -522,51 +600,96 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                                   IndirectionType.IndirValue,
                                                                   IndirectionUsage.ValueType));
 
-                Stack typeHierarchy = CreateTypeHirarchyStack(actual.GetType());
-                while (typeHierarchy.Count > 0) {
-                    Type marshalType = (Type)typeHierarchy.Pop();
-                    if (!CheckForCustomMarshalled(marshalType)) {
-                        WriteFieldsForType(actual, marshalType, targetStream);
-                    } else { // custom marshalled
-                        if (!(actual is ICustomMarshalled)) {
-                            // can't serialise custom value type, because ICustomMarshalled not implemented
-                            throw new INTERNAL(909, CompletionStatus.Completed_MayBe);
-                        }
-                        ((ICustomMarshalled)actual).Serialize(new DataOutputStreamImpl(targetStream));
+                // value content
+                if (!m_isCustomMarshalled) {
+                    WriteFields(actual, targetStream);
+                } else {
+                    // custom marshalled
+                    if (!(actual is ICustomMarshalled)) {
+                        // can't deserialise custom value type, because ICustomMarshalled not implented
+                        throw new INTERNAL(909, CompletionStatus.Completed_MayBe);
                     }
+                    ((ICustomMarshalled)actual).Serialize(
+                        new DataOutputStreamImpl(targetStream, m_serFactory));
+                }                
+            }
+            
+            internal object Deserialize(CdrInputStream sourceStream,
+                                        StreamPosition instanceStartPos, uint valueTag) {
+                object result = Activator.CreateInstance(m_forConcreteInstanceType);
+                // store indirection info for this instance, if another instance contains a reference to this one
+                sourceStream.StoreIndirection(new IndirectionInfo(instanceStartPos.GlobalPosition,
+                                                                  IndirectionType.IndirValue,
+                                                                  IndirectionUsage.ValueType), 
+                                              result);
+
+                // now the value fields follow
+                sourceStream.BeginReadValueBody(valueTag);                
+                
+                // value content
+                if (!m_isCustomMarshalled) {
+                    ReadFields(result, 
+                               sourceStream);
+                } else {
+                    // custom marshalled
+                    if (!(result is ICustomMarshalled)) {
+                        // can't deserialise custom value type, because ICustomMarshalled not implented
+                        throw new INTERNAL(909, CompletionStatus.Completed_MayBe);
+                    }
+                    ((ICustomMarshalled)result).Deserialise(
+                        new DataInputStreamImpl(sourceStream, m_serFactory));
                 }
+                
+                sourceStream.EndReadValue(valueTag);
+                return result;             
+            }
+            
+            
+        }
+        
+        #endregion Types
+        
+        #region IFields
+        
+        private Type m_forType;        
+        private SerializerFactory m_serFactory;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        internal ValueObjectSerializer(Type forType, 
+                                       SerializerFactory serFactory) {
+            m_forType = forType;
+            m_serFactory = serFactory;
+        }
+        
+        #endregion IConstructors
+        #region IMethods
+
+
+        internal override void Serialize(object actual,
+                                         CdrOutputStream targetStream) {
+            if (actual == null) {
+                targetStream.WriteULong(0); // write a null-value
+                return;
+            }
+
+            // if value is already in indirection table, write indirection
+            if (targetStream.IsPreviouslyMarshalled(actual,
+                                                    IndirectionType.IndirValue,
+                                                    IndirectionUsage.ValueType)) {
+                // write indirection
+                targetStream.WriteIndirection(actual);
+                return; // write completed
+            } else {
+                // serialize a concrete instance
+                ValueConcreteInstanceSerializer valConSer =
+                    m_serFactory.CreateConcreteValueTypeSer(actual.GetType());
+                valConSer.Serialize(actual, targetStream);
             }
         }
 
-        /// <summary>writes the fields delcared in the type ofType of the instance instance</summary>
-        /// <param name="chunkedRep">use chunked representation</param>
-        private void WriteFieldsForType(object instance, Type ofType, 
-                                        CdrOutputStream targetStream) {
-            FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(ofType);
-            foreach (FieldInfo fieldInfo in fields) {
-                if (!fieldInfo.IsNotSerialized) { // do not serialize transient fields
-                    WriteField(fieldInfo, instance, 
-                               targetStream);
-                }
-            }
-        }
-
-        /// <summary>write the value of the field to the underlying stream</summary>
-        private void WriteField(FieldInfo field, object instance,
-                                CdrOutputStream targetStream) {
-            Marshaller marshaller = Marshaller.GetSingleton();
-
-            object fieldVal = field.GetValue(instance);
-            AttributeExtCollection attrColl =
-                ReflectionHelper.GetCustomAttriutesForField(field, true);
-            // write value                
-            marshaller.Marshal(field.FieldType, attrColl, fieldVal, 
-                               targetStream);
-        }
-
-
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             sourceStream.BeginReadNewValue();
             StreamPosition instanceStartPos;
             bool isIndirection;
@@ -590,24 +713,15 @@ namespace Ch.Elca.Iiop.Marshalling {
                     HandleCodeBaseUrl(sourceStream);
                 }
 
-                Type actualType = GetActualType(formal, sourceStream, valueTag);
-                object result = CreateInstance(actualType);
-                if (!(formal.IsInstanceOfType(result))) {
+                Type actualType = GetActualType(m_forType, sourceStream, valueTag);
+                if (!m_forType.IsAssignableFrom(actualType)) {
                     // invalid implementation class of value type: 
                     // instance.GetType() is incompatible with: formal
                     throw new BAD_PARAM(903, CompletionStatus.Completed_MayBe);
                 }
-                // store indirection info for this instance, if another instance contains a reference to this one
-                sourceStream.StoreIndirection(new IndirectionInfo(instanceStartPos.GlobalPosition,
-                                                                  IndirectionType.IndirValue,
-                                                                  IndirectionUsage.ValueType), 
-                                              result);
-
-                // now the value fields follow
-                sourceStream.BeginReadValueBody(valueTag);
-                DeserialiseValueBody(actualType, sourceStream, result);
-                sourceStream.EndReadValue(valueTag);
-                return result;
+                ValueConcreteInstanceSerializer valConSer =
+                    m_serFactory.CreateConcreteValueTypeSer(actualType);
+                return valConSer.Deserialize(sourceStream, instanceStartPos, valueTag);
             }
         }
 
@@ -623,24 +737,6 @@ namespace Ch.Elca.Iiop.Marshalling {
             sourceStream.ReadIndirectableString(IndirectionType.CodeBaseUrl,
                                                 IndirectionUsage.ValueType,
                                                 false);
-        }
-
-        private void DeserialiseValueBody(Type actualType, CdrInputStream sourceStream,
-                                          object instance) {
-            Stack typeHierarchy = CreateTypeHirarchyStack(actualType);
-            while (typeHierarchy.Count > 0) {
-                Type demarshalType = (Type)typeHierarchy.Pop();
-                if (!CheckForCustomMarshalled(demarshalType)) {
-                    ReadFieldsForType(instance, demarshalType, 
-                                      sourceStream);
-                } else { // custom marshalled
-                    if (!(instance is ICustomMarshalled)) {
-                        // can't deserialise custom value type, because ICustomMarshalled not implented
-                        throw new INTERNAL(909, CompletionStatus.Completed_MayBe);
-                    }
-                    ((ICustomMarshalled)instance).Deserialise(new DataInputStreamImpl(sourceStream));
-                }
-            }
         }
 
         /// <summary>
@@ -689,75 +785,29 @@ namespace Ch.Elca.Iiop.Marshalling {
             return actualType;
         }
 
-        /// <summary>creates an instance of the given type via reflection</summary>
-        private object CreateInstance(Type actualType) {
-            object[] implAttr = actualType.GetCustomAttributes(ReflectionHelper.ImplClassAttributeType, false);
-            if ((implAttr != null) && (implAttr.Length > 0)) {
-                if (implAttr.Length > 1) {
-                    // invalid type: actualType, only one ImplClassAttribute allowed
-                    throw new INTERNAL(923, CompletionStatus.Completed_MayBe);
-                }
-                ImplClassAttribute implCl = (ImplClassAttribute)implAttr[0];
-                // get the type
-                actualType = Repository.GetValueTypeImplClass(implCl.ImplClass);
-                if (actualType == null) {
-                    Trace.WriteLine("implementation class : " + implCl.ImplClass +
-                                    " of value-type: " + actualType + " couldn't be found");
-                    throw new NO_IMPLEMENT(1, CompletionStatus.Completed_MayBe, implCl.ImplClass);
-                }
-            }
-            // type must not be abstract for beeing instantiable
-            if (actualType.IsAbstract) {
-                // value-type couln't be instantiated: actualType
-                throw new NO_IMPLEMENT(931, CompletionStatus.Completed_MayBe);
-            }
-            // instantiate            
-            object instance = Activator.CreateInstance(actualType);
-            return instance;
-        }
-
-        /// <summary>reads in a field in a value-type instance</summary>
-        /// <param name="containingInstance">the instance, in which the field should be set</param>
-        internal void ReadAndSetField(FieldInfo field, object containingInstance, 
-                                      CdrInputStream sourceStream) {
-            Marshaller marshaller = Marshaller.GetSingleton();
-            AttributeExtCollection attrColl =
-                ReflectionHelper.GetCustomAttriutesForField(field, true);
-            object result = marshaller.Unmarshal(field.FieldType, attrColl, sourceStream);
-            field.SetValue(containingInstance, result);
-        }
-
-        /// <summary>reads and sets the field declared in the type ofType.</summary>
-        private void ReadFieldsForType(object instance, Type ofType, 
-                                       CdrInputStream sourceStream) {
-            // reads all fields declared in the Type: no inherited fields
-            FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(ofType);
-            foreach (FieldInfo fieldInfo in fields) {
-                if (!fieldInfo.IsNotSerialized) { // do not serialize transient fields
-                    ReadAndSetField(fieldInfo, instance, sourceStream);
-                }
-            }
-        }
-
-
         #endregion IMethods
 
     }
 
     /// <summary>serializes an non boxed value as an IDL boxed value and deserialize an IDL boxed value as an unboxed value</summary>
     /// <remarks>do not use this serializer with instances of BoxedValues which should not be boxed or unboxed</remarks>
-    internal class BoxedValueSerializer : Serialiser {
+    internal class BoxedValueSerializer : Serializer {
 
         #region IFields
 
-        private ValueObjectSerializer m_valueSer = new ValueObjectSerializer();
+        private ValueObjectSerializer m_valueSer;
         private bool m_convertMultiDimArray = false;
+        private Type m_forType;
 
         #endregion IFields
         #region IConstructors
         
-        public BoxedValueSerializer(bool convertMultiDimArray) {
+        public BoxedValueSerializer(Type forType, bool convertMultiDimArray,
+                                    SerializerFactory serFactory) {
+            CheckFormalIsBoxedValueType(forType);
+            m_forType = forType;
             m_convertMultiDimArray = convertMultiDimArray;
+            m_valueSer = new ValueObjectSerializer(forType, serFactory);            
         }
 
         #endregion IConstructors
@@ -771,10 +821,9 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
         
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual,
                                          CdrOutputStream targetStream) {
-            CheckFormalIsBoxedValueType(formal);
-
+            Debug.WriteLine("Begin serialization of boxed value type");
             // perform a boxing
             object boxed = null;
             if (actual != null) {
@@ -783,17 +832,15 @@ namespace Ch.Elca.Iiop.Marshalling {
                     actual = 
                         BoxedArrayHelper.ConvertMoreDimToNestedOneDimChecked(actual);
                 }
-                boxed = Activator.CreateInstance(formal, new object[] { actual } );
+                boxed = Activator.CreateInstance(m_forType, new object[] { actual } );
             }
-            m_valueSer.Serialise(formal, boxed, attributes, targetStream);
+            m_valueSer.Serialize(boxed, targetStream);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes, 
-                                             CdrInputStream sourceStream) {
-            Debug.WriteLine("deserialise boxed value, formal: " + formal);
-            CheckFormalIsBoxedValueType(formal);
-            
-            BoxedValueBase boxedResult = (BoxedValueBase) m_valueSer.Deserialise(formal, attributes, sourceStream);
+        internal override object Deserialize(CdrInputStream sourceStream) {  
+            Debug.WriteLine("Begin deserialization of boxed value type");
+            BoxedValueBase boxedResult = (BoxedValueBase) 
+                m_valueSer.Deserialize(sourceStream);
             object result = null;
             if (boxedResult != null) {
                 // perform an unboxing
@@ -815,41 +862,52 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// <summary>
     /// this class serializes .NET structs, which were mapped from an IDL-struct
     /// </summary>
-    internal class IdlStructSerializer : Serialiser {
+    internal class IdlStructSerializer : Serializer {
 
+        #region IFields
+
+        private Serializer[] m_fieldSerializers;
+		private FieldInfo[] m_fields;
+        private Type m_forType;
+
+        #endregion IFields
+        #region IConstructors
+
+        internal IdlStructSerializer(Type forType, SerializerFactory serFactory) : base() {			            
+            m_forType = forType;
+			DetermineFieldMapping(serFactory);
+    }
+
+        #endregion IConstructors
         #region IMethods
+
+        private void DetermineFieldMapping(SerializerFactory serFactory) {
+            m_fields = ReflectionHelper.GetAllDeclaredInstanceFields(m_forType);
+            m_fieldSerializers = new Serializer[m_fields.Length];
+            for (int i = 0; i < m_fields.Length; i++) {
+                m_fieldSerializers[i] = CreateSerializerForField(m_fields[i], serFactory);           
+            }
+        }
     
-        internal override object Deserialise(System.Type formal, AttributeExtCollection attributes,
-                                             CdrInputStream sourceStream) {
-            FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(formal);
-            Marshaller marshaller = Marshaller.GetSingleton();
-                        
-            object instance = Activator.CreateInstance(formal);
-            foreach (FieldInfo info in fields) {
-                object fieldVal = marshaller.Unmarshal(info.FieldType, 
-                                                       ReflectionHelper.GetCustomAttriutesForField(info, true), 
-                                                       sourceStream);
-                info.SetValue(instance, fieldVal);
+        internal override object Deserialize(CdrInputStream sourceStream) {                        
+            object instance = Activator.CreateInstance(m_forType);
+            for (int i = 0; i < m_fieldSerializers.Length; i++) {
+                DeserializeField(m_fields[i], instance, m_fieldSerializers[i], sourceStream);                
             }
             return instance;
         }
 
-        internal override void Serialise(System.Type formal, object actual, AttributeExtCollection attributes,
-                                         CdrOutputStream targetStream) {
-            FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(formal);
-            Marshaller marshaller = Marshaller.GetSingleton();
-            foreach (FieldInfo info in fields) {
-                marshaller.Marshal(info.FieldType, 
-                                   ReflectionHelper.GetCustomAttriutesForField(info, true),
-                                   info.GetValue(actual), targetStream);
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {
+            for (int i = 0; i < m_fieldSerializers.Length; i++) {
+                SerializeField(m_fields[i], actual, m_fieldSerializers[i], targetStream);                
             }
         }
-
+    
         #endregion IMethods
 
     }
 
-    internal class IdlUnionSerializer : Serialiser {
+    internal class IdlUnionSerializer : Serializer {
 
         #region Constants
 
@@ -860,7 +918,26 @@ namespace Ch.Elca.Iiop.Marshalling {
         private const string INITALIZED_FIELD_NAME = UnionGenerationHelper.INIT_FIELD_NAME;
 
         #endregion Constants
-
+        #region IFields
+        
+        private Type m_forType;        
+        private FieldInfo m_discrField;
+        private FieldInfo m_initField;
+        private Serializer m_discrSerializer;
+        private SerializerFactory m_serFactory;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        internal IdlUnionSerializer(Type forType, SerializerFactory serFactory) {
+            m_forType = forType;
+            m_discrField = GetDiscriminatorField(m_forType);
+            m_discrSerializer = CreateSerializerForField(m_discrField, serFactory);
+            m_initField = GetInitalizedField(m_forType);
+            m_serFactory = serFactory;
+        }        
+        
+        #endregion IConstructors
         #region IMethods
 
         private FieldInfo GetDiscriminatorField(Type formal) {
@@ -890,42 +967,38 @@ namespace Ch.Elca.Iiop.Marshalling {
             return initalizedField;
         }
 
-        internal override object Deserialise(System.Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {            
+        internal override object Deserialize(CdrInputStream sourceStream) {            
             // instantiate the resulting union
-            object result = Activator.CreateInstance(formal);
-            // deserialise discriminator value
-            FieldInfo discrField = GetDiscriminatorField(formal);
-            object discrVal = DeserialiseField(discrField, result, sourceStream);
+            object result = Activator.CreateInstance(m_forType);
+            // deserialise discriminator value            
+            object discrVal = DeserializeField(m_discrField, result, m_discrSerializer, sourceStream);
             
             // determine value to deser
-            FieldInfo curField = GetValFieldForDiscriminator(formal, discrVal);
+            FieldInfo curField = GetValFieldForDiscriminator(m_forType, discrVal);
             if (curField != null) {
                 // deserialise value
-                DeserialiseField(curField, result, sourceStream);
-            }
-            FieldInfo initalizedField = GetInitalizedField(formal);
-            initalizedField.SetValue(result, true);
+                Serializer curFieldSer = CreateSerializerForField(curField, m_serFactory);
+                DeserializeField(curField, result, curFieldSer, sourceStream);
+            }            
+            m_initField.SetValue(result, true);
             return result;
         }
 
-        internal override void Serialise(System.Type formal, object actual, AttributeExtCollection attributes,
-                                       CdrOutputStream targetStream) {            
-            FieldInfo initalizedField = GetInitalizedField(formal);
-            bool isInit = (bool)initalizedField.GetValue(actual);
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {            
+            bool isInit = (bool)m_initField.GetValue(actual);
             if (isInit == false) {
                 throw new BAD_PARAM(34, CompletionStatus.Completed_MayBe);
             }
-            // determine value of the discriminator
-            FieldInfo discrValField = GetDiscriminatorField(formal);
-            object discrVal = discrValField.GetValue(actual);
+            // determine value of the discriminator            
+            object discrVal = m_discrField.GetValue(actual);
             // get the field matching the current discriminator
-            FieldInfo curField = GetValFieldForDiscriminator(formal, discrVal);
+            FieldInfo curField = GetValFieldForDiscriminator(m_forType, discrVal);
             
-            SerialiseField(discrValField, actual, targetStream);
+            m_discrSerializer.Serialize(discrVal, targetStream);
             if (curField != null) {
                 // seraialise value
-                SerialiseField(curField, actual, targetStream);
+                Serializer curFieldSer = CreateSerializerForField(curField, m_serFactory);
+                SerializeField(curField, actual, curFieldSer, targetStream);
             } 
             // else:  case outside covered discr range, do not serialise value, only discriminator
         }
@@ -934,17 +1007,24 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serailizes an instances as IDL abstract-value</summary>
-    internal class AbstractValueSerializer : Serialiser {
+    internal class AbstractValueSerializer : Serializer {
 
         #region IFields
-
-        private ValueObjectSerializer m_valObjectSer = new ValueObjectSerializer();
+        
+        private ValueObjectSerializer m_valObjectSer;
 
         #endregion IFields
+        #region IConstructors
+        
+        internal AbstractValueSerializer(Type forType, SerializerFactory serFactory) {
+            m_valObjectSer = new ValueObjectSerializer(forType, serFactory);
+        }
+        
+        #endregion IConstructors
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                       CdrOutputStream targetStream) {
+        internal override void Serialize(object actual,
+                                         CdrOutputStream targetStream) {
             if (actual != null) {
                 // check if actual parameter is an IDL-struct: 
                 // this is an illegal parameter for IDL-abstract value parameters
@@ -959,13 +1039,12 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             }
             // if actual parameter is ok, serialize as idl-value object
-            m_valObjectSer.Serialise(formal, actual, attributes, targetStream);
+            m_valObjectSer.Serialize(actual, targetStream);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             // deserialise as IDL-value-type
-            return m_valObjectSer.Deserialise(formal, attributes, sourceStream);
+            return m_valObjectSer.Deserialize(sourceStream);
         }
 
         #endregion IMethods
@@ -973,7 +1052,7 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes an instance of the class System.Type</summary>
-    internal class TypeSerializer : Serialiser {
+    internal class TypeSerializer : Serializer {
 
         #region IFields
         
@@ -982,17 +1061,15 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IFields
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                       CdrOutputStream targetStream) {
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {
             omg.org.CORBA.TypeCode tc;
-            tc = Repository.CreateTypeCodeForType((Type)actual, attributes);
-            m_typeCodeSer.Serialise(ReflectionHelper.CorbaTypeCodeType, tc, attributes, targetStream);
+            tc = Repository.CreateTypeCodeForType((Type)actual, AttributeExtCollection.EmptyCollection);
+            m_typeCodeSer.Serialize(tc, targetStream);
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {            
+        internal override object Deserialize(CdrInputStream sourceStream) {            
             omg.org.CORBA.TypeCode tc = 
-                (omg.org.CORBA.TypeCode)m_typeCodeSer.Deserialise(ReflectionHelper.CorbaTypeCodeType, attributes, sourceStream);
+                (omg.org.CORBA.TypeCode)m_typeCodeSer.Deserialize(sourceStream);
             Type result = null;
             if (!(tc is NullTC)) {
                 result = Repository.GetTypeForTypeCode(tc);
@@ -1004,46 +1081,60 @@ namespace Ch.Elca.Iiop.Marshalling {
 
     }
     
+    
     /// <summary>serializes enums</summary>
-    internal class EnumSerializer : Serialiser {
+    internal class EnumSerializer : Serializer {
         
+        #region IFields
+        
+        private Serializer m_netEnumValSerializer;   
+        private Type m_forType;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        internal EnumSerializer(Type forType, SerializerFactory serFactory) {
+            m_forType = forType;
+            // check for IDL-enum mapped to a .NET enum
+            AttributeExtCollection attrs = ReflectionHelper.GetCustomAttributesForType(m_forType, true);
+            bool isIdlEnum = (attrs.IsInCollection(ReflectionHelper.IdlEnumAttributeType));
+            if (!isIdlEnum) {
+                Type underlyingType = Enum.GetUnderlyingType(m_forType);
+                m_netEnumValSerializer =
+                    serFactory.Create(underlyingType, AttributeExtCollection.EmptyCollection);
+            }
+        }
+        
+        #endregion IConstructors
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                       CdrOutputStream targetStream) {
+        internal override void Serialize(object actual,
+                                         CdrOutputStream targetStream) {
             // check for IDL-enum mapped to a .NET enum
-            AttributeExtCollection attrs = ReflectionHelper.GetCustomAttributesForType(formal, true);
-            if (attrs.IsInCollection(ReflectionHelper.IdlEnumAttributeType)) {
+            if (m_netEnumValSerializer == null) {
                 // idl enum's are mapped to .NET enums with long base-type, therefore all possible 2^32 idl-values can be represented
                 int enumVal = (int) actual;
                 targetStream.WriteULong((uint)enumVal);
             } else {
                 // map to the base-type of the enum, write the value of the enum
-                Type underlyingType = Enum.GetUnderlyingType(formal);
-                Marshaller marshaller = Marshaller.GetSingleton();
-                // marshal the enum value
-                marshaller.Marshal(underlyingType, attributes, actual, targetStream); 
+                m_netEnumValSerializer.Serialize(actual, targetStream);
             }
         
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes, 
-                                           CdrInputStream sourceStream) {
-            AttributeExtCollection attrs = ReflectionHelper.GetCustomAttributesForType(formal, true);
-            if (attrs.IsInCollection(ReflectionHelper.IdlEnumAttributeType)) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            // check for IDL-enum mapped to a .NET enum
+            if (m_netEnumValSerializer == null) {
                 uint enumVal = sourceStream.ReadULong();
-                return Enum.ToObject(formal, enumVal);    
+                return Enum.ToObject(m_forType, enumVal);
             } else {
-                // .NET enum handled with .NET to IDL mapping
-                Type underlyingType = Enum.GetUnderlyingType(formal);                
-                Marshaller marshaller = Marshaller.GetSingleton();
-                // unmarshal the enum-value
-                object val = marshaller.Unmarshal(underlyingType, attributes, sourceStream);
-                if (!Enum.IsDefined(formal, val)) { 
+                // .NET enum handled with .NET to IDL mapping                                
+                object val = m_netEnumValSerializer.Deserialize(sourceStream);
+                if (!Enum.IsDefined(m_forType, val)) { 
                     // illegal enum value for enum: formal, val: val
                     throw new BAD_PARAM(10041, CompletionStatus.Completed_MayBe);
                 }
-                return Enum.ToObject(formal, val);
+                return Enum.ToObject(m_forType, val);
             }
         }
     
@@ -1052,21 +1143,33 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes idl sequences</summary>
-    internal class IdlSequenceSerializer : Serialiser {
+    internal class IdlSequenceSerializer : Serializer {
         
         #region IFields
         
         private int m_bound;
+        private Type m_forTypeElemType;
+        private Serializer m_elementSerializer;
         
         #endregion IFields
         #region IConstructors
         
-        public IdlSequenceSerializer(int bound) {
+        public IdlSequenceSerializer(Type forType, AttributeExtCollection elemAttrs,
+                                     int bound, SerializerFactory serFactory) {
+            m_forTypeElemType = forType.GetElementType();
             m_bound = bound;    
+            DetermineElementSerializer(m_forTypeElemType, elemAttrs, serFactory);    
         }
         
         #endregion IConstructors
         #region IMethods
+
+        private void DetermineElementSerializer(Type elemType,
+												AttributeExtCollection elemAttrs,
+                                                SerializerFactory serFactory) {
+			m_elementSerializer =
+                serFactory.Create(elemType, elemAttrs);
+        }
 
         /// <summary>
         /// checks, if parameter to serialise does not contain more elements than allowed
@@ -1077,35 +1180,29 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
         
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                       CdrOutputStream targetStream) {
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {
             Array array = (Array) actual;
             // not allowed for a sequence:
             CheckActualNotNull(array);
             CheckBound((uint)array.Length);
             targetStream.WriteULong((uint)array.Length);
-            // get marshaller for elemtype
-            Type elemType = formal.GetElementType();
-            MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
+            // serialize sequence elements            
             for (int i = 0; i < array.Length; i++) {
                 // it's more efficient to not determine serialise for each element; instead use cached ser
-                marshaller.Marshal(array.GetValue(i), targetStream);
+                m_elementSerializer.Serialize(array.GetValue(i), targetStream);
             }
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             // mapped from an IDL-sequence
             uint nrOfElements = sourceStream.ReadULong();
             CheckBound(nrOfElements);
             
-            Array result = Array.CreateInstance(formal.GetElementType(), (int)nrOfElements);
-            // get marshaller for array element type
-            Type elemType = formal.GetElementType();
-            MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
+            Array result = Array.CreateInstance(m_forTypeElemType, (int)nrOfElements);
+            // serialize sequence elements                        
             for (int i = 0; i < nrOfElements; i++) {
                 // it's more efficient to not determine serialise for each element; instead use cached ser
-                object entry = marshaller.Unmarshal(sourceStream);
+                object entry = m_elementSerializer.Deserialize(sourceStream);
                 result.SetValue(entry, i);
             }
             return result;
@@ -1117,17 +1214,22 @@ namespace Ch.Elca.Iiop.Marshalling {
 
 
     /// <summary>serialises IDL-arrays</summary>
-    internal class IdlArraySerialiser : Serialiser {
+    internal class IdlArraySerializer : Serializer {
 
         #region IFields
         
         private int[] m_dimensions;
+        private Type m_forTypeElemType;
+        private Serializer m_elementSer;
         
         #endregion IFields
         #region IConstructors
         
-        public IdlArraySerialiser(int[] dimensions) {
+        public IdlArraySerializer(Type forType, AttributeExtCollection elemAttributes, 
+                                  int[] dimensions, SerializerFactory serFactory) {
             m_dimensions = dimensions;    
+            m_forTypeElemType = forType.GetElementType();
+            m_elementSer = serFactory.Create(m_forTypeElemType, elemAttributes);
         }
         
         #endregion IConstructors
@@ -1145,54 +1247,47 @@ namespace Ch.Elca.Iiop.Marshalling {
         } 
 
 
-        private void SerialiseDimension(Array array, MarshallerForType marshaller, CdrOutputStream targetStream,
+        private void SerialiseDimension(Array array, Serializer elementSer, CdrOutputStream targetStream,
                                         int[] indices, int currentDimension) {
             if (currentDimension == m_dimensions.Length) {
                 object value = array.GetValue(indices);
-                marshaller.Marshal(value, targetStream);
+                elementSer.Serialize(value, targetStream);
             } else {
                 // the first dimension index in the array is increased slower than the second and so on ...
                 for (int j = 0; j < m_dimensions[currentDimension]; j++) {
                     indices[currentDimension] = j;                    
-                    SerialiseDimension(array, marshaller, targetStream, indices, currentDimension + 1);
+                    SerialiseDimension(array, elementSer, targetStream, indices, currentDimension + 1);
                 }
             }
         }
         
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                         CdrOutputStream targetStream) {
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {
             Array array = (Array) actual;
                 // not allowed for an idl array:
             CheckActualNotNull(array);
             CheckInstanceDimensions(array);
-            // get marshaller for elemtype
-            Type elemType = formal.GetElementType();
-            MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            SerialiseDimension(array, marshaller, targetStream, new int[m_dimensions.Length], 0);
+            // get marshaller for elemtype                        
+            SerialiseDimension(array, m_elementSer, targetStream, new int[m_dimensions.Length], 0);
         }
 
-        private void DeserialiseDimension(Array array, MarshallerForType marshaller, CdrInputStream sourceStream,
+        private void DeserialiseDimension(Array array, Serializer elementSer, CdrInputStream sourceStream,
                                           int[] indices, int currentDimension) {
             if (currentDimension == array.Rank) {
-                object entry = marshaller.Unmarshal(sourceStream);
+                object entry = elementSer.Deserialize(sourceStream);
                 array.SetValue(entry, indices);
             } else {
                 // the first dimension index in the array is increased slower than the second and so on ...
                 for (int j = 0; j < m_dimensions[currentDimension]; j++) {
                     indices[currentDimension] = j;                    
-                    DeserialiseDimension(array, marshaller, sourceStream, indices, currentDimension + 1);
+                    DeserialiseDimension(array, elementSer, sourceStream, indices, currentDimension + 1);
                 }
             }            
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
-           
-            Array result = Array.CreateInstance(formal.GetElementType(), m_dimensions);
-            // get marshaller for array element type
-            Type elemType = formal.GetElementType();
-            MarshallerForType marshaller = new MarshallerForType(elemType, attributes);
-            DeserialiseDimension(result, marshaller, sourceStream, new int[m_dimensions.Length], 0);
+        internal override object Deserialize(CdrInputStream sourceStream) {           
+            Array result = Array.CreateInstance(m_forTypeElemType, m_dimensions);
+            // get marshaller for array element type                        
+            DeserialiseDimension(result, m_elementSer, sourceStream, new int[m_dimensions.Length], 0);
             return result;
         }
 
@@ -1201,19 +1296,28 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes an instance as IDL-any</summary>
-    internal class AnySerializer : Serialiser {
+    internal class AnySerializer : Serializer {
 
         #region SFields
 
         private static Type s_supInterfaceAttrType = typeof(SupportedInterfaceAttribute);
-        private static Type s_anyType = typeof(omg.org.CORBA.Any);
 
         #endregion SFields
         #region IFields
         
         private TypeCodeSerializer m_typeCodeSer = new TypeCodeSerializer();
+        private SerializerFactory m_serFactory;
+        private bool m_formalIsAnyContainer;
 
         #endregion IFields
+        #region IConstructors
+        
+        internal AnySerializer(SerializerFactory serFactory, bool formalIsAnyContainer) : base() {
+            m_serFactory = serFactory;
+            m_formalIsAnyContainer = formalIsAnyContainer;
+        }
+        
+        #endregion IConstructors
         #region IMethods
 
         /// <summary>
@@ -1241,13 +1345,13 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
+        internal override void Serialize(object actual,
                                        CdrOutputStream targetStream) {
             TypeCodeImpl typeCode = new NullTC();
             object actualToSerialise = actual;
             Type actualType = null;
             if (actual != null) {
-                if (actual.GetType().Equals(s_anyType)) {
+                if (actual.GetType().Equals(ReflectionHelper.AnyType)) {
                     // use user defined type code
                     typeCode = ((Any)actual).Type as TypeCodeImpl;
                     if (typeCode == null) {
@@ -1261,35 +1365,37 @@ namespace Ch.Elca.Iiop.Marshalling {
                 } else {
                     // automatic type code creation
                     actualType = DetermineTypeToUse(actual);
-                    typeCode = Repository.CreateTypeCodeForType(actualType, attributes);
+                    typeCode = Repository.CreateTypeCodeForType(actualType, 
+                                                                AttributeExtCollection.EmptyCollection);
                 }
             }
-            m_typeCodeSer.Serialise(ReflectionHelper.CorbaTypeCodeType, typeCode, attributes, targetStream);
+            m_typeCodeSer.Serialize(typeCode, targetStream);
             if (actualType != null) {
-                Marshaller marshaller = Marshaller.GetSingleton();               
                 AttributeExtCollection typeAttributes = Repository.GetAttrsForTypeCode(typeCode);                
-                marshaller.Marshal(actualType, typeAttributes, actualToSerialise, targetStream);
+                Serializer actualSer = 
+                    m_serFactory.Create(actualType, typeAttributes);
+                actualSer.Serialize(actualToSerialise, targetStream);              
             }
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
-            omg.org.CORBA.TypeCode typeCode = (omg.org.CORBA.TypeCode)m_typeCodeSer.Deserialise(formal, 
-                                                                                                attributes, sourceStream);
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            omg.org.CORBA.TypeCode typeCode = 
+                (omg.org.CORBA.TypeCode)m_typeCodeSer.Deserialize(sourceStream);
             object result;
             // when returning 0 in a mico-server for any, the typecode used is VoidTC
             if ((!(typeCode is NullTC)) && (!(typeCode is VoidTC))) {
                 Type dotNetType = Repository.GetTypeForTypeCode(typeCode);
                 AttributeExtCollection typeAttributes = Repository.GetAttrsForTypeCode(typeCode);
-                Marshaller marshaller = Marshaller.GetSingleton();
-                result = marshaller.Unmarshal(dotNetType, typeAttributes, sourceStream);
+                Serializer actualSer = 
+                    m_serFactory.Create(dotNetType, typeAttributes);                
+                result = actualSer.Deserialize(sourceStream);                
                 if (result is BoxedValueBase) {
                     result = ((BoxedValueBase)result).Unbox(); // unboxing the boxed-value, because BoxedValueTypes are internal types, which should not be used by users
                 }
             } else {
                 result = null;
             }
-            if (!formal.Equals(s_anyType)) {
+            if (!m_formalIsAnyContainer) {
                 return result;
             } else {
                 return new Any(result, typeCode);
@@ -1301,11 +1407,11 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
     /// <summary>serializes a typecode</summary>
-    internal class TypeCodeSerializer : Serialiser {
+    internal class TypeCodeSerializer : Serializer {
         
         #region IMethods
 
-        internal override object Deserialise(System.Type formal, AttributeExtCollection attributes, CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
 
             bool isIndirection;
             StreamPosition indirPos;
@@ -1438,7 +1544,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
 
-        internal override void Serialise(System.Type formal, object actual, AttributeExtCollection attributes, CdrOutputStream targetStream) {
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {
             if (!(actual is omg.org.CORBA.TypeCodeImpl)) { 
                 // typecode not serializable
                 throw new omg.org.CORBA.INTERNAL(1654, omg.org.CORBA.CompletionStatus.Completed_MayBe);
@@ -1456,25 +1562,36 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
     
     /// <summary>serializes an instance as IDL abstract-interface</summary>
-    internal class AbstractInterfaceSerializer : Serialiser {
+    internal class AbstractInterfaceSerializer : Serializer {
 
         #region IFields
-
-        private ObjRefSerializer m_objRefSer = new ObjRefSerializer();
-        private ValueObjectSerializer m_valueSer = new ValueObjectSerializer();
+        
+        private Type m_forType;
+        private SerializerFactory m_serFactory;
+        private Serializer m_objRefSer;
+        private Serializer m_valueSer;
 
         #endregion IFields
+        #region IConstructors
+        
+        internal AbstractInterfaceSerializer(Type forType, SerializerFactory serFactory) {
+            m_forType = forType;
+            m_serFactory = serFactory;
+            m_objRefSer = new ObjRefSerializer(forType);
+            m_valueSer = new ValueObjectSerializer(forType, serFactory);
+        }
+        
+        #endregion IConstructors
         #region IMethods
 
-        internal override void Serialise(Type formal, object actual, AttributeExtCollection attributes,
-                                       CdrOutputStream targetStream) {
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {
             // if actual is null it shall be encoded as a valuetype: 15.3.7
             if ((actual != null) && (ClsToIdlMapper.IsMappedToConcreteInterface(actual.GetType()))) {
                 targetStream.WriteBool(true); // an obj-ref is serialized
-                m_objRefSer.Serialise(formal, actual, attributes, targetStream);
+                m_objRefSer.Serialize(actual, targetStream);
             } else if ((actual == null) || (ClsToIdlMapper.IsMappedToConcreteValueType(actual.GetType()))) {
                 targetStream.WriteBool(false); // a value-type is serialised
-                m_valueSer.Serialise(formal, actual, attributes, targetStream);
+                m_valueSer.Serialize(actual, targetStream);
             } else {
                 // actual value ( actual ) with type: 
                 // actual.GetType() is not serializable for the formal type
@@ -1483,19 +1600,19 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
         }
 
-        internal override object Deserialise(Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             bool isObjRef = sourceStream.ReadBool();
             if (isObjRef) {
+                Type formal = m_forType;
                 if (formal.Equals(ReflectionHelper.ObjectType)) {
                     // if in interface only abstract interface base type is used, set formal now
                     // to base type of all objref for deserialization
                     formal = ReflectionHelper.MarshalByRefObjectType;
                 }
-                object result = m_objRefSer.Deserialise(formal, attributes, sourceStream);    
+                object result = m_objRefSer.Deserialize(sourceStream);    
                 return result;
             } else {
-                object result = m_valueSer.Deserialise(formal, attributes, sourceStream);
+                object result = m_valueSer.Deserialize(sourceStream);
                 return result;
             }
         }
@@ -1506,12 +1623,23 @@ namespace Ch.Elca.Iiop.Marshalling {
 
     
     /// <summary>serializes .NET exceptions as IDL-Exceptions</summary>
-    internal class ExceptionSerializer : Serialiser {
+    internal class ExceptionSerializer : Serializer {
 
+        #region IFields
+        
+        private SerializerFactory m_serFactory;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        public ExceptionSerializer(SerializerFactory serFactory) {
+            m_serFactory = serFactory;
+        }
+        
+        #endregion IConstructors
         #region IMethods
 
-        internal override object Deserialise(System.Type formal, AttributeExtCollection attributes,
-                                           CdrInputStream sourceStream) {
+        internal override object Deserialize(CdrInputStream sourceStream) {
             string repId = sourceStream.ReadString();
             Type exceptionType = Repository.GetTypeForId(repId);
             if (exceptionType == null) {
@@ -1524,42 +1652,84 @@ namespace Ch.Elca.Iiop.Marshalling {
             } else {
                 Exception exception = (Exception)Activator.CreateInstance(exceptionType);
                 // deserialise fields
-                FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(exceptionType);
-                Marshaller marshaller = Marshaller.GetSingleton();
+                FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(exceptionType);                
                 foreach (FieldInfo field in fields) {
-                    object fieldVal = marshaller.Unmarshal(field.FieldType, 
-                                                           ReflectionHelper.GetCustomAttriutesForField(field, true),                                                           
-                                                           sourceStream);
+                    Serializer ser = m_serFactory.Create(field.FieldType, 
+                                                         ReflectionHelper.GetCustomAttriutesForField(field, true));
+                    object fieldVal = ser.Deserialize(sourceStream);
                     field.SetValue(exception, fieldVal);
                 }                
                 return exception;
             }
         }
 
-        internal override void Serialise(System.Type formal, object actual, AttributeExtCollection attributes,
-                                       CdrOutputStream targetStream) {
-            string repId = Repository.GetRepositoryID(formal);
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {
+            string repId = Repository.GetRepositoryID(actual.GetType());
             targetStream.WriteString(repId);
 
-            if (formal.IsSubclassOf(typeof(AbstractCORBASystemException))) {
+            if (actual.GetType().IsSubclassOf(typeof(AbstractCORBASystemException))) {
                 // system exceptions are serialized specially, because no inheritance is possible for exceptions, see implementation of the system exceptions
                 AbstractCORBASystemException sysEx = (AbstractCORBASystemException) actual;
                 targetStream.WriteULong((uint)sysEx.Minor);
                 targetStream.WriteULong((uint)sysEx.Status);
             } else {
-                FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(formal);
-                Marshaller marshaller = Marshaller.GetSingleton();
+                FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(actual.GetType());                
                 foreach (FieldInfo field in fields) {
                     object fieldVal = field.GetValue(actual);
-                    marshaller.Marshal(field.FieldType, 
-                                       ReflectionHelper.GetCustomAttriutesForField(field, true),
-                                       fieldVal, targetStream);
+                    Serializer ser = m_serFactory.Create(field.FieldType,                     
+                                                         ReflectionHelper.GetCustomAttriutesForField(field, true));
+                    ser.Serialize(fieldVal, targetStream);
                 }
             }
         }
 
         #endregion IMethods
 
+    }
+    
+    /// <summary>
+    /// Serializer decorator for handling custom mapping.
+    /// </summary>
+    internal class CustomMappingDecorator : Serializer {
+        
+        #region IFields
+        
+        private CustomMappingDesc m_customMappingUsed;
+        private Serializer m_decorated;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        internal CustomMappingDecorator(CustomMappingDesc customMappingUsed, Serializer decorated) {
+            m_decorated = decorated;
+            m_customMappingUsed = customMappingUsed;
+        }
+        
+        #endregion IConstructors
+        #region IMethods
+        
+        internal override void Serialize(object actual, CdrOutputStream targetStream) {
+            if (actual != null) {
+                CustomMapperRegistry cReg = CustomMapperRegistry.GetSingleton();
+                actual = cReg.CreateIdlForClsInstance(actual, m_customMappingUsed.ClsType);
+            }            
+            m_decorated.Serialize(actual, targetStream);
+        }
+        
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            object result =
+                m_decorated.Deserialize(sourceStream);
+
+            // check for plugged special mappings, e.g. CLS ArrayList -> java.util.ArrayList
+            // --> if present, need to convert instance after deserialising
+            if (result != null) {
+                CustomMapperRegistry cReg = CustomMapperRegistry.GetSingleton();
+                result = cReg.CreateClsForIdlInstance(result, m_customMappingUsed.ClsType);
+            }                      
+            return result;
+        }
+        
+        #endregion IMethods
     }
 
 }
@@ -1587,9 +1757,9 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestByteSerialise() {
             MemoryStream outStream = new MemoryStream();
             CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);
-            Serialiser ser = new ByteSerialiser();
-            ser.Serialise(ReflectionHelper.ByteType, (byte)11, new AttributeExtCollection(), cdrOut);
-            ser.Serialise(ReflectionHelper.ByteType, (byte)12, new AttributeExtCollection(), cdrOut);
+            Serializer ser = new ByteSerializer();
+            ser.Serialize((byte)11, cdrOut);
+            ser.Serialize((byte)12, cdrOut);
             outStream.Seek(0, SeekOrigin.Begin);
             Assertion.AssertEquals(11, outStream.ReadByte());
             Assertion.AssertEquals(12, outStream.ReadByte());
@@ -1603,20 +1773,18 @@ namespace Ch.Elca.Iiop.Tests {
             inStream.Seek(0, SeekOrigin.Begin);
             CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
             cdrIn.ConfigStream(0, new GiopVersion(1, 2));
-            Serialiser ser = new ByteSerialiser();          
-            Assertion.AssertEquals(11, ser.Deserialise(ReflectionHelper.ByteType, 
-                                                       new AttributeExtCollection(), cdrIn));           
-            Assertion.AssertEquals(12, ser.Deserialise(ReflectionHelper.ByteType, 
-                                                       new AttributeExtCollection(), cdrIn));
+            Serializer ser = new ByteSerializer();          
+            Assertion.AssertEquals(11, ser.Deserialize(cdrIn));           
+            Assertion.AssertEquals(12, ser.Deserialize(cdrIn));
             inStream.Close();           
         }
         
         public void TestBooleanSerialise() {
             MemoryStream outStream = new MemoryStream();
             CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);
-            Serialiser ser = new BooleanSerialiser();
-            ser.Serialise(ReflectionHelper.BooleanType, true, new AttributeExtCollection(), cdrOut);
-            ser.Serialise(ReflectionHelper.BooleanType, false, new AttributeExtCollection(), cdrOut);
+            Serializer ser = new BooleanSerializer();
+            ser.Serialize(true, cdrOut);
+            ser.Serialize(false, cdrOut);
             outStream.Seek(0, SeekOrigin.Begin);
             Assertion.AssertEquals(1, outStream.ReadByte());
             Assertion.AssertEquals(0, outStream.ReadByte());
@@ -1630,11 +1798,9 @@ namespace Ch.Elca.Iiop.Tests {
             inStream.Seek(0, SeekOrigin.Begin);
             CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
             cdrIn.ConfigStream(0, new GiopVersion(1, 2));
-            Serialiser ser = new BooleanSerialiser();
-            Assertion.AssertEquals(false, ser.Deserialise(ReflectionHelper.BooleanType, 
-                                                          new AttributeExtCollection(), cdrIn));            
-            Assertion.AssertEquals(true, ser.Deserialise(ReflectionHelper.BooleanType, 
-                                                         new AttributeExtCollection(), cdrIn));
+            Serializer ser = new BooleanSerializer();
+            Assertion.AssertEquals(false, ser.Deserialize(cdrIn));            
+            Assertion.AssertEquals(true, ser.Deserialize(cdrIn));
             inStream.Close();           
         }
         
@@ -1645,9 +1811,9 @@ namespace Ch.Elca.Iiop.Tests {
             inStream.Seek(0, SeekOrigin.Begin);
             CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
             cdrIn.ConfigStream(0, new GiopVersion(1, 2));
-            Serialiser ser = new BooleanSerialiser();
+            Serializer ser = new BooleanSerializer();
             try {
-                ser.Deserialise(ReflectionHelper.BooleanType, new AttributeExtCollection(), cdrIn);
+                ser.Deserialize(cdrIn);
             } catch (Exception e) {
                 inStream.Close();
                 throw e;
@@ -1688,10 +1854,8 @@ namespace Ch.Elca.Iiop.Tests {
             CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
             cdrIn.ConfigStream(0, new GiopVersion(1, 2));            
             
-            Serialiser ser = new ObjRefSerializer();
-            object result = ser.Deserialise(typeof(omg.org.CosNaming.NamingContext),
-                                            new AttributeExtCollection(),
-                                            cdrIn);
+            Serializer ser = new ObjRefSerializer(typeof(omg.org.CosNaming.NamingContext));
+            object result = ser.Deserialize(cdrIn);
             Assertion.AssertNotNull("not correctly deserialised proxy for ior", result);
             Assertion.Assert(RemotingServices.IsTransparentProxy(result));
             Assertion.AssertEquals("IOR:000000000000002849444C3A6F6D672E6F72672F436F734E616D696E672F4E616D696E67436F6E746578743A312E3000000000010000000000000074000102000000000A3132372E302E302E3100041900000030AFABCB0000000022000003E80000000100000000000000010000000C4E616D655365727669636500000000034E43300A0000000100000001000000200000000000010001000000020501000100010020000101090000000100010100",

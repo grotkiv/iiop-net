@@ -157,28 +157,57 @@ namespace Ch.Elca.Iiop.Idl {
             return methodName;
         }
         
-        /// <summary>
-        /// determines the method name to use in a corba request.
-        /// </summary>
-        public static string GetRequestMethodName(MethodInfo method, bool isOverloaded) {
-            string methodName = method.Name;
-            
-            AttributeExtCollection methodAttributes = 
-                ReflectionHelper.GetCustomAttriutesForMethod(method, true);
+        /// <summary>gets the request method name for attribute, if possible.</summary>
+        private static string GetRequestMethodNameFromAttr(MethodInfo info) {
+            AttributeExtCollection methodAttributes =
+                ReflectionHelper.GetCustomAttriutesForMethod(info, true);
             if (methodAttributes.IsInCollection(ReflectionHelper.FromIdlNameAttributeType)) {
-                FromIdlNameAttribute idlNameAttr = 
+                FromIdlNameAttribute idlNameAttr =
                     (FromIdlNameAttribute)methodAttributes.GetAttributeForType(ReflectionHelper.FromIdlNameAttributeType);
-                methodName = idlNameAttr.IdlName;
+                return idlNameAttr.IdlName;
             } else {
-                // do a CLS to IDL mapping, because .NET server expect this for every client, also for a
-                // native .NET client, which uses not CLS -> IDL -> CLS mapping                
-                methodName = IdlNaming.MapClsMethodNameToIdlName(method, 
-                                                                 isOverloaded);
+                return null;
+            }
+        }
 
-            }            
+        /// <summary>
+        /// determines the operation name to use in a corba request for a method.
+        /// </summary>
+        internal static string GetPropertyRequestOperationName(PropertyInfo forProperty, bool forSetter) {
+            string methodName;
+            if (!forSetter) {
+                methodName = GetRequestMethodNameFromAttr(forProperty.GetGetMethod());
+            } else {
+                methodName = GetRequestMethodNameFromAttr(forProperty.GetSetMethod());
+            }
+            if (methodName == null) {
+                string mappedPropertyName =
+                    IdlNaming.MapClsNameToIdlName(forProperty.Name);
+                if (!forSetter) {
+                    methodName = DetermineGetterTransmissionName(mappedPropertyName);
+                } else {
+                    methodName = DetermineSetterTransmissionName(mappedPropertyName);
+                }
+            }
             return methodName;
         }
-        
+
+        /// <summary>
+        /// determines the operation name to use in a corba request for a method.
+        /// </summary>
+        internal static string GetMethodRequestOperationName(MethodInfo method, bool isOverloaded) {
+            string methodName = GetRequestMethodNameFromAttr(method);
+            if (methodName == null) {
+                // determine name for a native .NET method (not mapped from idl)
+                // do a CLS to IDL mapping, because .NET server expect this for every client, also for a
+                // native .NET client, which uses not CLS -> IDL -> CLS mapping
+                methodName = IdlNaming.MapClsMethodNameToIdlName(method,
+                                                                 isOverloaded);
+                methodName = DetermineOperationTransmissionName(methodName);
+            }
+            return methodName;
+        }
+                
         /// <summary>
         /// find the CLS method for the idl name of an overloaded CLS method, defined in type serverType
         /// </summary>
