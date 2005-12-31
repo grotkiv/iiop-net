@@ -1711,7 +1711,9 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override void Serialize(object actual, CdrOutputStream targetStream) {
             if (actual != null) {
                 CustomMapperRegistry cReg = CustomMapperRegistry.GetSingleton();
-                actual = cReg.CreateIdlForClsInstance(actual, m_customMappingUsed.ClsType);
+                // custom mapping maps the actual object to an instance of 
+                // the idl formal type.
+                actual = cReg.CreateIdlForClsInstance(actual, m_customMappingUsed.IdlType);
             }            
             m_decorated.Serialize(actual, targetStream);
         }
