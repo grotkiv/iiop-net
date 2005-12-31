@@ -319,11 +319,11 @@ namespace Ch.Elca.Iiop.Marshalling {
                 MethodInfo setter = properties[i].GetSetMethod();
                 if (getter != null) {
                     string operationName = IdlNaming.GetPropertyRequestOperationName(properties[i], false);
-                    StoreMethodMappingFor(methods[i], operationName, serFactory);                    
+                    StoreMethodMappingFor(getter, operationName, serFactory);                    
                 }
                 if (setter != null) {
                     string operationName = IdlNaming.GetPropertyRequestOperationName(properties[i], true);
-                	StoreMethodMappingFor(methods[i], operationName, serFactory); 
+                	StoreMethodMappingFor(setter, operationName, serFactory); 
                 }
             }
         }
