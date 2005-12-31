@@ -78,7 +78,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         // caches for type specific serializers
         private IDictionary /* Type, Serializer */ m_structSers = new Hashtable();         
         private IDictionary /* Type, Serializer */ m_enumSers = new Hashtable();         
-        private IDictionary /* Type, Serializer */ m_unionSers = new Hashtable();        
+        private IDictionary /* Type, Serializer */ m_unionSers = new Hashtable();                
+        private IDictionary /* Type, Serializer */ m_valTypeSers = new Hashtable();        
         
         private IDictionary /* Type, ValueConcreteInstanceSerializer */ 
             m_concValueInstanceSer = new Hashtable();
@@ -149,6 +150,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                         ValueObjectSerializer.ValueConcreteInstanceSerializer(concreteValueType, 
                                                                               this);
                     m_concValueInstanceSer[concreteValueType] = result;
+                    result.Initalize(); // determine field mapping
                 }
                 return result;
             }
@@ -160,8 +162,10 @@ namespace Ch.Elca.Iiop.Marshalling {
             lock(m_structSers.SyncRoot) {
                 Serializer result = (Serializer)m_structSers[clsType];
                 if (result == null) {
-                    result = new IdlStructSerializer(clsType, this);
+                    result = new IdlStructSerializer(clsType, this);                    
                     m_structSers[clsType] = result;
+                    ((IdlStructSerializer)result).Initalize(); // to prevent recursive struct issues, must be done
+                                                               // after registration of the struct.
                 }
                 return result;
             }
@@ -188,8 +192,15 @@ namespace Ch.Elca.Iiop.Marshalling {
             // local interfaces are non-marshable
             throw new MARSHAL(4, CompletionStatus.Completed_MayBe);
         }
-        public object MapToIdlConcreateValueType(System.Type clsType) {
-            return new ValueObjectSerializer(clsType, this);
+        public object MapToIdlConcreateValueType(System.Type clsType) {                        
+            lock(m_valTypeSers.SyncRoot) {
+                Serializer result = (Serializer)m_valTypeSers[clsType];
+                if (result == null) {
+                    result = new ValueObjectSerializer(clsType, this);
+                    m_valTypeSers[clsType] = result;
+                }
+                return result;
+            }
         }
         public object MapToIdlAbstractValueType(System.Type clsType) {
             return new AbstractValueSerializer(clsType, this);
