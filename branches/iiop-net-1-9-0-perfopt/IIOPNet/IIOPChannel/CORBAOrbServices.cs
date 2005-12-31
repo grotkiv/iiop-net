@@ -193,6 +193,8 @@ namespace omg.org.CORBA {
         private InterceptorManager m_interceptorManager;
         private CodecFactory m_codecFactory;
         private Ch.Elca.Iiop.Interception.PICurrentManager m_piCurrentManager;
+        private Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory m_argSerializerFactory;
+        private Ch.Elca.Iiop.Marshalling.SerializerFactory m_serializerFactory;
 		
         #endregion IFields
         #region IConstructors
@@ -202,6 +204,9 @@ namespace omg.org.CORBA {
             m_codecFactory = new CodecFactoryImpl();
             m_piCurrentManager = new PICurrentManager();
             m_interceptorManager = new InterceptorManager(this);
+            m_serializerFactory = new Ch.Elca.Iiop.Marshalling.SerializerFactory();
+            m_argSerializerFactory = 
+                new Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory(m_serializerFactory);
         }
         
         #endregion IConstructors
@@ -249,6 +254,25 @@ namespace omg.org.CORBA {
                 return m_piCurrentManager;
             }
         }
+		
+        /// <summary>
+        /// returns the factory responsible for creating ArgumentsSerializer
+        /// </summary>
+        internal Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory ArgumentsSerializerFactory {
+            get {
+                return m_argSerializerFactory;
+            }        
+        }
+
+        /// <summary>
+        /// returns the factory responsible for creating Serializers for serializing/deserializing
+        /// instances.
+        /// </summary>
+        internal Ch.Elca.Iiop.Marshalling.SerializerFactory SerializerFactory {
+            get {
+                return m_serializerFactory;
+            }
+        }        
 		
         #endregion IProperties
         #region IMethods

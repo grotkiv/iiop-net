@@ -577,11 +577,11 @@ namespace Ch.Elca.Iiop.Idl {
             } else {
                 // as WStringValue / StringValue
                 if (useWide) {
-                    Type boxed = typeof(omg.org.CORBA.WStringValue);
+                    Type boxed = ReflectionHelper.WStringValueType;
                     clsType = boxed; // transform
                     return action.MapToWStringValue(boxed);
                 } else {
-                    Type boxed = typeof(omg.org.CORBA.StringValue);
+                    Type boxed = ReflectionHelper.StringValueType;
                     clsType = boxed; // transform
                     return action.MapToStringValue(boxed);
                 }

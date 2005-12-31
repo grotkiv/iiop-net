@@ -689,8 +689,7 @@ namespace omg.org.CORBA {
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            m_aliased = (TypeCode) ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                   AttributeExtCollection.EmptyCollection, encap);
+            m_aliased = (TypeCode) ser.Deserialize(encap);
         }
 
         internal override void WriteToStream(CdrOutputStream cdrStream) {
@@ -699,7 +698,7 @@ namespace omg.org.CORBA {
             encap.WriteString(m_id);
             encap.WriteString(m_name);
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            ser.Serialise(ReflectionHelper.CorbaTypeCodeType, m_aliased, AttributeExtCollection.EmptyCollection, encap);
+            ser.Serialize(m_aliased, encap);
             encap.WriteToTargetStream();
         }
 
@@ -1059,8 +1058,7 @@ namespace omg.org.CORBA {
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            m_boxed = (TypeCode) ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                 new AttributeExtCollection(new Attribute[0]), encap);
+            m_boxed = (TypeCode) ser.Deserialize(encap);
         }
 
         internal override void WriteToStream(CdrOutputStream cdrStream) {
@@ -1069,8 +1067,7 @@ namespace omg.org.CORBA {
             encap.WriteString(m_id);
             encap.WriteString(m_name);
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            ser.Serialise(ReflectionHelper.CorbaTypeCodeType, m_boxed, 
-                          new AttributeExtCollection(new Attribute[0]), encap);
+            ser.Serialize(m_boxed, encap);
             encap.WriteToTargetStream();
         }
 
@@ -1136,8 +1133,7 @@ namespace omg.org.CORBA {
         internal override void ReadFromStream(CdrInputStream cdrStream) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            m_seqType = (TypeCode) ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                   new AttributeExtCollection(new Attribute[0]), encap);
+            m_seqType = (TypeCode) ser.Deserialize(encap);
             m_length = (int)encap.ReadULong();
         }
 
@@ -1145,8 +1141,7 @@ namespace omg.org.CORBA {
             base.WriteToStream(cdrStream);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            ser.Serialise(ReflectionHelper.CorbaTypeCodeType, m_seqType, 
-                          new AttributeExtCollection(new Attribute[0]), encap);
+            ser.Serialize(m_seqType, encap);
             encap.WriteULong((uint)m_length);
             encap.WriteToTargetStream();
         }
@@ -1229,8 +1224,7 @@ namespace omg.org.CORBA {
         internal override void ReadFromStream(CdrInputStream cdrStream) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            m_innerDimension = (TypeCode) ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                          new AttributeExtCollection(new Attribute[0]), encap);
+            m_innerDimension = (TypeCode) ser.Deserialize(encap);
             m_length = (int)encap.ReadULong();
         }
 
@@ -1238,8 +1232,7 @@ namespace omg.org.CORBA {
             base.WriteToStream(cdrStream);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            ser.Serialise(ReflectionHelper.CorbaTypeCodeType, m_innerDimension, 
-                          new AttributeExtCollection(new Attribute[0]), encap);
+            ser.Serialize(m_innerDimension, encap);
             encap.WriteULong((uint)m_length);
             encap.WriteToTargetStream();
         }
@@ -1380,8 +1373,7 @@ namespace omg.org.CORBA {
             TypeCodeSerializer ser = new TypeCodeSerializer();
             for (int i = 0; i < length; i++) {
                 string memberName = encap.ReadString();
-                TypeCode memberType = (TypeCode)ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                                new AttributeExtCollection(new Attribute[0]), encap);
+                TypeCode memberType = (TypeCode)ser.Deserialize(encap);
                 StructMember member = new StructMember(memberName, memberType);
                 m_members[i] = member;
             }
@@ -1396,8 +1388,7 @@ namespace omg.org.CORBA {
             TypeCodeSerializer ser = new TypeCodeSerializer();            
             foreach(StructMember member in m_members) {
                 encap.WriteString(member.m_name);
-                ser.Serialise(ReflectionHelper.CorbaTypeCodeType, member.m_type, 
-                              new AttributeExtCollection(new Attribute[0]), encap);
+                ser.Serialize(member.m_type, encap);
             }
             encap.WriteToTargetStream();
         }
@@ -1544,23 +1535,21 @@ namespace omg.org.CORBA {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
-            Marshaller marshaller = Marshaller.GetSingleton();
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            m_discriminatorType = (omg.org.CORBA.TypeCode)ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                                          new AttributeExtCollection(new Attribute[0]), 
-                                                                          encap);
+            m_discriminatorType = (omg.org.CORBA.TypeCode)ser.Deserialize(encap);
             Type discrTypeCls = ((TypeCodeImpl)m_discriminatorType).GetClsForTypeCode();
             m_defaultCase = encap.ReadLong();
             
             uint length = encap.ReadULong();
             m_members = new UnionSwitchCase[length];            
+            Serializer serDisc =
+                omg.org.CORBA.OrbServices.GetSingleton().SerializerFactory.Create(discrTypeCls, 
+                                                                                  AttributeExtCollection.EmptyCollection);
             for (int i = 0; i < length; i++) {
-                object discrLabel = marshaller.Unmarshal(discrTypeCls, new AttributeExtCollection(new Attribute[0]), 
-                                                         encap);
+                object discrLabel = serDisc.Deserialize(encap);
                 string memberName = encap.ReadString();                
-                omg.org.CORBA.TypeCode memberType = (omg.org.CORBA.TypeCode)ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                                                            new AttributeExtCollection(new Attribute[0]), 
-                                                                                            encap);    
+                omg.org.CORBA.TypeCode memberType = 
+                    (omg.org.CORBA.TypeCode)ser.Deserialize(encap);    
                 UnionSwitchCase member = new UnionSwitchCase(discrLabel, memberName, memberType);
                 m_members[i] = member;
             }
@@ -1573,20 +1562,19 @@ namespace omg.org.CORBA {
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             encap.WriteString(m_id);
             encap.WriteString(m_name);
-            Marshaller marshaller = Marshaller.GetSingleton();
             TypeCodeSerializer ser = new TypeCodeSerializer();
             Type discrTypeCls = ((TypeCodeImpl)m_discriminatorType).GetClsForTypeCode();
-            ser.Serialise(ReflectionHelper.CorbaTypeCodeType, m_discriminatorType, 
-                          new AttributeExtCollection(new Attribute[0]), encap);
+            ser.Serialize(m_discriminatorType, encap);
             encap.WriteLong(m_defaultCase);
             
             encap.WriteULong((uint)m_members.Length);
+            Serializer serDisc =
+                omg.org.CORBA.OrbServices.GetSingleton().SerializerFactory.Create(discrTypeCls, 
+                                                                                  AttributeExtCollection.EmptyCollection);            
             for (int i = 0; i < m_members.Length; i++) {
-                marshaller.Marshal(discrTypeCls, new AttributeExtCollection(new Attribute[0]), 
-                                   m_members[i].DiscriminatorValue, encap);
+                serDisc.Serialize(m_members[i].DiscriminatorValue, encap);
                 encap.WriteString(m_members[i].ElementName);
-                ser.Serialise(ReflectionHelper.CorbaTypeCodeType, m_members[i].ElementType,
-                             new AttributeExtCollection(new Attribute[0]), encap);
+                ser.Serialize(m_members[i].ElementType, encap);
             }            
 
             encap.WriteToTargetStream();
@@ -1760,15 +1748,13 @@ namespace omg.org.CORBA {
             m_name = encap.ReadString();
             m_typeMod = encap.ReadShort();
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            m_baseClass = (TypeCode)ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                    new AttributeExtCollection(new Attribute[0]), encap);
+            m_baseClass = (TypeCode)ser.Deserialize(encap);
             // deser members
             uint length = encap.ReadULong();
             m_members = new ValueTypeMember[length];
             for (int i = 0; i < length; i++) {
                 string memberName = encap.ReadString();
-                TypeCode memberType = (TypeCode)ser.Deserialise(ReflectionHelper.CorbaTypeCodeType, 
-                                                                new AttributeExtCollection(new Attribute[0]), encap);
+                TypeCode memberType = (TypeCode)ser.Deserialize(encap);
                 short visibility = encap.ReadShort();
                 ValueTypeMember member = new ValueTypeMember(memberName, memberType, visibility);
                 m_members[i] = member;
@@ -1783,14 +1769,12 @@ namespace omg.org.CORBA {
             encap.WriteShort(m_typeMod);
             TypeCodeSerializer ser = new TypeCodeSerializer();
             // ser baseclass type
-            ser.Serialise(ReflectionHelper.CorbaTypeCodeType, m_baseClass, 
-                          new AttributeExtCollection(new Attribute[0]), encap);
+            ser.Serialize(m_baseClass, encap);
             // ser members
             encap.WriteULong((uint)m_members.Length);
             foreach(ValueTypeMember member in m_members) {
                 encap.WriteString(member.m_name);
-                ser.Serialise(ReflectionHelper.CorbaTypeCodeType, member.m_type, 
-                              new AttributeExtCollection(new Attribute[0]), encap);
+                ser.Serialize(member.m_type, encap);
                 encap.WriteShort(member.m_visibility);
             }
             encap.WriteToTargetStream();

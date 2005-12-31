@@ -66,7 +66,12 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #region IConstructors
 
         private GiopMessageHandler() {
-            m_ser = new GiopMessageBodySerialiser();
+            // TODO
+            SerializerFactory serFactory =
+                omg.org.CORBA.OrbServices.GetSingleton().SerializerFactory;
+            ArgumentsSerializerFactory argSerFactory =
+                omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;                
+            m_ser = new GiopMessageBodySerialiser(argSerFactory, serFactory);
         }
 
         #endregion IConstructors
@@ -135,8 +140,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
             bool outArgFound = false;
             ArrayList outArgsList = new ArrayList();
             for (int i = 0; i < parameters.Length; i++) {
-                if (ParameterMarshaller.IsOutParam(parameters[i]) || 
-                    ParameterMarshaller.IsRefParam(parameters[i])) {
+                if (ReflectionHelper.IsOutParam(parameters[i]) || 
+                    ReflectionHelper.IsRefParam(parameters[i])) {
                     outArgsList.Add(reqArgs[i]); // i-th argument is an out/ref param
                     outArgFound = true;
                 } else {
@@ -528,6 +533,7 @@ namespace Ch.Elca.Iiop.Tests {
             msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = (uint)5;
             msg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY] = version;
             msg.Properties[SimpleGiopMsg.CALLED_METHOD_KEY] = methodToCall;
+            msg.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY] = methodToCall.Name; // done by serialization normally
             // create a connection context
             GiopConnectionDesc conDesc = new GiopConnectionDesc(null, null);
 
@@ -659,6 +665,7 @@ namespace Ch.Elca.Iiop.Tests {
             object[] args = new object[] { ((Int32) 1), ((Int32) 2) };
             string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
             TestMessage requestMsg = new TestMessage(methodToCall, args, uri);
+            requestMsg.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY] = methodToCall.Name; // done by serialization normally
             // prepare connection desc
             GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, new GiopRequestNumberGenerator(), null);
             // create the reply
