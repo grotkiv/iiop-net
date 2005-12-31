@@ -450,6 +450,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             private FieldInfo[] m_fieldInfos;
             private Serializer[] m_fieldSerializers;
             private SerializerFactory m_serFactory;
+            private bool m_initalized;
             
             internal ValueConcreteInstanceSerializer(Type concreteType, SerializerFactory serFactory) {
                 m_forConcreteType = concreteType;
@@ -457,10 +458,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 // determine instance to instantiate for concreteType: 
                 // check for a value type implementation class
                 m_forConcreteInstanceType = DetermineInstanceToCreateType(m_forConcreteType);
-                m_isCustomMarshalled = CheckForCustomMarshalled(m_forConcreteType);
-                if (!m_isCustomMarshalled) {
-                    DetermineFieldSerializers(m_serFactory);
-                }
+                m_isCustomMarshalled = CheckForCustomMarshalled(m_forConcreteType);                
             }
             
             private Type DetermineInstanceToCreateType(Type concreteType) {
@@ -517,6 +515,30 @@ namespace Ch.Elca.Iiop.Marshalling {
                     }
                 }
                 return false;
+            }            
+            
+            /// <summary>
+            /// initalize the serializer for usage. Before, the serializer is non-usable
+            /// </summary>
+            internal void Initalize() {
+                if (m_initalized) {
+                    throw new BAD_INV_ORDER(1678, CompletionStatus.Completed_MayBe);
+                }
+                if (!m_isCustomMarshalled) {
+                    // could map fields also in consturctor, because no recursive
+                    // occurence of ValueConcreteInstanceSerializer:
+                    // ValueObjectSerializers are always created in between breaking the
+                    // possible recursive chain
+                    // but to be consistent with IdlStruct, do it this way.
+                    DetermineFieldSerializers(m_serFactory);
+                }                
+                m_initalized = true;
+            }   
+        
+            private void CheckInitalized() {
+                if (!m_initalized) {
+                    throw new BAD_INV_ORDER(1678, CompletionStatus.Completed_MayBe);
+                }
             }            
             
             private void DetermineFieldSerializers(SerializerFactory serFactory) {
@@ -580,6 +602,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             }                                    
             
             internal void Serialize(object actual, CdrOutputStream targetStream) {
+                CheckInitalized();
                 uint valueTag = CdrStreamHelper.MIN_VALUE_TAG; // value-tag with no option set
                 // attentition here: if formal type represents an IDL abstract interface, writing no type information is not ok.
                 // do not use no typing information option, because java orb can't handle it
@@ -616,6 +639,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             
             internal object Deserialize(CdrInputStream sourceStream,
                                         StreamPosition instanceStartPos, uint valueTag) {
+                CheckInitalized();
                 object result = Activator.CreateInstance(m_forConcreteInstanceType);
                 // store indirection info for this instance, if another instance contains a reference to this one
                 sourceStream.StoreIndirection(new IndirectionInfo(instanceStartPos.GlobalPosition,
@@ -869,27 +893,53 @@ namespace Ch.Elca.Iiop.Marshalling {
         private Serializer[] m_fieldSerializers;
 		private FieldInfo[] m_fields;
         private Type m_forType;
+        private bool m_initalized = false;
+        private SerializerFactory m_serFactory;
 
         #endregion IFields
         #region IConstructors
 
-        internal IdlStructSerializer(Type forType, SerializerFactory serFactory) : base() {			            
+        /// <summary>
+        /// creates the idl struct serializer. To prevent issues with
+        /// recurive elements, the serializer must be initalized in
+        /// an additional step by calling Initalize.
+        /// The serializer must be cached to return it for recursive requests.
+        /// </summary>
+        internal IdlStructSerializer(Type forType, SerializerFactory serFactory) : base() {
             m_forType = forType;
-			DetermineFieldMapping(serFactory);
-    }
+            m_serFactory = serFactory;			
+        }
 
         #endregion IConstructors
         #region IMethods
+        
+        /// <summary>
+        /// initalize the serializer for usage. Before, the serializer is non-usable
+        /// </summary>        
+        internal void Initalize() {
+            if (m_initalized) {
+                throw new BAD_INV_ORDER(1678, CompletionStatus.Completed_MayBe);
+            }
+            DetermineFieldMapping();
+            m_initalized = true;
+        }   
+        
+        private void CheckInitalized() {
+            if (!m_initalized) {
+                throw new BAD_INV_ORDER(1678, CompletionStatus.Completed_MayBe);
+            }
+        }
 
-        private void DetermineFieldMapping(SerializerFactory serFactory) {
+        private void DetermineFieldMapping() {
             m_fields = ReflectionHelper.GetAllDeclaredInstanceFields(m_forType);
             m_fieldSerializers = new Serializer[m_fields.Length];
             for (int i = 0; i < m_fields.Length; i++) {
-                m_fieldSerializers[i] = CreateSerializerForField(m_fields[i], serFactory);           
+                m_fieldSerializers[i] = CreateSerializerForField(m_fields[i], m_serFactory);           
             }
         }
     
-        internal override object Deserialize(CdrInputStream sourceStream) {                        
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            CheckInitalized();
             object instance = Activator.CreateInstance(m_forType);
             for (int i = 0; i < m_fieldSerializers.Length; i++) {
                 DeserializeField(m_fields[i], instance, m_fieldSerializers[i], sourceStream);                
@@ -898,6 +948,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
 
         internal override void Serialize(object actual, CdrOutputStream targetStream) {
+            CheckInitalized();
             for (int i = 0; i < m_fieldSerializers.Length; i++) {
                 SerializeField(m_fields[i], actual, m_fieldSerializers[i], targetStream);                
             }
@@ -931,6 +982,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         internal IdlUnionSerializer(Type forType, SerializerFactory serFactory) {
             m_forType = forType;
+            // disciminator can't be the same type then the union -> therefore no recursive problem here.
             m_discrField = GetDiscriminatorField(m_forType);
             m_discrSerializer = CreateSerializerForField(m_discrField, serFactory);
             m_initField = GetInitalizedField(m_forType);
@@ -1100,6 +1152,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             bool isIdlEnum = (attrs.IsInCollection(ReflectionHelper.IdlEnumAttributeType));
             if (!isIdlEnum) {
                 Type underlyingType = Enum.GetUnderlyingType(m_forType);
+                // undelying type is not the same than the enum -> no problem with recursive serializers
                 m_netEnumValSerializer =
                     serFactory.Create(underlyingType, AttributeExtCollection.EmptyCollection);
             }
@@ -1158,7 +1211,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                                      int bound, SerializerFactory serFactory) {
             m_forTypeElemType = forType.GetElementType();
             m_bound = bound;    
-            DetermineElementSerializer(m_forTypeElemType, elemAttrs, serFactory);    
+            // element is not the same than the sequence -> therefore problems with recursion
+            DetermineElementSerializer(m_forTypeElemType, elemAttrs, serFactory);
         }
         
         #endregion IConstructors
@@ -1229,6 +1283,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                                   int[] dimensions, SerializerFactory serFactory) {
             m_dimensions = dimensions;    
             m_forTypeElemType = forType.GetElementType();
+            // element is not the same than the sequence -> therefore problems with recursion
             m_elementSer = serFactory.Create(m_forTypeElemType, elemAttributes);
         }
         
