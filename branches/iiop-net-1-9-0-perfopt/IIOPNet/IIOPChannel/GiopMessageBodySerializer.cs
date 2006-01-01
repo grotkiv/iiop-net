@@ -296,9 +296,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion IFields
         #region IConstructors
 
-        internal GiopMessageBodySerialiser(ArgumentsSerializerFactory argSerFactory,
-                                           SerializerFactory serFactory) {      
-            m_serFactory = serFactory;
+        internal GiopMessageBodySerialiser(ArgumentsSerializerFactory argSerFactory) {      
+            m_serFactory = argSerFactory.SerializerFactory;
             m_argSerFactory = argSerFactory;
         }
 
@@ -989,8 +988,8 @@ namespace Ch.Elca.Iiop.Tests {
             // checks if service contexts with the same id, doesn't throw an exception
             // checks, that the first service context is considered, others are thrown away
             SerializerFactory serFactory = new SerializerFactory();            
-            GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(new ArgumentsSerializerFactory(serFactory),
-                                                                          serFactory);
+            GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
+                                                new ArgumentsSerializerFactory(serFactory));
             MemoryStream stream = new MemoryStream();
             CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(stream, 0, new GiopVersion(1,2));
             cdrOut.WriteULong(2); // nr of contexts
