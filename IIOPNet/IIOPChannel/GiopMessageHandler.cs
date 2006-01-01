@@ -637,8 +637,7 @@ namespace Ch.Elca.Iiop.Tests {
                 // deserialise request message
                 GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
                 result = handler.ParseIncomingRequestMessage(sourceStream, conDesc, InterceptorManager.EmptyInterceptorOptions);
-            } catch (RequestDeserializationException e) {
-                Console.WriteLine("Request deser exception, reason: " + e.Reason);
+            } catch (RequestDeserializationException e) {                
                 throw e;
             } finally {
                 RemotingServices.Disconnect(service);
