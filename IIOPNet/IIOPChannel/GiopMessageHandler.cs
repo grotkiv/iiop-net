@@ -55,7 +55,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         
         #region SFields
 
-        private static GiopMessageHandler s_handler = new GiopMessageHandler();
+        private static GiopMessageHandler s_handler = 
+            new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
 
         #endregion SFields
         #region IFields
@@ -65,13 +66,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion IFields
         #region IConstructors
 
-        private GiopMessageHandler() {
-            // TODO
-            SerializerFactory serFactory =
-                omg.org.CORBA.OrbServices.GetSingleton().SerializerFactory;
-            ArgumentsSerializerFactory argSerFactory =
-                omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;                
-            m_ser = new GiopMessageBodySerialiser(argSerFactory, serFactory);
+        private GiopMessageHandler(ArgumentsSerializerFactory argSerFactory) {
+            m_ser = new GiopMessageBodySerialiser(argSerFactory);
         }
 
         #endregion IConstructors
