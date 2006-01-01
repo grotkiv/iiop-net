@@ -43,6 +43,19 @@ namespace Ch.Elca.Iiop.Marshalling {
         private SerializerFactory m_serFactory;
         
         #endregion IFields
+        #region IProperties
+        
+        /// <summary>
+        /// the SerializerFactory used by and to use togheter with
+        /// ArgumentSerializerFactory.
+        /// </summary>
+        internal SerializerFactory SerializerFactory {
+            get {
+                return m_serFactory;
+            }
+        }
+        
+        #endregion IProperties
         #region IConstructors
         
         internal ArgumentsSerializerFactory(SerializerFactory serFactory) {
