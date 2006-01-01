@@ -548,7 +548,7 @@ namespace Ch.Elca.Iiop {
                 return (IMessageSink) sink;                
             } else if ((url == null) && (remoteChannelData is IiopChannelData)) {
                 // check remoteChannelData
-                Console.WriteLine("url null, remote channel data: " + remoteChannelData);
+                Trace.WriteLine("url null, remote channel data: " + remoteChannelData);
 //                IiopChannelData chanData = (IiopChannelData)remoteChannelData;
 //                IClientChannelSink sink = m_providerChain.CreateSink(this, url, chanData);
 //                if (!(sink is IMessageSink)) { 
