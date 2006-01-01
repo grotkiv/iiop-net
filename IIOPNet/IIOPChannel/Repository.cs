@@ -399,11 +399,11 @@ namespace Ch.Elca.Iiop.Idl {
         public static string GetRepositoryID(Type type) {
             string result;
             lock(s_instance) {
-                result = (string)s_instance.m_repIdsByLoadedTypes[type.AssemblyQualifiedName];
+                result = (string)s_instance.m_repIdsByLoadedTypes[type];
                 if (result == null) {
                     // can happed for dynamically created types
                     s_instance.RegisterType(type);
-                    result = (string)s_instance.m_repIdsByLoadedTypes[type.AssemblyQualifiedName];
+                    result = (string)s_instance.m_repIdsByLoadedTypes[type];
                 }
                 return result;
             }
@@ -557,17 +557,17 @@ namespace Ch.Elca.Iiop.Idl {
         private void RegisterType(Type type) {
             lock(this) {                
                 if ((type.IsPublic) &&
-                    (!m_repIdsByLoadedTypes.ContainsKey(type.AssemblyQualifiedName))) {
+                    (!m_repIdsByLoadedTypes.ContainsKey(type))) {
                     string repIdForType; // the rep-id, which should be resolved to the Type type
                     // repIdToUse is the rep-id, which should be told everyone, which wants to refernce Type type.
                     // This needs not to be the same as repIdForType (e.g. for SupportedInterface attribute)
                     string repIdToUse = GetRepositoryIDFromType(type, out repIdForType);
-                    m_repIdsByLoadedTypes[type.AssemblyQualifiedName] = repIdToUse;
+                    m_repIdsByLoadedTypes[type] = repIdToUse;
                     if (!m_loadedTypesByRepId.ContainsKey(repIdForType)) {
                         m_loadedTypesByRepId[repIdForType] = type;
                     } else {
                         // rep-id should by unique
-                        Console.WriteLine(String.Format("For the repId {0} type {1} is already present, tried to " +
+                        Trace.WriteLine(String.Format("For the repId {0} type {1} is already present, tried to " +
                                                       "assign another type {2} to same id!", repIdForType, ((Type)m_loadedTypesByRepId[repIdForType]).AssemblyQualifiedName,
                                                       type.AssemblyQualifiedName));
                         // throw new INTERNAL(905, CompletionStatus.Completed_MayBe);

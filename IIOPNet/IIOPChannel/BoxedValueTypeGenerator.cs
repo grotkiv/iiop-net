@@ -52,6 +52,8 @@ namespace Ch.Elca.Iiop.Idl {
         
         private AssemblyBuilder m_asmBuilder;
         private ModuleBuilder m_modBuilder;
+        
+        private Hashtable m_repIdsForBoxedArrays = new Hashtable();
 
         #endregion IFields
         #region IConstructors
@@ -96,7 +98,12 @@ namespace Ch.Elca.Iiop.Idl {
                 // for the .NET / .NET case, check if already a boxed type has been created by the idl to cls compiler
                 // the repository id, which will identify the boxed value type generated for clsArrayType
                 // will be used to check, if this boxed value type has already been created by the idl to cls mapping.
-                string repIdForType = m_boxedValGen.GetRepositoryIDForBoxedArrayType(arrayType);
+                string repIdForType = (string)m_repIdsForBoxedArrays[arrayType];
+                if (repIdForType == null) {
+                    repIdForType = m_boxedValGen.GetRepositoryIDForBoxedArrayType(arrayType);
+                    m_repIdsForBoxedArrays[arrayType] = repIdForType;
+                }
+                // repository knows all the types, ask for type for rep-id
                 Type result = Repository.GetTypeForId(repIdForType);
                 if (result == null) {
                     // no type found,
