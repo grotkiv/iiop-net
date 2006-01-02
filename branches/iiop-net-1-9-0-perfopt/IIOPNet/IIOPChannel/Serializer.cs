@@ -551,7 +551,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                     FieldInfo[] fields = ReflectionHelper.GetAllDeclaredInstanceFields(demarshalType);
                     allFields.AddRange(fields);
                     for (int i = 0; i < fields.Length; i++) {
-                        allSerializers.Add(Serializer.CreateSerializerForField(fields[i], serFactory));
+                        allSerializers.Add(CreateSerializerForField(fields[i], serFactory));
                     }
                 }
                 m_fieldInfos = (FieldInfo[])allFields.ToArray(typeof(FieldInfo));
@@ -584,8 +584,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                                      CdrOutputStream targetStream) {
                 for (int i = 0; i < m_fieldInfos.Length; i++) {
                     if (!m_fieldInfos[i].IsNotSerialized) { // do not serialize transient fields
-                        Serializer.SerializeField(m_fieldInfos[i], instance, m_fieldSerializers[i],
-                                                  targetStream);
+                        SerializeField(m_fieldInfos[i], instance, m_fieldSerializers[i],
+                                       targetStream);
                     }
                 }
             }
@@ -595,8 +595,8 @@ namespace Ch.Elca.Iiop.Marshalling {
                                     CdrInputStream sourceStream) {
                 for (int i = 0; i < m_fieldInfos.Length; i++) {
                     if (!m_fieldInfos[i].IsNotSerialized) { // do not serialize transient fields
-                        Serializer.DeserializeField(m_fieldInfos[i], instance, m_fieldSerializers[i],
-                                                    sourceStream);
+                        DeserializeField(m_fieldInfos[i], instance, m_fieldSerializers[i],
+                                         sourceStream);
                     }
                 }                                
             }                                    
@@ -1622,7 +1622,6 @@ namespace Ch.Elca.Iiop.Marshalling {
         #region IFields
         
         private Type m_forType;
-        private SerializerFactory m_serFactory;
         private Serializer m_objRefSer;
         private Serializer m_valueSer;
 
@@ -1631,7 +1630,6 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         internal AbstractInterfaceSerializer(Type forType, SerializerFactory serFactory) {
             m_forType = forType;
-            m_serFactory = serFactory;
             m_objRefSer = new ObjRefSerializer(forType);
             m_valueSer = new ValueObjectSerializer(forType, serFactory);
         }
