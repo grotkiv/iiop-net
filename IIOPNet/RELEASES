@@ -1,3 +1,33 @@
+version 1.9.0 beta (02 january 2006)
+------------------------------------
+new features:
+- IIOP.NET will no longer retrieve root assemblies on it's own, but instead 
+  investigates the assemblies loaded by the application. It also tries to load
+  referenced assemblies from those assemblies.
+  IIOP.NET investigates the types in the loaded assemblies and builds a mapping
+  of CORBA type identifiers (repository id's) and types when the assembly is
+  loaded. 
+  To reduce the amount of types considered, only public types are 
+  handled by IIOP.NET. Assembly private types are ignored. 
+  Due to these changes: 
+  - IIOP.NET can handle assemblies installed in the GAC 
+  - the mapping between repository id's and types is less restrictive
+
+- Performance improvements:
+  The IIOP.NET performance benchmark now runs more than 2 times faster
+  on the test machine.
+  Mainly, the performance for serializing/deserializing 
+  complex corba value types and structs has been massively improved.
+  For those types, the benchmark now runs up to around 6 times faster.
+  For simple calls, the benchmark now runs around 20% faster.
+ 
+  To achieve this performance improvement, information needed to
+  serialize/deserialize are cached.
+
+new tests:
+- tests for assemblies in gac added
+  
+
 version 1.8.0 final (13 november 2005)
 --------------------------------------
 
