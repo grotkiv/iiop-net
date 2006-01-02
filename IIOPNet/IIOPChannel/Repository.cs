@@ -401,6 +401,11 @@ namespace Ch.Elca.Iiop.Idl {
             lock(s_instance) {
                 result = (string)s_instance.m_repIdsByLoadedTypes[type];
                 if (result == null) {
+                    // internal types are not supported, because there are a lot of 
+                    // internal types with the same name in ms.net assemblies.
+                    if (!type.IsPublic) {
+                        throw new BAD_PARAM(568, CompletionStatus.Completed_MayBe);
+                    }
                     // can happed for dynamically created types
                     s_instance.RegisterType(type);
                     result = (string)s_instance.m_repIdsByLoadedTypes[type];
