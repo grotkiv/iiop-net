@@ -68,17 +68,12 @@ namespace Ch.Elca.Iiop.Benchmarks {
             m_count = count;
         }
 
-        public void SetupEnvironment() {
+        public void SetupEnvironment(string serviceUrl) {
             // register the channel
             m_channel = new IiopChannel(0);
             ChannelServices.RegisterChannel(m_channel);
 
-            // access COS nameing service
-            CorbaInit init = CorbaInit.GetInit();
-            NamingContext nameService = init.GetNameService("localhost", 8087);
-            NameComponent[] name = new NameComponent[] { new NameComponent("test", "") };
-            // get the reference to the test-service
-            m_testService = (TestService)nameService.resolve(name);
+            m_testService = (TestService)RemotingServices.Connect(typeof(TestService), serviceUrl);
         }
 
         public void TearDownEnvironment() {
@@ -254,7 +249,8 @@ namespace Ch.Elca.Iiop.Benchmarks {
             }
             TestClient tc = new TestClient(count);
     
-            tc.SetupEnvironment();
+	    string serviceUrl = "corbaloc:iiop:1.2@localhost:8087/test";
+            tc.SetupEnvironment(serviceUrl);
             tc.m_localRT = new RefTypeLocalImpl();
             tc.m_remoteRT = tc.m_testService.RefLocal();
     

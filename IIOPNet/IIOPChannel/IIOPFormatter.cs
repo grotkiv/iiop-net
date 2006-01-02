@@ -235,14 +235,13 @@ namespace Ch.Elca.Iiop {
         private void VerifyInterfaceCompatible(Ior target, IMessage msg) {
             if (msg is IMethodMessage) {
                 IMethodMessage methodCall = (IMethodMessage)msg;
-                Type targetType = methodCall.MethodBase.DeclaringType;
-                string typeKey = targetType.AssemblyQualifiedName;
+                Type targetType = methodCall.MethodBase.DeclaringType;                
                 lock(m_typesVerified.SyncRoot) {
-                    if (m_typesVerified.ContainsKey(typeKey)) {
+                    if (m_typesVerified.ContainsKey(targetType)) {
                         return;
                     } else {
                         if (IsInterfaceCompatible(target, targetType, methodCall.Uri)) {
-                            m_typesVerified[typeKey] = true;
+                            m_typesVerified[targetType] = true;
                         } else {
                             throw new BAD_PARAM(20010, CompletionStatus.Completed_No);
                         }
