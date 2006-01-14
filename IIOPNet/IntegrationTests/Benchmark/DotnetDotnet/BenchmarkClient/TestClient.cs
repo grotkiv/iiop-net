@@ -52,6 +52,8 @@ namespace Ch.Elca.Iiop.Benchmarks {
         private IiopChannel m_channel;
 
         private TestService m_testService;
+        private TestService m_testServiceIorUrl;
+        private TestService m_testServiceFromNs;
 
         private int  m_count;
         private TimeSpan m_totalTime = new TimeSpan(0);      
@@ -68,12 +70,28 @@ namespace Ch.Elca.Iiop.Benchmarks {
             m_count = count;
         }
 
-        public void SetupEnvironment(string serviceUrl) {
+        public void SetupEnvironment(string serviceUrl, string nsUrl, NameComponent[] name) {
             // register the channel
             m_channel = new IiopChannel(0);
             ChannelServices.RegisterChannel(m_channel);
 
             m_testService = (TestService)RemotingServices.Connect(typeof(TestService), serviceUrl);
+            m_testServiceIorUrl = (TestService)
+                omg.org.CORBA.OrbServices.GetSingleton().string_to_object(serviceUrl);
+
+            m_testServiceFromNs = TryGetServiceFromNs(nsUrl, name);
+        }
+
+        private TestService TryGetServiceFromNs(string nsUrl, NameComponent[] name) {
+            try {
+                // access COS nameing service
+                NamingContext nameService = (NamingContext)
+                    RemotingServices.Connect(typeof(NamingContext), nsUrl);
+                // get the reference to the test-service
+                return (TestService)nameService.resolve(name);
+            } catch {
+                return null;
+            }
         }
 
         public void TearDownEnvironment() {
@@ -89,6 +107,16 @@ namespace Ch.Elca.Iiop.Benchmarks {
 
         void CallVoid() {
             m_testService._Void();
+        }
+
+        void CallVoidIorUrl() {
+            m_testServiceIorUrl._Void();
+        }
+
+        void CallVoidIorFromNs() {
+            if (m_testServiceFromNs != null) {
+                m_testServiceFromNs._Void();
+            }
         }
 
         void CallVI() {
@@ -250,12 +278,16 @@ namespace Ch.Elca.Iiop.Benchmarks {
             TestClient tc = new TestClient(count);
     
 	    string serviceUrl = "corbaloc:iiop:1.2@localhost:8087/test";
-            tc.SetupEnvironment(serviceUrl);
+            string nsUrl = "corbaloc:iiop:1.0@localhost:8087/NameService";
+            tc.SetupEnvironment(serviceUrl, nsUrl, 
+                                new NameComponent[] { new NameComponent("test", "") });
             tc.m_localRT = new RefTypeLocalImpl();
             tc.m_remoteRT = tc.m_testService.RefLocal();
     
             tc.ExecuteTest(false, "Reference", new TestProcedure(tc.Dummy));
             tc.ExecuteTest(true, "Void", new TestProcedure(tc.CallVoid));
+            tc.ExecuteTest(false, "VoidUrlIor", new TestProcedure(tc.CallVoidIorUrl));
+            tc.ExecuteTest(false, "VoidUrlFNs", new TestProcedure(tc.CallVoidIorFromNs));
             tc.ExecuteTest(false, "(I)V", new TestProcedure(tc.CallVI));
             tc.ExecuteTest(false, "(II)V", new TestProcedure(tc.CallVII));
             tc.ExecuteTest(false, "(IIIII)V", new TestProcedure(tc.CallVIIIII));
