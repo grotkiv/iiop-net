@@ -1227,6 +1227,21 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Assertion.AssertEquals("wrong union val returned", argVal, result.Getval0());
         }
 
+        [Test]
+        public void TestDetectIncompatibleTargetIf() {
+            // get the reference to the test-service
+            TestService testService = (TestService)
+                RemotingServices.Connect(typeof(TestService), "corbaloc:iiop:1.2@localhost:8087/test");
+            TestService testService2 = (TestService)
+                RemotingServices.Connect(typeof(TestService), "corbaloc:iiop:1.2@localhost:8087/testExService");
+            Assertion.AssertEquals(true, testService.TestNegateBoolean(false));
+            try {
+                testService2.TestNegateBoolean(false);
+            } catch (omg.org.CORBA.BAD_PARAM bpEx) {
+                Assertion.AssertEquals(20010, bpEx.Minor);
+            }            
+        }
+
         #endregion IMethods
 
 
