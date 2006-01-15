@@ -46,10 +46,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
 
 
     /// <summary>
-    /// This class handles Giop-Messages
+    /// This class handles Giop-Messages. It takes a .NET IMessage and serialises it
+    /// to the stream or it takes a stream and creates a .NET IMessage from it.
     /// </summary>
     /// <remarks>
-    /// This class is a helper class for the formatter
+    /// This class is a helper class for the formatter.
     /// </remarks>
     internal class GiopMessageHandler {
         
@@ -250,29 +251,6 @@ namespace Ch.Elca.Iiop.MessageHandling {
             return targetStream;
         }            
         
-        internal Stream PrepareMessageErrorMessage(GiopVersion version) {
-            Debug.WriteLine("create a message error message");
-            Stream targetStream = new MemoryStream();            
-            GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.MessageError);
-            header.WriteToStream(targetStream, 0);
-            targetStream.Seek(0, SeekOrigin.Begin);
-            return targetStream;
-        }
-        
-        /// <summary>
-        /// create a close connection message
-        /// </summary>
-        /// <param name="version"></param>
-        /// <returns></returns>
-        internal Stream PrepareMessageCloseMessage(GiopVersion version) {
-            Debug.WriteLine("create a close connection message");
-            Stream targetStream = new MemoryStream();            
-            GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.CloseConnection);
-            header.WriteToStream(targetStream, 0);
-            targetStream.Seek(0, SeekOrigin.Begin);
-            return targetStream;            
-        }
-
         #endregion IMethods
 
     }
