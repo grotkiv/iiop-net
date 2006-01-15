@@ -40,6 +40,7 @@ using Ch.Elca.Iiop.CorbaObjRef;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.Interception;
 using Ch.Elca.Iiop.Idl;
+using Ch.Elca.Iiop.Cdr;
 using omg.org.CORBA;
 
 namespace Ch.Elca.Iiop {
@@ -442,44 +443,40 @@ namespace Ch.Elca.Iiop {
 
         #endregion IProperties
         #region IMethods
-
-        /// <summary>deserialises an Giop-msg from the request stream</summary>
-        /// <returns>the .NET message created from the Giop-msg</returns>
-        private IMessage DeserialiseRequest(Stream requestStream, 
-                                            ITransportHeaders headers,
+        
+        private void PrepareResponseHeaders(ref ITransportHeaders headers,
                                             GiopServerConnection con) {
-            try {
-                GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-                IMessage result = handler.ParseIncomingRequestMessage(requestStream, 
-                                                                      con.ConDesc, m_interceptionOptions);
-                return result;
-            } finally {
-                requestStream.Close(); // not needed any more
-            }            
-        }
-
-        /// <summary>serialises the .NET msg to a GIOP-message</summary>
-        private void SerialiseResponse(IServerResponseChannelSinkStack sinkStack, IMessage requestMsg,
-                                       GiopServerConnection con, IMessage responseMsg, 
-                                       ref ITransportHeaders headers, out Stream stream) {            
-            GiopVersion version = (GiopVersion)requestMsg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY];
             if (headers == null) {
                 headers = new TransportHeaders();
             }
             headers[GiopServerConnection.SERVER_TR_HEADER_KEY] = con;
-            // get the stream into which the message should be serialied from a stream handling
-            // sink in the stream handling chain
-            stream = sinkStack.GetResponseStream(responseMsg, headers);
+        }
+        
+        private Stream GetResponseStreamFor(IServerResponseChannelSinkStack sinkStack,
+                                            IMessage responseMsg, ITransportHeaders headers) {
+            Stream stream = sinkStack.GetResponseStream(responseMsg, headers);
             if (stream == null) { 
                 // the previous stream-handling sinks delegated the decision to which stream the message should be serialised to this sink
                 stream = new MemoryStream(); // create a new stream
             }
+            return stream;
+        }
+
+        /// <summary>serialises the .NET msg to a GIOP reply message</summary>
+        private void SerialiseResponse(IServerResponseChannelSinkStack sinkStack, IMessage requestMsg,
+                                       GiopServerConnection con, IMessage responseMsg, 
+                                       ref ITransportHeaders headers, out Stream stream) {            
+            GiopVersion version = (GiopVersion)requestMsg.Properties[SimpleGiopMsg.GIOP_VERSION_KEY];
+            PrepareResponseHeaders(ref headers, con);
+            // get the stream into which the message should be serialied from a stream handling
+            // sink in the stream handling chain
+            stream = GetResponseStreamFor(sinkStack, responseMsg, headers);
             GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
             handler.SerialiseOutgoingReplyMessage(responseMsg, requestMsg, version, stream, con.ConDesc,
                                                   m_interceptionOptions);
         }
 
-        /// <summary>serialises an Exception</summary>
+        /// <summary>serialises an Exception as GIOP reply message</summary>
         private void SerialiseExceptionResponse(IServerResponseChannelSinkStack sinkStack,
                                                 IMessage requestMsg,
                                                 GiopServerConnection con,
@@ -488,7 +485,7 @@ namespace Ch.Elca.Iiop {
             // serialise an exception response
             headers = new TransportHeaders();
             SerialiseResponse(sinkStack, requestMsg, con, responseMsg, ref headers, out stream);
-        }
+        }        
     
         #region Implementation of IServerChannelSink
         public Stream GetResponseStream(IServerResponseChannelSinkStack sinkStack, object state,
@@ -496,22 +493,23 @@ namespace Ch.Elca.Iiop {
             throw new NotSupportedException(); // this is not supported on this sink, because later sinks in the chain can't serialise a response, therefore a response stream is not available for them
         }
 
-        public ServerProcessing ProcessMessage(IServerChannelSinkStack sinkStack, IMessage requestMsg,
-                                               ITransportHeaders requestHeaders, Stream requestStream, 
-                                               out IMessage responseMsg, out ITransportHeaders responseHeaders,
-                                               out Stream responseStream) {
+        /// <summary>
+        /// process a giop request message.
+        /// </summary>        
+        private ServerProcessing ProcessRequestMessage(IServerChannelSinkStack sinkStack,
+                                                       ITransportHeaders requestHeaders,
+                                                       CdrMessageInputStream msgInput,
+                                                       GiopServerConnection serverCon,
+                                                       out IMessage responseMsg, out ITransportHeaders responseHeaders,
+                                                       out Stream responseStream) {
             IMessage deserReqMsg = null;
-            responseMsg = null;
             responseHeaders = null;
-            responseStream = null;
-            GiopServerConnection serverCon = (GiopServerConnection)
-                requestHeaders[GiopServerConnection.SERVER_TR_HEADER_KEY];            
-                                                   
             try {
-                
                 try {
                     // deserialise the request
-                    deserReqMsg = DeserialiseRequest(requestStream, requestHeaders, serverCon);
+                    GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
+                    deserReqMsg = handler.ParseIncomingRequestMessage(msgInput, 
+                                                                      serverCon.ConDesc, m_interceptionOptions);
                 } finally {
                     //request deserialised -> safe to read next request while processing request in servant
                     // (or sending request deserialisation exception)
@@ -581,6 +579,67 @@ namespace Ch.Elca.Iiop {
                     throw e;
                 }
                 return ServerProcessing.Complete; // send back an error msg
+            }            
+        }
+        
+        /// <summary>
+        /// process a giop locate request message.
+        /// </summary>        
+        private ServerProcessing ProcessLocateRequestMessage(IServerChannelSinkStack sinkStack,
+                                                             ITransportHeaders requestHeaders,
+                                                             CdrMessageInputStream msgInput,
+                                                             GiopServerConnection serverCon,
+                                                             out IMessage responseMsg, out ITransportHeaders responseHeaders,
+                                                             out Stream responseStream) {            
+            responseHeaders = null;
+            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
+            LocateRequestMessage deserReqMsg = handler.ParseIncomingLocateRequestMessage(msgInput);
+            
+            // TODO: dummy implementation, don't check yet
+            LocateReplyMessage response = new LocateReplyMessage(LocateStatus.OBJECT_HERE);            
+            
+            responseMsg = response;
+            PrepareResponseHeaders(ref responseHeaders, serverCon);
+            // get the stream into which the message should be serialied from a stream handling
+            // sink in the stream handling chain
+            responseStream = GetResponseStreamFor(sinkStack, responseMsg, responseHeaders);            
+            
+            handler.SerialiseOutgoingLocateReplyMessage(response, deserReqMsg, 
+                                                        msgInput.Header.Version,
+                                                        responseStream, serverCon.ConDesc);
+            return ServerProcessing.Complete;
+        }
+        
+        public ServerProcessing ProcessMessage(IServerChannelSinkStack sinkStack, IMessage requestMsg,
+                                               ITransportHeaders requestHeaders, Stream requestStream, 
+                                               out IMessage responseMsg, out ITransportHeaders responseHeaders,
+                                               out Stream responseStream) {            
+            responseMsg = null;
+            responseHeaders = null;
+            responseStream = null;
+            CdrMessageInputStream msgInput = new CdrMessageInputStream(requestStream);
+            GiopServerConnection serverCon = (GiopServerConnection)
+                requestHeaders[GiopServerConnection.SERVER_TR_HEADER_KEY];
+            try {
+                if (msgInput.Header.GiopType == GiopMsgTypes.Request) {
+                    return ProcessRequestMessage(sinkStack, requestHeaders, msgInput, serverCon,
+                                                 out responseMsg, out responseHeaders, out responseStream);
+                } else if (msgInput.Header.GiopType == GiopMsgTypes.LocateRequest) {
+                    return ProcessLocateRequestMessage(sinkStack, requestHeaders,
+                                                       msgInput, serverCon, 
+                                                       out responseMsg, out responseHeaders, out responseStream);
+                } else {
+                    Trace.WriteLine("Processing problem on server connection after unexpected message of type " + 
+                                    msgInput.Header.GiopType);
+                    throw new NotSupportedException("wrong message type in server side formatter: " + 
+                                                    msgInput.Header.GiopType);
+                }
+            } finally {
+                try {
+                    requestStream.Close(); // not needed any more
+                } catch {
+                    // ignore
+                }
             }
         }
 

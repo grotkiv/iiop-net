@@ -92,8 +92,18 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal IMessage ParseIncomingReplyMessage(Stream sourceStream, 
                                                   IMethodCallMessage requestMessage,
                                                   GiopClientConnectionDesc conDesc, IInterceptionOption[] interceptionOptions) {
-            Debug.WriteLine("receive reply message at client side");            
             CdrMessageInputStream msgInput = new CdrMessageInputStream(sourceStream);
+            return ParseIncomingReplyMessage(msgInput, requestMessage, conDesc, interceptionOptions);
+        }
+        
+        /// <summary>reads an incoming Giop reply message from the Message input stream msgInput</summary>
+        /// <remarks>Precondition: sourceStream contains a Giop reply Msg</remarks>
+        /// <returns>the .NET reply Msg created from the Giop Reply</returns>
+        internal IMessage ParseIncomingReplyMessage(CdrMessageInputStream msgInput, 
+                                                  IMethodCallMessage requestMessage,
+                                                  GiopClientConnectionDesc conDesc, IInterceptionOption[] interceptionOptions) {
+            Debug.WriteLine("receive reply message at client side");            
+            
             CdrInputStream msgBody = msgInput.GetMessageContentReadingStream();
             GiopClientRequest request = new GiopClientRequest(requestMessage, conDesc, interceptionOptions);
             if (request.IsAsyncRequest) {
@@ -168,6 +178,14 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal IMessage ParseIncomingRequestMessage(Stream sourceStream, 
                                                     GiopConnectionDesc conDesc, IInterceptionOption[] interceptionOptions) {
             CdrMessageInputStream msgInput = new CdrMessageInputStream(sourceStream);
+            return ParseIncomingRequestMessage(msgInput, conDesc, interceptionOptions);
+        }
+        
+        /// <summary>reads an incoming Giop request-message from the message input stream msgInput</summary>
+        /// <returns>the .NET request message created from this Giop-message</returns>
+        internal IMessage ParseIncomingRequestMessage(CdrMessageInputStream msgInput, 
+                                                    GiopConnectionDesc conDesc, IInterceptionOption[] interceptionOptions) {
+            
             CdrInputStream msgBody = msgInput.GetMessageContentReadingStream();
             // deserialize the message body (the GIOP-request id is included in this message)
             return m_ser.DeserialiseRequest(msgBody, msgInput.Header.Version,
@@ -225,29 +243,40 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                                   replyMsg.GetType());
             }
         }
-
+        
         /// <summary>
-        /// reads a locate-request message and formulates an answer.
+        /// reads a locate-request message.
         /// </summary>
-        /// <param name="sourceStream"></param>
-        /// <returns></returns>
-        internal Stream HandleIncomingLocateRequestMessage(Stream sourceStream) {
-            Debug.WriteLine("receive locate request message");
+        internal LocateRequestMessage ParseIncomingLocateRequestMessage(Stream sourceStream) {
             CdrMessageInputStream msgInput = new CdrMessageInputStream(sourceStream);
+            return ParseIncomingLocateRequestMessage(msgInput);
+        }
+        
+        /// <summary>
+        /// reads a locate-request message.
+        /// </summary>
+        internal LocateRequestMessage ParseIncomingLocateRequestMessage(CdrMessageInputStream msgInput) {
             CdrInputStream msgBody = msgInput.GetMessageContentReadingStream();
-            // deserialize message body
-            
-            uint forRequestId;
-            string targetUri = m_ser.DeserialiseLocateRequest(msgBody, msgInput.Header.Version, out forRequestId);
-            Debug.WriteLine("locate request for target-uri: " + targetUri);
-            Stream targetStream = new MemoryStream();
-            GiopVersion version = msgInput.Header.Version;
+            // deserialize message body                        
+            LocateRequestMessage result = m_ser.DeserialiseLocateRequest(msgBody, msgInput.Header.Version);
+            Debug.WriteLine("locate request for target-uri: " + result.TargetUri);
+            return result;
+        }                
+        
+        /// <summary>
+        /// reads a locate-request message from the message input stream msgInput 
+        /// and formulates an answer.
+        /// </summary>        
+        /// <returns></returns>
+        internal Stream SerialiseOutgoingLocateReplyMessage(LocateReplyMessage replyMsg, LocateRequestMessage requestMsg,
+                                                            GiopVersion version,
+                                                            Stream targetStream, GiopConnectionDesc conDesc) {            
             GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.LocateReply);
             CdrMessageOutputStream msgOutput = new CdrMessageOutputStream(targetStream, header);
             // serialize the message
-            m_ser.SerialiseLocateReply(msgOutput.GetMessageContentWritingStream(), version, forRequestId, 
-                                       LocateStatus.OBJECT_HERE, null); // for the moment, do not try to find object, because forward is not possibly for IIOP.NET server
-            msgOutput.CloseStream(); // write to the stream 
+            m_ser.SerialiseLocateReply(msgOutput.GetMessageContentWritingStream(), version, 
+                                       requestMsg.RequestId, replyMsg);
+            msgOutput.CloseStream(); // write to the stream
             return targetStream;
         }            
         
@@ -789,6 +818,96 @@ namespace Ch.Elca.Iiop.Tests {
                 
             sourceStream.Seek(0, SeekOrigin.Begin);                
             return sourceStream;            
+        }
+        
+        public void TestLocateRequestDeserialisation() {
+            MemoryStream sourceStream = new MemoryStream();
+            // prepare msg
+            uint requestId = 5;            
+            GiopVersion version = new GiopVersion(1, 2);
+            CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(sourceStream, 0, 
+                                                                 version);
+            cdrOut.WriteOpaque(m_giopMagic);
+            // version
+            cdrOut.WriteOctet(version.Major);
+            cdrOut.WriteOctet(version.Minor);
+            // flags
+            cdrOut.WriteOctet(0);
+            // msg-type: request
+            cdrOut.WriteOctet((byte)GiopMsgTypes.LocateRequest);
+            // msg-length
+            cdrOut.WriteULong(22);
+            // request-id
+            cdrOut.WriteULong(requestId);
+            // target: key type
+            cdrOut.WriteULong(0);
+            cdrOut.WriteULong(10); // key length
+            byte[] objectKey = new byte[] { 116, 101, 115, 116, 111, 98, 106, 101, 99, 116 }; // testobject
+            cdrOut.WriteOpaque(objectKey); 
+
+            // create a connection context: this is needed for request deserialisation
+            GiopConnectionDesc conDesc = new GiopConnectionDesc(null, null);
+
+            // go to stream begin
+            sourceStream.Seek(0, SeekOrigin.Begin);            
+            
+            // deserialise request message
+            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
+            LocateRequestMessage result = handler.ParseIncomingLocateRequestMessage(sourceStream);
+
+            // now check if values are correct
+            Assertion.Assert("deserialised message is null", result != null);
+            Assertion.AssertEquals(requestId, result.RequestId);
+            Assertion.AssertNotNull(result.ObjectKey);
+            Assertion.AssertNotNull(result.TargetUri);            
+            Assertion.AssertEquals("testobject", result.TargetUri);
+        }
+        
+        public void TestLocateReplySerialisation() {
+            uint requestId = 5;
+            byte[] objectKey = new byte[] { 116, 101, 115, 116, 111, 98, 106, 101, 99, 116 }; // testobject
+            string targetUri = "testobject";
+            GiopVersion version = new GiopVersion(1, 2);
+            LocateRequestMessage locReq = new LocateRequestMessage(requestId, objectKey, targetUri);
+            // create a connection context
+            GiopConnectionDesc conDesc = new GiopConnectionDesc(null, null);
+
+            // create the reply
+            LocateStatus replyStatus = LocateStatus.OBJECT_HERE;
+            LocateReplyMessage locReply = new LocateReplyMessage(replyStatus);
+            
+            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
+            MemoryStream targetStream = new MemoryStream();
+            
+            handler.SerialiseOutgoingLocateReplyMessage(locReply, locReq, version, targetStream, conDesc);
+            
+            // check to serialised stream
+            targetStream.Seek(0, SeekOrigin.Begin);
+
+            CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(targetStream);
+            cdrIn.ConfigStream(0, version);
+            
+            // first is Giop-magic
+            byte data;
+            AssertBytesFollowing(m_giopMagic, cdrIn);
+            // Giop version
+            data = (byte) cdrIn.ReadOctet();
+            Assertion.AssertEquals(1, data);
+            data = (byte) cdrIn.ReadOctet();
+            Assertion.AssertEquals(2, data);
+            // flags: big-endian, no fragements
+            data = (byte) cdrIn.ReadOctet();
+            Assertion.AssertEquals(0, data);
+            // Giop Msg type: locate reply
+            data = (byte) cdrIn.ReadOctet();
+            Assertion.AssertEquals((byte)GiopMsgTypes.LocateReply, data);
+            // Giop Msg length
+            uint msgLength = cdrIn.ReadULong();
+            cdrIn.SetMaxLength(msgLength);
+            // req-id
+            Assertion.AssertEquals(requestId, cdrIn.ReadULong());
+            // the location status
+            Assertion.AssertEquals((uint)replyStatus, cdrIn.ReadULong());
         }
 
     

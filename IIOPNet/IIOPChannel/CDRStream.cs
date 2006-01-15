@@ -635,6 +635,28 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         #endregion IConstructors
+        #region IProperties
+        
+        /// <summary>
+        /// the stream, this message output stream writes to, i.e. the stream
+        /// passed in as argument.
+        /// </summary>
+        internal Stream BackingStream {
+            get {
+                return m_stream.BackingStream;
+            }
+        }
+        
+        /// <summary>
+        /// The giop header used for this stream.
+        /// </summary>
+        internal GiopHeader Header {
+            get {
+                return m_header;
+            }
+        }
+        
+        #endregion IProperties
         #region IMethods
 
         /// <summary>get a CDROutputStream for writing the content of the message</summary>
@@ -682,12 +704,22 @@ namespace Ch.Elca.Iiop.Cdr {
 
         #endregion IConstructors
         #region IProperties
+
+        /// <summary>
+        /// the stream, this message output stream writes to, i.e. the stream
+        /// passed in as argument.
+        /// </summary>
+        internal Stream BackingStream {
+            get {
+                return m_inputStream.BackingStream;
+            }
+        }        
         
         internal GiopHeader Header {
             get { 
                 return m_header; 
             }
-        }
+        }               
         
         #endregion IProperties
         #region IMethods
