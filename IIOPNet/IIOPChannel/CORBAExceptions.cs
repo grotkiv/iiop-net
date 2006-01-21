@@ -305,6 +305,10 @@ namespace omg.org.CORBA {
         public BAD_PARAM(int minor, CompletionStatus status) : 
             base(System.Reflection.MethodInfo.GetCurrentMethod().DeclaringType.FullName, minor, status) { }
         
+        public BAD_PARAM(int minor, CompletionStatus status, string additionalDetail) : 
+            base(System.Reflection.MethodInfo.GetCurrentMethod().DeclaringType.FullName +
+			    " ["+additionalDetail+"] ", minor, status) { }
+        
         protected BAD_PARAM(System.Runtime.Serialization.SerializationInfo info,
                             System.Runtime.Serialization.StreamingContext context) : base(info, context) {            
         }

@@ -41,6 +41,7 @@ using System.Text;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.CorbaObjRef;
 using Ch.Elca.Iiop.Interception;
+using Ch.Elca.Iiop.MessageHandling;
 using omg.org.IOP;
 
 #if DEBUG_LOGFILE
@@ -488,11 +489,13 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         /// <param name="interceptionOptions"></param>
         private void ConfigureSinkProviderChain(GiopClientConnectionManager conManager,
+                                                GiopMessageHandler messageHandler,
                                                 IInterceptionOption[] interceptionOptions) {
             IClientChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopClientFormatterSinkProvider) {
-                    ((IiopClientFormatterSinkProvider)prov).Configure(conManager, interceptionOptions);
+                    ((IiopClientFormatterSinkProvider)prov).Configure(conManager, messageHandler,
+                                                                      interceptionOptions);
                     break;
                 }
                 prov = prov.Next;
@@ -525,8 +528,10 @@ namespace Ch.Elca.Iiop {
                 IClientFormatterSinkProvider formatterProv = new IiopClientFormatterSinkProvider();
                 formatterProv.Next = transportProvider;
                 m_providerChain = formatterProv;
-            }
-            ConfigureSinkProviderChain(m_conManager, interceptionOptions);
+            }            
+            GiopMessageHandler messageHandler = 
+                new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+            ConfigureSinkProviderChain(m_conManager, messageHandler, interceptionOptions);
         }
 
         #region Implementation of IChannelSender
@@ -548,7 +553,7 @@ namespace Ch.Elca.Iiop {
                 return (IMessageSink) sink;                
             } else if ((url == null) && (remoteChannelData is IiopChannelData)) {
                 // check remoteChannelData
-                Console.WriteLine("url null, remote channel data: " + remoteChannelData);
+                Trace.WriteLine("url null, remote channel data: " + remoteChannelData);
 //                IiopChannelData chanData = (IiopChannelData)remoteChannelData;
 //                IClientChannelSink sink = m_providerChain.CreateSink(this, url, chanData);
 //                if (!(sink is IMessageSink)) { 
@@ -789,11 +794,13 @@ namespace Ch.Elca.Iiop {
         /// <summary>
         /// Configures the installed IIOPServerSideFormatterProivder
         /// </summary>        
-        private void ConfigureSinkProviderChain(IInterceptionOption[] interceptionOptions) {
+        private void ConfigureSinkProviderChain(GiopMessageHandler messageHandler,
+                                                IInterceptionOption[] interceptionOptions) {
             IServerChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopServerFormatterSinkProvider) {
-                    ((IiopServerFormatterSinkProvider)prov).Configure(interceptionOptions);
+                    ((IiopServerFormatterSinkProvider)prov).Configure(messageHandler,
+                                                                      interceptionOptions);
                     break;
                 }
                 prov = prov.Next;
@@ -805,7 +812,6 @@ namespace Ch.Elca.Iiop {
             if (m_port < 0) {
                 throw new ArgumentException("illegal port to listen on: " + m_port); 
             }
-            ConfigureSinkProviderChain(interceptionOptions);
             m_transportFactory = transportFactory;
             m_hostNameToUse = DetermineMachineNameToUse();
             SetupChannelData(m_hostNameToUse, m_port, null);
@@ -816,6 +822,9 @@ namespace Ch.Elca.Iiop {
             if (m_providerChain == null) {
                 m_providerChain = new IiopServerFormatterSinkProvider();
             }
+            GiopMessageHandler messageHandler = 
+                new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+            ConfigureSinkProviderChain(messageHandler, interceptionOptions);            
             
             IServerChannelSink sinkChain = ChannelServices.CreateServerChannelSinkChain(m_providerChain, this);
             m_transportSink = new IiopServerTransportSink(sinkChain);            

@@ -393,11 +393,11 @@ namespace Ch.Elca.Iiop.Idl {
         }
 
         private void WriteParamDirection(ParameterInfo info) {
-            if (Marshalling.ParameterMarshaller.IsInParam(info)) {
+            if (ReflectionHelper.IsInParam(info)) {
                 m_currentOutputStream.Write("in");
-            } else if (Marshalling.ParameterMarshaller.IsOutParam(info)) {
+            } else if (ReflectionHelper.IsOutParam(info)) {
                 m_currentOutputStream.Write("out");
-            } else if (Marshalling.ParameterMarshaller.IsRefParam(info)) {
+            } else if (ReflectionHelper.IsRefParam(info)) {
                 m_currentOutputStream.Write("inout");
             }
             m_currentOutputStream.Write(" ");
