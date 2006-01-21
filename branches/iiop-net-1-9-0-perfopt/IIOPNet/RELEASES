@@ -1,5 +1,20 @@
-version 1.9.0 beta (02 january 2006)
-------------------------------------
+version 1.9.0 beta2 (21 january 2006)
+-------------------------------------
+
+Improvements:
+- BAD_PARAM exception with minor code 20010 has now a better error
+  message to simplify development with IIOP.NET.
+  This exception is thrown, if an attempt is made to 
+  use a remote interface, which a certain target object doesn't support.
+
+Changes:
+- LocateRequest message is now handled also by the formatter sink and no
+  longer in the transport sink. 
+  (This change will allow some formatter level serialization configuration
+  options later)
+
+version 1.9.0 beta1 (02 january 2006)
+-------------------------------------
 new features:
 - IIOP.NET will no longer retrieve root assemblies on it's own, but instead 
   investigates the assemblies loaded by the application. It also tries to load
