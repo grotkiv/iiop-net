@@ -306,7 +306,7 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// test the encoding/decoding of UTF 16 strings
     /// </summary>
-    public class TestUtf16Strings : TestCase {
+    public class TestUtf16StringsGiop1_2 : TestCase {
         
         private CdrInputStreamImpl CreateInputStream(byte[] content, bool isLittleEndian) {
             MemoryStream stream = new MemoryStream(content);
@@ -426,6 +426,131 @@ namespace Ch.Elca.Iiop.Tests {
        
         
     }
+    
+    /// <summary>
+    /// test the encoding/decoding of UTF 16 strings
+    /// </summary>
+    public class TestUtf16StringsGiop1_1 : TestCase {
+        
+        private CdrInputStreamImpl CreateInputStream(byte[] content, bool isLittleEndian) {
+            MemoryStream stream = new MemoryStream(content);
+            CdrInputStreamImpl cdrStream = new CdrInputStreamImpl(stream);
+            byte endianFlag = 0;
+            if (isLittleEndian) {
+                endianFlag = 1;
+            }
+            cdrStream.ConfigStream(endianFlag, new GiopVersion(1, 1));
+            cdrStream.SetMaxLength((uint)content.Length);
+            return cdrStream;
+        }
+                        
+        /// <summary>
+        /// check, that an utf 16 encoded string can be read correctly from a 
+        /// big endian stream, if no bom is placed. If no bom is placed, big endian
+        /// is assumed. See CORBA 2.6, chapter 15.3.1
+        /// </summary>
+        [Test]
+        public void TestDecodeNoBomBeStream() {
+            byte[] encoded = new byte[] { 0, 0, 0, 5, 0, 84, 0, 101, 0, 115, 0, 116, 0, 0 }; // Test
+            CdrInputStream cdrStream = CreateInputStream(encoded, false);
+            Assertion.AssertEquals("wrongly decoded", "Test", cdrStream.ReadWString());            
+        }
+        
+        /// <summary>
+        /// check, that an utf 16 encoded string can be read correctly from a 
+        /// little endian stream, if no bom is placed. If no bom is placed, big endian
+        /// is assumed. See CORBA 2.6, chapter 15.3.1
+        /// </summary>
+        [Test]
+        public void TestDecodeNoBomLeStream() {
+            byte[] encoded = new byte[] { 5, 0, 0, 0, 0, 84, 0, 101, 0, 115, 0, 116, 0, 0 }; // Test
+            CdrInputStream cdrStream = CreateInputStream(encoded, true);
+            Assertion.AssertEquals("wrongly decoded", "Test", cdrStream.ReadWString());            
+        }
+        
+        /// <summary>
+        /// check, that an utf 16 encoded string can be read correctly
+        /// from a big endian stream, if a little endian bom is placed.
+        /// See CORBA 2.6, chapter 15.3.1
+        /// </summary>
+        [Test]
+        public void TestDecodeLeBomBeStream() {
+            byte[] encoded = new byte[] { 0, 0, 0, 6, 0xFF, 0xFE, 84, 0, 101, 0, 115, 0, 116, 0, 0, 0 }; // Test
+            CdrInputStream cdrStream = CreateInputStream(encoded, false);
+            Assertion.AssertEquals("wrongly decoded", "Test", cdrStream.ReadWString());
+        }
+        
+        /// <summary>
+        /// check, that an utf 16 encoded string can be read correctly
+        /// from a little endian stream, if a little endian bom is placed.
+        /// See CORBA 2.6, chapter 15.3.1
+        /// </summary>
+        [Test]
+        public void TestDecodeLeBomLeStream() {
+            byte[] encoded = new byte[] { 6, 0, 0, 0, 0xFF, 0xFE, 84, 0, 101, 0, 115, 0, 116, 0, 0, 0 }; // Test
+            CdrInputStream cdrStream = CreateInputStream(encoded, true);
+            Assertion.AssertEquals("wrongly decoded", "Test", cdrStream.ReadWString());            
+        }
+        
+        /// <summary>
+        /// check, that an utf 16 encoded string can be read correctly
+        /// from a big endian stream, if a big endian bom is placed.
+        /// See CORBA 2.6, chapter 15.3.1
+        /// </summary>
+        [Test]
+        public void TestDecodeBeBomBeStream() {
+            byte[] encoded = new byte[] { 0, 0, 0, 6, 0xFE, 0xFF, 0, 84, 0, 101, 0, 115, 0, 116, 0, 0 }; // Test
+            CdrInputStream cdrStream = CreateInputStream(encoded, false);
+            Assertion.AssertEquals("wrongly decoded", "Test", cdrStream.ReadWString());            
+        }
+        
+        /// <summary>
+        /// check, that an utf 16 encoded string can be read correctly
+        /// from a little endian stream, if a big endian bom is placed.
+        /// See CORBA 2.6, chapter 15.3.1
+        /// </summary>
+        [Test]
+        public void TestDecodeBeBomLeStream() {
+            byte[] encoded = new byte[] { 6, 0, 0, 0, 0xFE, 0xFF, 0, 84, 0, 101, 0, 115, 0, 116, 0, 0 }; // Test
+            CdrInputStream cdrStream = CreateInputStream(encoded, true);
+            Assertion.AssertEquals("wrongly decoded", "Test", cdrStream.ReadWString());            
+        }
+        
+        /// <summary>
+        /// check, that a wstring is encoded as big-endian with big endian bom for a big endian stream.
+        /// </summary>
+        [Test]
+        public void TestEncodeBeStream() {
+            MemoryStream outStream = new MemoryStream();
+            CdrOutputStreamImpl cdrStream = new CdrOutputStreamImpl(outStream, 0, new GiopVersion(1, 1));
+            cdrStream.WriteWString("Test");
+            AssertByteArrayEquals(new byte[] { 0, 0, 0, 5, 0, 84, 0, 101, 0, 115, 0, 116, 0, 0 },
+                                  outStream.ToArray());
+
+        }
+        
+        /// <summary>
+        /// check, that a wstring is encoded as little-endian with little endian bom for a little endian stream.
+        /// </summary>        
+        [Test]
+        public void TestEncodeLeStream() {
+            MemoryStream outStream = new MemoryStream();
+            CdrOutputStreamImpl cdrStream = new CdrOutputStreamImpl(outStream, 1, new GiopVersion(1, 1));
+            cdrStream.WriteWString("Test");
+            AssertByteArrayEquals(new byte[] { 6, 0, 0, 0, 0xFF, 0xFE, 84, 0, 101, 0, 115, 0, 116, 0, 0, 0 },
+                                  outStream.ToArray());            
+        }   
+        
+        private void AssertByteArrayEquals(byte[] arg1, byte[] arg2) {
+            Assertion.AssertEquals("Array length", arg1.Length, arg2.Length);            
+            for (int i = 0; i < arg1.Length; i++) {
+                Assertion.AssertEquals("array element number: " + i, arg1[i], arg2[i]);
+            }            
+        }
+       
+        
+    }
+    
     
 }
 
