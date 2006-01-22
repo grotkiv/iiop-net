@@ -152,14 +152,14 @@ namespace Ch.Elca.Iiop.Services {
             s_registry.AddEncodingAllEndian((int)CharSet.UTF8, new UTF8Encoding());
             // big endian
             s_registry.AddEncodingBigEndian((int)WCharSet.UTF16,
-                                            new UnicodeEncodingExt(true, false)); // use big endian encoding here, put no unicode byte order mark
+                                            new UnicodeEncodingExt(true)); // use big endian encoding here
             s_registry.AddEncodingBigEndian((int)WCharSet.ISO646IEC_MULTI,
-                                            new UnicodeEncodingExt(true, false));
+                                            new UnicodeEncodingExt(true));
             // little endian
             s_registry.AddEncodingLittleEndian((int)WCharSet.UTF16,
-                                               new UnicodeEncodingExt(false, false)); // use big endian encoding here, put no unicode byte order mark
+                                               new UnicodeEncodingExt(false)); // use little endian encoding here
             s_registry.AddEncodingLittleEndian((int)WCharSet.ISO646IEC_MULTI,
-                                               new UnicodeEncodingExt(false, false));
+                                               new UnicodeEncodingExt(false));
         }
         
         #endregion SConstructor

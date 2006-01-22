@@ -170,98 +170,86 @@ namespace Ch.Elca.Iiop.CodeSet {
 
     /// <summary>
     /// This class is an extended version of the unicode-encoder:
-    /// it encodes a byte-order-mark (if wished), removes a byte order mark on decoding
+    /// it encodes a byte-order-mark for little endian, removes a byte order mark on decoding
     /// </summary>
-    public class UnicodeEncodingExt : UnicodeEncoding {
+    /// <remarks>This class implements the
+    /// rules in CORBA 2.6 Chapter 15.3.1.6 releated to UTF 16</remarks>
+    public class UnicodeEncodingExt : Encoding {
 
+        #region SFields
+        
+        private static UnicodeEncoding s_unicodeEncodingBe =
+            new UnicodeEncoding(true, false);
+        
+        private static UnicodeEncoding s_unicodeEncodingLe =
+            new UnicodeEncoding(false, false);
+        
+        #endregion SFields
         #region IFields
 
-        private bool m_bigEndian = true;
-        private bool m_includeEndianMark = true;
+        private bool m_encodeAsBigEndian = true;        
+        private bool m_encodeBom = false;
+        /// <summary>
+        /// the encoding instance used to convert char[] to byte[], for the reverse,
+        /// the decision is based on bom in byte[].
+        /// </summary>
+        private UnicodeEncoding m_encoderToUse;
 
         #endregion IFields
         #region IConstructors
         
-        public UnicodeEncodingExt() : base() {
-            
-        }
-
-        public UnicodeEncodingExt(bool bigEndian, bool mark) : base(bigEndian, mark) {
-            m_bigEndian = bigEndian;
-            m_includeEndianMark = mark;
-            
+        public UnicodeEncodingExt(bool encodeAsBigEndian) {
+            m_encodeAsBigEndian = encodeAsBigEndian;            
+            m_encodeBom = !encodeAsBigEndian; // for little endian, a bom is required, because default is big endian.
+            if (m_encodeAsBigEndian) {
+                m_encoderToUse = s_unicodeEncodingBe;
+            } else {
+                m_encoderToUse = s_unicodeEncodingLe;
+            }
         }
 
         #endregion IConsturctors
         #region IMethods
 
-        public override int GetByteCount(string s) {
-            char[] asCharArr = s.ToCharArray();
-            return GetByteCount(asCharArr, 0, asCharArr.Length);
-        }
-
         public override int GetByteCount(char[] chars, int index, int count) {
-            int result = base.GetByteCount(chars, index, count);
-            if (m_includeEndianMark) {
+            int result = m_encoderToUse.GetByteCount(chars, index, count);
+            if (m_encodeBom) {
                 result += 2;
             }
             return result;
         }
 
-        public override int GetBytes(string s, int charIndex, int charCount,
-                                     byte[] bytes, int byteIndex) {
-            char[] asCharArr = s.ToCharArray();
-            return GetBytes(asCharArr, charIndex, charCount, bytes, byteIndex);
-        }
-
-        public override byte[] GetBytes(string s) {
-            char[] asCharArr = s.ToCharArray();
-            byte[] result = new byte[GetByteCount(asCharArr, 0, asCharArr.Length)];
-            GetBytes(asCharArr, 0, asCharArr.Length, result, 0);
-            return result;
-        }
-
         public override int GetBytes(char[] chars, int charIndex, int charCount,
                                      byte[] bytes, int byteIndex) {
-            if (m_includeEndianMark) {
-                if (m_bigEndian) {
+            if (m_encodeBom) {
+                if (m_encodeAsBigEndian) {
                     bytes[byteIndex] = 254;
                     bytes[byteIndex+1] = 255;
                 } else {
                     bytes[byteIndex] = 255;
                     bytes[byteIndex+1] = 254;
                 }
-                int result = base.GetBytes(chars, charIndex, charCount,
-                                           bytes, byteIndex+2);
+                int result = m_encoderToUse.GetBytes(chars, charIndex, charCount,
+                                                     bytes, byteIndex+2);
                 return result + 2;
             } else {
-                return base.GetBytes(chars, charIndex, charCount,
-                                     bytes, byteIndex);
+                return m_encoderToUse.GetBytes(chars, charIndex, charCount,
+                                               bytes, byteIndex);
             }
         }
 
         public override int GetCharCount(byte[] bytes, int index, int count) {
-            // no endian mark possible if array too small
+            // no endian mark possible if array too small, default is big endian
             if (bytes.Length <= 1) { 
-                return base.GetCharCount(bytes, index, count); 
+                return s_unicodeEncodingBe.GetCharCount(bytes, index, count); 
             }
-            // check for endian mark
+            // check for endian mark, select correct encoding.                           
             if (bytes[index] == 254 && (bytes[index+1] == 255)) {
-                if (m_bigEndian) {
-                    return base.GetCharCount(bytes, index+2, count-2);
-                } else {
-                    // little endian not supported, if big endian specified
-                    throw new BAD_PARAM(9923, CompletionStatus.Completed_MayBe);
-                }
+                return s_unicodeEncodingBe.GetCharCount(bytes, index+2, count-2);
             } else if (bytes[index] == 255 && (bytes[index+1] == 254)) {
-                if (m_bigEndian) {
-                    // big endian not supported, if little endian specified
-                    throw new BAD_PARAM(9924, CompletionStatus.Completed_MayBe);
-                } else {
-                    return base.GetCharCount(bytes, index+2, count-2);
-                }
+                return s_unicodeEncodingLe.GetCharCount(bytes, index+2, count-2);
             } else {
-                return base.GetCharCount(bytes, index, count); // no endian mark present
+                return s_unicodeEncodingBe.GetCharCount(bytes, index, count); // no endian mark present
             }
         }
 
@@ -269,30 +257,36 @@ namespace Ch.Elca.Iiop.CodeSet {
                                      char[] chars, int charIndex) {
             // no big/little endian tag in byte array possible if array too small
             if (bytes.Length <= 1) { 
-                return base.GetChars(bytes, byteIndex, byteCount, chars, charIndex); 
+                return s_unicodeEncodingBe.GetChars(bytes, byteIndex, byteCount, chars, charIndex); 
             }
-            // check if big/little endian tag in byte array
+            // check for endian mark, select correct encoding.                           
             if (bytes[byteIndex] == 254 && (bytes[byteIndex+1] == 255)) {
-                if (m_bigEndian) {
-                    return base.GetChars(bytes, byteIndex+2, byteCount-2,
-                                         chars, charIndex);
-                } else {
-                    // little endian not supported, if big endian specified
-                   throw new BAD_PARAM(9923, CompletionStatus.Completed_MayBe);
-                }
+                return s_unicodeEncodingBe.GetChars(bytes, byteIndex+2, byteCount-2,
+                                                    chars, charIndex);
             } else if (bytes[byteIndex] == 255 && (bytes[byteIndex+1] == 254)) {
-                if (m_bigEndian) {
-                    // big endian not supported, if little endian specified
-                    throw new BAD_PARAM(9924, CompletionStatus.Completed_MayBe);
-                } else {
-                    return base.GetChars(bytes, byteIndex+2, byteCount-2,
-                                         chars, charIndex);
-                }
+                return s_unicodeEncodingLe.GetChars(bytes, byteIndex+2, byteCount-2,
+                                                    chars, charIndex);
             } else {
-                return base.GetChars(bytes, byteIndex, byteCount,
-                                     chars, charIndex);
-            }
+                // no endian mark present
+                return s_unicodeEncodingBe.GetChars(bytes, byteIndex, byteCount,
+                                                    chars, charIndex);
+            }            
         }
+        
+        public override int GetMaxByteCount(int charCount) {
+            // one char results in two byte; if a bom is encoded, add 2.
+            int result = m_encoderToUse.GetMaxByteCount(charCount);            
+            if (m_encodeBom) {
+                result += 2;
+            }
+            return result;
+        }
+
+        public override int GetMaxCharCount(int byteCount) {
+            // two bytes results in one char; if a bom is encoded, this method returns too much,
+            // but only a maximum is requested -> therefore ok.
+            return m_encoderToUse.GetMaxCharCount(byteCount);
+        }        
 
         #endregion IMethods
 
