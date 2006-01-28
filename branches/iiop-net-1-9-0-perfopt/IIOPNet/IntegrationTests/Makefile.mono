@@ -11,6 +11,7 @@ build:
 	$(MAKE) -C GacTest build -f Makefile.mono
 	$(MAKE) -C InterceptorTests build -f Makefile.mono
 	$(MAKE) -C BidirGiop build -f Makefile.mono
+	$(MAKE) -C Multithread build -f Makefile.mono
 
 test:
 	@echo Starting integration tests at:
@@ -22,6 +23,7 @@ test:
 	$(MAKE) -C GacTest test -f Makefile.mono
 	$(MAKE) -C InterceptorTests test -f Makefile.mono
 	$(MAKE) -C BidirGiop test -f Makefile.mono
+	$(MAKE) -C Multithread test -f Makefile.mono
 
 clean:
 	$(MAKE) -C Utils clean -f Makefile.mono
@@ -32,3 +34,5 @@ clean:
 	$(MAKE) -C GacTest clean -f Makefile.mono
 	$(MAKE) -C InterceptorTests clean -f Makefile.mono
 	$(MAKE) -C BidirGiop clean -f Makefile.mono
+	$(MAKE) -C Multithread clean -f Makefile.mono
+
