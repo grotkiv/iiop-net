@@ -507,7 +507,8 @@ namespace Ch.Elca.Iiop.Idl {
                 }
             } else {
                 // not mappable: clsType
-                throw new BAD_PARAM(18800, CompletionStatus.Completed_MayBe);
+                throw new BAD_PARAM(18800, CompletionStatus.Completed_MayBe, "The type " + clsType.AssemblyQualifiedName +
+                                   " is not mappable to idl");
             }
         }
 
@@ -1031,6 +1032,24 @@ namespace Ch.Elca.Iiop.Tests {
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(UInt64), 
                                                                            new AttributeExtCollection(),
                                                                            s_testAction);
+        }
+        
+        [Test]
+        public void TestUnmappableException() {
+            try {
+                // System.UInt16 is not mappable, because UInt16 is not CLS compatible
+                ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+                MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(UInt16), 
+                                                                               new AttributeExtCollection(),
+                                                                               s_testAction);
+                Assertion.Fail("no exception, but expected BAD_PARAM");
+            } catch (BAD_PARAM ex) {
+                Assertion.Assert("exception message not enough detailed",
+                                 ex.Message.IndexOf("System.UInt16") > 0);
+                Assertion.Assert("exception message not enough detailed",
+                                 ex.Message.IndexOf("is not mappable to idl") > 0);
+            }
+            
         }
                         
         public void TestMapToIdlBoolean() {
