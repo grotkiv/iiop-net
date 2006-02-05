@@ -683,6 +683,7 @@ namespace Ch.Elca.Iiop.Tests {
     
     using NUnit.Framework;
     using Ch.Elca.Iiop.CorbaObjRef;
+    using Ch.Elca.Iiop.Services;
     
     /// <summary>
     /// Unit-test for class Ior
@@ -793,6 +794,61 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
     }
+
+
+    /// <summary>
+    /// Unit-test for class Ior
+    /// </summary>
+    public class InternetIiopProfileTest : TestCase {
+
+        private InternetIiopProfile m_profile;
+        private string m_hostName;
+        private short m_port;
+        private byte[] m_objectKey;
+        private GiopVersion m_version;
+
+        [SetUp]
+        public void Setup() {
+            m_version = new GiopVersion(1, 2);
+            m_hostName = "localhost";
+            m_port = 8089;
+            m_objectKey = new byte[] { 65 };
+            m_profile = new InternetIiopProfile(m_version, m_hostName, m_port, m_objectKey);
+        }
+
+        [Test]        
+        public void TestDefaultProfileCreateion() {
+            Assertion.AssertEquals("profile version wrong", m_version, m_profile.Version); 
+            Assertion.AssertEquals("profile Hostname wrong", m_hostName, m_profile.HostName);
+            Assertion.AssertEquals("profile port wrong", m_port, m_profile.Port);
+            Assertion.AssertNotNull("profile key null", m_profile.ObjectKey);
+            Assertion.AssertEquals("profile key wrong", m_objectKey.Length, m_profile.ObjectKey.Length);
+            Assertion.AssertEquals("tagged components empty", 0, m_profile.TaggedComponents.Count);
+        }
+
+        [Test]
+        public void TestAddTaggedComponent() {
+            CodeSetComponentData codeSetCompVal = 
+                new CodeSetComponentData((int)CharSet.LATIN1,
+                                         new int[] { (int)CharSet.LATIN1 },
+                                         (int)WCharSet.UTF16,
+                                         new int[] { (int)WCharSet.UTF16 });
+            m_profile.AddTaggedComponentWithData(TAG_CODE_SETS.ConstVal,
+                                                 codeSetCompVal);
+            Assertion.AssertEquals("tagged components one entry", 1, m_profile.TaggedComponents.Count);
+            Assertion.Assert("not found code set component", 
+                             m_profile.ContainsTaggedComponent(TAG_CODE_SETS.ConstVal));
+            CodeSetComponentData retrieved = 
+                (CodeSetComponentData)m_profile.GetTaggedComponentData(TAG_CODE_SETS.ConstVal,
+                                                                       typeof(CodeSetComponentData)); 
+            Assertion.AssertNotNull("not found code set component",
+                                    retrieved);
+            Assertion.AssertEquals("char set", codeSetCompVal.NativeCharSet, retrieved.NativeCharSet);
+            Assertion.AssertEquals("wchar set", codeSetCompVal.NativeWCharSet, retrieved.NativeWCharSet);                                                  
+        }
+
+    }
+
 
 }
 
