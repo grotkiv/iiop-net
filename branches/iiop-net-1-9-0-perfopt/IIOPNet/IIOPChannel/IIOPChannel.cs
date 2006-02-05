@@ -1032,16 +1032,6 @@ namespace Ch.Elca.Iiop {
             m_additionTaggedComponents.AddRange(newTaggedComponents);
         }
         
-        /// <summary>replaces the current additional tagged components by the new ones.</summary>
-        public void ReplaceAdditionalTaggedComponents(TaggedComponent[] newTaggedComponents) {
-            // now add additional components to the channel data:            
-            m_additionTaggedComponents.Clear();
-            if (newTaggedComponents != null) {
-                m_additionTaggedComponents.AddRange(newTaggedComponents);
-            
-            }        
-        }
-
         #endregion IMethods
 
     }
