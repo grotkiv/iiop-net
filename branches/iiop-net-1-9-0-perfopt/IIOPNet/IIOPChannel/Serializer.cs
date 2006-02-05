@@ -1804,11 +1804,13 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-tests for the serialisers
     /// </summary>
-    public class SerialiserTest : TestCase {
+    [TestFixture]    
+    public class SerialiserTest {
         
         public SerialiserTest() {
         }
 
+        [Test]
         public void TestByteSerialise() {
             MemoryStream outStream = new MemoryStream();
             CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);
@@ -1821,6 +1823,7 @@ namespace Ch.Elca.Iiop.Tests {
             outStream.Close();
         }
         
+        [Test]
         public void TestByteDeserialise() {
             MemoryStream inStream = new MemoryStream();
             inStream.WriteByte(11);
@@ -1833,7 +1836,8 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(12, ser.Deserialize(cdrIn));
             inStream.Close();           
         }
-        
+
+        [Test]        
         public void TestBooleanSerialise() {
             MemoryStream outStream = new MemoryStream();
             CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);
@@ -1846,6 +1850,7 @@ namespace Ch.Elca.Iiop.Tests {
             outStream.Close();
         }
         
+        [Test]
         public void TestBooleanDeserialise() {
             MemoryStream inStream = new MemoryStream();
             inStream.WriteByte(0);
@@ -1859,6 +1864,7 @@ namespace Ch.Elca.Iiop.Tests {
             inStream.Close();           
         }
         
+        [Test]
         [ExpectedException(typeof(BAD_PARAM))]
         public void TestBooleanDeserialiseInvalidValue() {
             MemoryStream inStream = new MemoryStream();
@@ -1875,6 +1881,7 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }
         
+        [Test]  
         public void TestIorDeserialisation() {
             IiopClientChannel testChannel = new IiopClientChannel();
             ChannelServices.RegisterChannel(testChannel);
@@ -1916,6 +1923,20 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("IOR:000000000000002849444C3A6F6D672E6F72672F436F734E616D696E672F4E616D696E67436F6E746578743A312E3000000000010000000000000074000102000000000A3132372E302E302E3100041900000030AFABCB0000000022000003E80000000100000000000000010000000C4E616D655365727669636500000000034E43300A0000000100000001000000200000000000010001000000020501000100010020000101090000000100010100",
                                    RemotingServices.GetObjectUri((MarshalByRefObject)result));
             ChannelServices.UnregisterChannel(testChannel);
+            
+        }
+
+        [Test]
+        [ExpectedException(typeof(BAD_PARAM))]
+        public void TestNotAllowEmptyStringForBasicStrings() {
+            StringSerializer stringSer = new StringSerializer(false);
+            MemoryStream outStream = new MemoryStream();
+            try {            
+                CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);            
+                stringSer.Serialize(null, cdrOut);
+            } finally {
+                outStream.Close();
+            }
             
         }
 

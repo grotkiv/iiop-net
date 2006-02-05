@@ -688,11 +688,13 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-test for class Ior
     /// </summary>
-    public class IorTest : TestCase {
+    [TestFixture]    
+    public class IorTest {
         
         public IorTest() {
         }
 
+        [Test]
         public void TestIorCreation() {
             string iorString = "IOR:0000000000000024524d493a48656c6c6f496e746572666163653a3030303030303030303030303030303000000000010000000000000050000102000000000c31302e34302e32302e3531001f9500000000000853617948656C6C6F0000000100000001000000200000000000010001000000020501000100010020000101090000000100010100";
             Ior ior = new Ior(iorString);
@@ -751,6 +753,7 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }
         
+        [Test]
         public void TestNonUsableProfileIncluded() {
             string iorString = "IOR:000000000000001b49444c3a636d6956322f5573657241636365737356323a312e3000020000000210ca1000000000650000000800000008646576312d73660033de6f8e0000004d000000020000000855736572504f41000000001043415355736572416363657373563200c3fbedfb0000000e007c4c51000000fd57aacdaf801a0000000e007c4c51000000fd57aacdaf80120000009400000000000000980001023100000008646576312d736600200b00020000004d000000020000000855736572504f41000000001043415355736572416363657373563200c3fbedfb0000000e007c4c51000000fd57aacdaf801a0000000e007c4c51000000fd57aacdaf8012000000140000000200000002000000140000000400000001000000230000000400000001000000000000000800000000cb0e0001";            
             Ior ior = new Ior(iorString);
@@ -764,6 +767,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("wrong number of profiles", 2, ior.Profiles.Length);
         }
         
+        [Test]
         public void TestParseAndRecreate() {
             string iorString = "IOR:0000000000000024524d493a48656c6c6f496e746572666163653a3030303030303030303030303030303000000000010000000000000050000102000000000c31302e34302e32302e3531001f9500000000000853617948656C6C6F0000000100000001000000200000000000010001000000020501000100010020000101090000000100010100";
             Ior ior = new Ior(iorString);
@@ -778,6 +782,7 @@ namespace Ch.Elca.Iiop.Tests {
                                    recreated2.ToLower());                        
         }
         
+        [Test]        
         public void TestWithSslComponent() {
             string iorString = "IOR:000000000000003749444C3A43682F456C63612F49696F702F5475746F7269616C2F47657474696E67537461727465642F4164646572496D706C3A312E30000000000001000000000000005C000102000000000D3139322E3136382E312E33370000000000000005616464657200000000000002000000010000001C0000000000010001000000010001002000010109000000010001010000000014000000080000006000601F97";
             Ior ior = new Ior(iorString);
@@ -797,9 +802,10 @@ namespace Ch.Elca.Iiop.Tests {
 
 
     /// <summary>
-    /// Unit-test for class Ior
+    /// Unit-test for class InternetIiopProfile
     /// </summary>
-    public class InternetIiopProfileTest : TestCase {
+    [TestFixture]
+    public class InternetIiopProfileTest {
 
         private InternetIiopProfile m_profile;
         private string m_hostName;

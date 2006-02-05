@@ -422,7 +422,8 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-tests for testing request/reply serialisation/deserialisation
     /// </summary>
-    public class RequestReplySerialisationTest : TestCase {
+    [TestFixture]
+    public class RequestReplySerialisationTest {
     
         private byte[] m_giopMagic = { 71, 73, 79, 80 };    
                 
@@ -449,6 +450,7 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }
         
+        [Test]
         public void TestRequestSerialisation() {
             // prepare message
             MethodInfo methodToCall = typeof(TestService).GetMethod("Add");
@@ -516,6 +518,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(2, cdrIn.ReadLong());
         }
         
+        [Test]
         public void TestReplySerialisation() {
             // request msg the reply is for
             MethodInfo methodToCall = typeof(TestService).GetMethod("Add");
@@ -574,6 +577,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(3, cdrIn.ReadLong());
         }
         
+        [Test]
         public void TestRequestDeserialisation() {          
             MemoryStream sourceStream = new MemoryStream();
             // prepare msg
@@ -651,6 +655,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(arg2, args[1]);
         }
         
+        [Test]
         public void TestReplyDeserialisation() {
             // request msg the reply is for
             MethodInfo methodToCall = typeof(TestService).GetMethod("Add");
@@ -692,6 +697,7 @@ namespace Ch.Elca.Iiop.Tests {
         }                
                 
         //[Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
+        [Test]  
         public void TestLocationForward() {
             IiopChannel chan = new IiopChannel(8090);
             ChannelServices.RegisterChannel(chan);
@@ -725,6 +731,7 @@ namespace Ch.Elca.Iiop.Tests {
         }
                 
         //[Ignore("can prevent the test domain from unloading, find a solution for this before adding definitively")]
+        [Test]          
         public void TestLocationForwardOnIsA() {
             // tests location forward, if we forward on is_a call            
             IiopChannel chan = new IiopChannel(8090);
@@ -809,7 +816,8 @@ namespace Ch.Elca.Iiop.Tests {
             sourceStream.Seek(0, SeekOrigin.Begin);                
             return sourceStream;            
         }
-        
+
+        [Test]        
         public void TestLocateRequestDeserialisation() {
             MemoryStream sourceStream = new MemoryStream();
             // prepare msg
@@ -853,6 +861,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("testobject", result.TargetUri);
         }
         
+        [Test]
         public void TestLocateReplySerialisation() {
             uint requestId = 5;
             byte[] objectKey = new byte[] { 116, 101, 115, 116, 111, 98, 106, 101, 99, 116 }; // testobject

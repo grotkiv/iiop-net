@@ -952,7 +952,8 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-tests for testing the ClsToIdlMapper
     /// </summary>
-    public class ClsToIdlMapperTest : TestCase {
+    [TestFixture]
+    public class ClsToIdlMapperTest {
         
         #region SFields
         
@@ -967,6 +968,7 @@ namespace Ch.Elca.Iiop.Tests {
         #endregion
         #region IMethods
 
+        [Test]
         public void TestMapToIdlVoid() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.VoidType, 
@@ -975,6 +977,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlVoid, mapResult);        
         }
 
+        [Test]
         public void TestMapToIdlOctet() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.ByteType, 
@@ -983,6 +986,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlOctet, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlShort() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.Int16Type, 
@@ -991,6 +995,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlShort, mapResult);            
         }
 
+        [Test]
         public void TestMapToIdlLong() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.Int32Type, 
@@ -999,6 +1004,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlLong, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlLongLong() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.Int64Type, 
@@ -1007,6 +1013,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlLongLong, mapResult);
         }
 
+        [Test]
         [ExpectedException(typeof(BAD_PARAM))]
         public void TestMapUInt16() {
             // System.UInt16 is not mappable, because UInt16 is not CLS compatible
@@ -1016,6 +1023,7 @@ namespace Ch.Elca.Iiop.Tests {
                                                                            s_testAction);
         }
 
+        [Test]
         [ExpectedException(typeof(BAD_PARAM))]
         public void TestMapUInt32() {
             // System.UInt32 is not mappable, because UInt32 is not CLS compatible
@@ -1025,6 +1033,7 @@ namespace Ch.Elca.Iiop.Tests {
                                                                            s_testAction);
         }
 
+        [Test]
         [ExpectedException(typeof(BAD_PARAM))]
         public void TestMapUInt64() {
             // System.UInt64 is not mappable, because UInt64 is not CLS compatible
@@ -1052,6 +1061,7 @@ namespace Ch.Elca.Iiop.Tests {
             
         }
                         
+        [Test]        
         public void TestMapToIdlBoolean() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.BooleanType, 
@@ -1060,6 +1070,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlBool, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlFloat() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.SingleType, 
@@ -1068,6 +1079,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlFloat, mapResult);        
         }
         
+        [Test]
         public void TestMapToIdlDouble() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.DoubleType, 
@@ -1076,6 +1088,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlDouble, mapResult);
         }
 
+        [Test]        
         public void TestMapToIdlString() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.StringType, 
@@ -1084,6 +1097,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlString, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlWString() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.StringType, 
@@ -1096,6 +1110,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlWString, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlStringValue() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.StringType, 
@@ -1104,6 +1119,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlStringValue, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlWStringValue() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.StringType, 
@@ -1116,6 +1132,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlWstringValue, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlChar() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.CharType, 
@@ -1124,6 +1141,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlChar, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlWChar() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.CharType, 
@@ -1136,6 +1154,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlWChar, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlSequence() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(int[]), 
@@ -1144,6 +1163,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlSequence, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlArray() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(int[]), 
@@ -1163,6 +1183,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlArray, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlAny() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.ObjectType, 
@@ -1175,6 +1196,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlAny, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlEnum() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnum), 
@@ -1187,6 +1209,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);            
         }
         
+        [Test]
         public void TestMapToIdlStruct() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestIdlStruct), 
@@ -1195,6 +1218,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlStruct, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlUnion() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestIdlUnion), 
@@ -1203,6 +1227,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlUnion, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlConcreteValueType() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestClsSerializableStruct), 
@@ -1215,6 +1240,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlConcreteValue, mapResult);                        
         }
         
+        [Test]
         public void TestMapToIdlAbstractValueType() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestClsNonSerializableStruct), 
@@ -1231,6 +1257,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlAbstractValue, mapResult);    
         }
 
+        [Test]        
         public void TestMapToIdlBoxedValueType() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(Int16[]), 
@@ -1247,6 +1274,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlBoxedValue, mapResult);
         }
 
+        [Test]
         public void TestMapToIdlConcreteInterface() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestRemotableByRef), 
@@ -1259,6 +1287,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlConcreteIf, mapResult);            
         }
 
+        [Test]
         public void TestMapToIdlAbstractInterface() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestAbsInterface), 
@@ -1267,6 +1296,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlAbstractIf, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlLocalInterface() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestLocalInterface), 
@@ -1275,6 +1305,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlLocalIf, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlException() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(Exception), 
@@ -1283,6 +1314,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlException, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlAbstractBase() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.ObjectType, 
@@ -1291,6 +1323,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlAbstractBase, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlValueBase() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.ObjectType, 
@@ -1299,6 +1332,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlValueBase, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlTypeDesc() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.TypeType, 
@@ -1307,6 +1341,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlTypeDesc, mapResult);
         }
         
+        [Test]
         public void TestMapToIdlTypeCode() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TypeCodeImpl), 

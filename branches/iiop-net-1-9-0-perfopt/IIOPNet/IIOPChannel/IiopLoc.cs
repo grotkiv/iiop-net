@@ -321,12 +321,14 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-test for class Corbaloc
     /// </summary>
-    public class IioplocTest : TestCase {
+    [TestFixture]
+    public class IioplocTest {
         
         public IioplocTest() {
         }
 
         
+        [Test]
         public void TestIiopLoc() {
             string testIiopLoc = "iiop://elca.ch:1234/test";
             IiopLoc parsed = new IiopLoc(testIiopLoc);
@@ -349,6 +351,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(1234, addr.Port);            
         }
         
+        [Test]
         public void TestIiopSslLoc() {
             string testIiopLoc = "iiop-ssl://elca.ch:1234/test";
             IiopLoc parsed = new IiopLoc(testIiopLoc);
