@@ -803,8 +803,10 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-tests for testing request/reply serialisation/deserialisation
     /// </summary>
-    public class MessageBodySerialiserTest : TestCase {
+    [TestFixture]    
+    public class MessageBodySerialiserTest {
         
+        [Test]
         public void TestSameServiceIdMultiple() {
             // checks if service contexts with the same id, doesn't throw an exception
             // checks, that the first service context is considered, others are thrown away

@@ -591,11 +591,13 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-tests for orb services
     /// </summary>
-    public class OrbServicesTest : TestCase {
+    [TestFixture]
+    public class OrbServicesTest {
         
         public OrbServicesTest() {
         }
                        
+        [Test]
         public void TestOverrideCodeSetsWhenAlreadySet() {
             Assertion.Assert(Enum.IsDefined(typeof(CharSet), CodeSetService.DefaultCharSet));
             Assertion.Assert(Enum.IsDefined(typeof(WCharSet), CodeSetService.DefaultWCharSet));

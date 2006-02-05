@@ -250,7 +250,8 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-tests for testing fragment assembling
     /// </summary>
-    public class FragmentedMsgAsmTest : TestCase {
+    [TestFixture]    
+    public class FragmentedMsgAsmTest {
         
         
         /// <param name="fragmentContentBlocks">the nr of 4 byte blocks in the content; 

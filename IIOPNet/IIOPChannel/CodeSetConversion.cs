@@ -306,7 +306,8 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// test the encoding/decoding of UTF 16 strings
     /// </summary>
-    public class TestUtf16StringsGiop1_2 : TestCase {
+    [TestFixture]
+    public class TestUtf16StringsGiop1_2 {
         
         private CdrInputStreamImpl CreateInputStream(byte[] content, bool isLittleEndian) {
             MemoryStream stream = new MemoryStream(content);
@@ -430,7 +431,8 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// test the encoding/decoding of UTF 16 strings
     /// </summary>
-    public class TestUtf16StringsGiop1_1 : TestCase {
+    [TestFixture]    
+    public class TestUtf16StringsGiop1_1 {
         
         private CdrInputStreamImpl CreateInputStream(byte[] content, bool isLittleEndian) {
             MemoryStream stream = new MemoryStream(content);

@@ -113,7 +113,8 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-tests for testing request/reply serialisation/deserialisation
     /// </summary>
-    public class ArgumentsSerializerFactoryTest : TestCase {
+    [TestFixture]
+    public class ArgumentsSerializerFactoryTest {
         
         private MethodInfo GetTestSomeIntMethod() {
             Type parameterMarshallerTestRemoteType = typeof(ParameterMarshallerTestRemote);
@@ -127,7 +128,7 @@ namespace Ch.Elca.Iiop.Tests {
             }            
         }
         
-        
+        [Test]
         public void TestRequestArguments() {
             MethodInfo testMethod = GetTestSomeIntMethod();
             
@@ -157,6 +158,7 @@ namespace Ch.Elca.Iiop.Tests {
             return deser;
         }
         
+        [Test]
         public void TestReplyArguments() {                       
             MethodInfo testMethod = GetTestSomeIntMethod();
             

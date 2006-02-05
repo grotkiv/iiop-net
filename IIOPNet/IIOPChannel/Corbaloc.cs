@@ -382,12 +382,13 @@ namespace Ch.Elca.Iiop.Tests {
     /// <summary>
     /// Unit-test for class Corbaloc
     /// </summary>
-    public class CorbalocTest : TestCase {
+    [TestFixture]
+    public class CorbalocTest {
         
         public CorbalocTest() {
         }
 
-        
+        [Test]
         public void TestSingleCompleteCorbaLocIiop() {
 			string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
         	Corbaloc parsed = new Corbaloc(testCorbaLoc);
@@ -401,6 +402,7 @@ namespace Ch.Elca.Iiop.Tests {
         	Assertion.AssertEquals(1234, addr.Port);
         }
         
+        [Test]
         public void TestMultipleCompleteCorbaLocIiop() {
         	string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234,:1.2@elca.ch:1235,:1.2@elca.ch:1236/test";
         	Corbaloc parsed = new Corbaloc(testCorbaLoc);
@@ -430,6 +432,7 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
         /// <summary>test corba loc with iiop addrs, check the defaults</summary>
+        [Test]
         public void TestIncompleteCorbaLocIiop() {
         	string testCorbaLoc = "corbaloc::/test";
         	Corbaloc parsed = new Corbaloc(testCorbaLoc);
