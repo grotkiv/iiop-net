@@ -1901,45 +1901,22 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]        
         public void TestBooleanSerialise() {
             Serializer ser = new BooleanSerializer();
-            MemoryStream outStream = new MemoryStream();
-            CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);            
-            ser.Serialize(true, cdrOut);
-            ser.Serialize(false, cdrOut);
-            outStream.Seek(0, SeekOrigin.Begin);
-            Assertion.AssertEquals(1, outStream.ReadByte());
-            Assertion.AssertEquals(0, outStream.ReadByte());
-            outStream.Close();
+            GenericSerTest(typeof(bool), ser, false, new byte[] { 0 });
+            GenericSerTest(typeof(bool), ser, true, new byte[] { 1 });
         }
         
         [Test]
         public void TestBooleanDeserialise() {
             Serializer ser = new BooleanSerializer();
-            MemoryStream inStream = new MemoryStream();
-            inStream.WriteByte(0);
-            inStream.WriteByte(1);
-            inStream.Seek(0, SeekOrigin.Begin);
-            CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
-            cdrIn.ConfigStream(0, new GiopVersion(1, 2));            
-            Assertion.AssertEquals(false, ser.Deserialize(cdrIn));            
-            Assertion.AssertEquals(true, ser.Deserialize(cdrIn));
-            inStream.Close();           
+            GenericDeserTest(typeof(bool), ser, new byte[] { 0 }, false);
+            GenericDeserTest(typeof(bool), ser, new byte[] { 1 }, true);
         }
         
         [Test]
         [ExpectedException(typeof(BAD_PARAM))]
         public void TestBooleanDeserialiseInvalidValue() {
             Serializer ser = new BooleanSerializer();
-            MemoryStream inStream = new MemoryStream();
-            inStream.WriteByte(2);
-            inStream.Seek(0, SeekOrigin.Begin);
-            CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
-            cdrIn.ConfigStream(0, new GiopVersion(1, 2));            
-            try {
-                ser.Deserialize(cdrIn);
-            } catch (Exception e) {
-                inStream.Close();
-                throw e;
-            }
+            GenericDeserTest(typeof(bool), ser, new byte[] { 2 }, null);            
         }
         
         private void EnumGenericSerTest(Type enumType, object actual, byte[] expected) {
