@@ -333,6 +333,19 @@ public class TestClient extends TestCase {
         assertEquals(arg, result);
     }
 
+    public void testIntOutArg() throws Exception {
+        int arg = 22;
+        org.omg.CORBA.IntHolder result = new org.omg.CORBA.IntHolder();
+        m_testService.EchoIntByOut(arg, result);
+        assertEquals(arg, result.value);
+    }
+
+    public void testStringOutArg() throws Exception {
+        String arg = "test1";
+        org.omg.CORBA.StringHolder result = new org.omg.CORBA.StringHolder();
+        m_testService.EchoByOut(arg, result);
+        assertEquals(arg, result.value);
+    }
 
 
 }
