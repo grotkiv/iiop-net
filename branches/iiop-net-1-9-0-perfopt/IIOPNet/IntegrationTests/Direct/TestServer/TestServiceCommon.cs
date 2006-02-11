@@ -36,6 +36,11 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         A, B, C, D
     }
 
+    [Flags]
+    public enum TestFlags {
+        A1 = 0x01, B1 = 0x02, C1 = 0x04, D1 = 0x08, All = A1 | B1 | C1 | D1
+    }
+
     [Serializable]
     public struct TestStructA {
         public System.Int32 X;
@@ -136,6 +141,14 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
         System.Int64 TestIncInt64(System.Int64 arg);
 
+        System.SByte TestIncSByte(System.SByte arg);
+
+        System.UInt16 TestIncUInt16(System.UInt16 arg);
+
+        System.UInt32 TestIncUInt32(System.UInt32 arg);
+
+        System.UInt64 TestIncUInt64(System.UInt64 arg);
+
         System.Boolean TestNegateBoolean(System.Boolean arg);
 
         void TestVoid();
@@ -145,6 +158,8 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         System.String TestAppendString(System.String basic, System.String toAppend);
 
         TestEnum TestEchoEnumVal(TestEnum arg);
+
+        TestFlags TestEchoFlagsVal(TestFlags arg);
 
         System.Byte[] TestAppendElementToByteArray(System.Byte[] arg, System.Byte toAppend);
 

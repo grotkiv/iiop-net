@@ -122,6 +122,43 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
+        public void TestSByte() {
+            System.SByte arg = 1;
+            System.SByte result = m_testService.TestIncSByte(arg);
+            Assertion.AssertEquals((System.SByte)(arg + 1), result);
+        }
+
+        [Test]
+        public void TestUInt16() {
+            System.UInt16 arg = 1;
+            System.UInt16 result = m_testService.TestIncUInt16(arg);
+            Assertion.AssertEquals((System.Int16)(arg + 1), result);
+            arg = System.UInt16.MaxValue - (System.UInt16)1;
+            result = m_testService.TestIncUInt16(arg);
+            Assertion.AssertEquals((System.UInt16)(arg + 1), result);
+        }
+
+        [Test]
+        public void TestUInt32() {
+            System.UInt32 arg = 1;
+            System.UInt32 result = m_testService.TestIncUInt32(arg);
+            Assertion.AssertEquals((System.UInt32)(arg + 1), result);
+            arg = System.UInt32.MaxValue - (System.UInt32)1;
+            result = m_testService.TestIncUInt32(arg);
+            Assertion.AssertEquals((System.UInt32)(arg + 1), result);
+        }
+
+        [Test]
+        public void TestUInt64() {
+            System.UInt64 arg = 1;
+            System.UInt64 result = m_testService.TestIncUInt64(arg);
+            Assertion.AssertEquals((System.UInt64)(arg + 1), result);
+            arg = System.UInt64.MaxValue - 1;
+            result = m_testService.TestIncUInt64(arg);
+            Assertion.AssertEquals((System.UInt64)(arg + 1), result);
+        }
+
+        [Test]
         public void TestBoolean() {
             System.Boolean arg = true;
             System.Boolean result = m_testService.TestNegateBoolean(arg);
@@ -162,6 +199,16 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Assertion.AssertEquals(arg, result);
             arg = TestEnum.D;
             result = m_testService.TestEchoEnumVal(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestFlagsArguments() {
+            TestFlags arg = TestFlags.A1;
+            TestFlags result = m_testService.TestEchoFlagsVal(arg);
+            Assertion.AssertEquals(arg, result);
+            arg = TestFlags.All;
+            result = m_testService.TestEchoFlagsVal(arg);
             Assertion.AssertEquals(arg, result);
         }
 
