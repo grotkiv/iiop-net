@@ -239,6 +239,24 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IMethods
 
     }
+    
+    /// <summary>serializes instances of System.UInt64</summary>
+    internal class UInt64Serializer : Serializer {
+        
+        #region IMethods
+        
+        internal override void Serialize(object actual,
+                                       CdrOutputStream targetStream) {
+            targetStream.WriteULongLong((ulong)actual);
+        }
+
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            return sourceStream.ReadULongLong();
+        }        
+        
+        #endregion IMethods
+        
+    }
 
     /// <summary>serializes instances of System.Single</summary>
     internal class SingleSerializer : Serializer {
@@ -2025,6 +2043,24 @@ namespace Ch.Elca.Iiop.Tests {
             GenericDeserTest(ser, new byte[] { 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, Int64.MaxValue);
             GenericDeserTest(ser, new byte[] { 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, Int64.MinValue);
         }        
+        
+        [Test]
+        public void TestUInt64Serialise() {
+            Serializer ser = new UInt64Serializer();
+            GenericSerTest(ser, (ulong)0, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 });
+            GenericSerTest(ser, (ulong)225, new byte[] { 0, 0, 0, 0, 0, 0, 0, 225 });
+            GenericSerTest(ser, UInt64.MaxValue, 
+                           new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+        }
+        
+        [Test]
+        public void TestUInt64Deserialise() {
+            Serializer ser = new UInt64Serializer();
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 }, (ulong)0);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0, 0, 0, 0, 225 }, (ulong)225);
+            GenericDeserTest(ser, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, 
+                             UInt64.MaxValue);
+        }
 
         [Test]        
         public void TestBooleanSerialise() {
