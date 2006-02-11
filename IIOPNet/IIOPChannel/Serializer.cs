@@ -1951,6 +1951,26 @@ namespace Ch.Elca.Iiop.Tests {
             GenericDeserTest(ser, new byte[] { 0, 225 }, (ushort)225);
             GenericDeserTest(ser, new byte[] { 0xFF, 0xFF }, UInt16.MaxValue);
         }                
+        
+        [Test]
+        public void TestInt32Serialise() {
+            Serializer ser = new Int32Serializer();
+            GenericSerTest(ser, (int)0, new byte[] { 0, 0, 0, 0 });
+            GenericSerTest(ser, (int)225, new byte[] { 0, 0, 0, 225 });
+            GenericSerTest(ser, (int)-1, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF });
+            GenericSerTest(ser, Int32.MaxValue, new byte[] { 0x7F, 0xFF, 0xFF, 0xFF });
+            GenericSerTest(ser, Int32.MinValue, new byte[] { 0x80, 0x00, 0x00, 0x00 });
+        }
+        
+        [Test]
+        public void TestInt32Deserialise() {
+            Serializer ser = new Int32Serializer();
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, (int)0);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 225 }, (int)225);
+            GenericDeserTest(ser, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF }, (int)-1);
+            GenericDeserTest(ser, new byte[] { 0x7F, 0xFF, 0xFF, 0xFF }, Int32.MaxValue);
+            GenericDeserTest(ser, new byte[] { 0x80, 0x00, 0x00, 0x00 }, Int32.MinValue);
+        }        
 
         [Test]        
         public void TestBooleanSerialise() {
