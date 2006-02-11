@@ -533,6 +533,10 @@ namespace Ch.Elca.Iiop.Idl {
             return null;
         }
 
+        public object MapToIdlFlagsEquivalent(Type clsType) {
+            // nothing to do, because mapped to a base type
+            return null;
+        }
         
         public object MapToIdlAbstractInterface(Type clsType) {
             if (m_depManager.CheckMappedType(clsType)) { 
@@ -908,7 +912,7 @@ namespace Ch.Elca.Iiop.Idl {
 
         public object MapToIdlLocalInterface(Type clsType) {
             throw new NotSupportedException("no type declaration possible for local interfaces");
-        }
+        }        
 
         #endregion unsupported operations for this mapping action
 
@@ -1007,11 +1011,11 @@ namespace Ch.Elca.Iiop.Idl {
             return null;
         }
 
+        #region unsupported mappings for fwd decls
+        
         public object MapToIdlBoxedValueType(System.Type dotNetType, Type needsBoxingFrom) {
             throw new NotSupportedException("a value-box can't have a forward declaration");
-        }
-        
-        #region unsupported mappings for fwd decls
+        }                
 
         public object MapToIdlVoid(System.Type dotNetType) {
             throw new NotSupportedException("no fwd declaration possible for this IDL-type");
@@ -1127,6 +1131,10 @@ namespace Ch.Elca.Iiop.Idl {
 
         public object MapToIdlLocalInterface(System.Type dotNetType) {
             throw new NotSupportedException("nothing maps to local interface, no fwd decl possible.");
+        }
+        
+        public object MapToIdlFlagsEquivalent(System.Type dotNetType) {
+            throw new NotSupportedException("no fwd declaration possible for this IDL-type");
         }
 
         #endregion
@@ -1324,6 +1332,10 @@ namespace Ch.Elca.Iiop.Idl {
         }
 
         public object MapToTypeCode(System.Type dotNetType) {
+            throw new NotSupportedException("no include possible for this IDL-type");
+        }
+        
+        public object MapToIdlFlagsEquivalent(Type clsType) {
             throw new NotSupportedException("no include possible for this IDL-type");
         }
 

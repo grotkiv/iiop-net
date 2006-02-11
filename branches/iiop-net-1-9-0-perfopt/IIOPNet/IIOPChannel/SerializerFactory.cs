@@ -77,7 +77,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         // caches for type specific serializers
         private IDictionary /* Type, Serializer */ m_structSers = new Hashtable();         
-        private IDictionary /* Type, Serializer */ m_enumSers = new Hashtable();         
+        private IDictionary /* Type, Serializer */ m_enumSers = new Hashtable();   
+        private IDictionary /* Type, Serializer */ m_flagsSers = new Hashtable();
         private IDictionary /* Type, Serializer */ m_unionSers = new Hashtable();                
         private IDictionary /* Type, Serializer */ m_valTypeSers = new Hashtable();        
         
@@ -249,6 +250,16 @@ namespace Ch.Elca.Iiop.Marshalling {
                 if (result == null) {
                     result = new EnumSerializer(clsType, this);
                     m_enumSers[clsType] = result;
+                }
+                return result;
+            }
+        }
+        public object MapToIdlFlagsEquivalent(Type clsType) {
+            lock(m_flagsSers.SyncRoot) {
+                Serializer result = (Serializer)m_flagsSers[clsType];
+                if (result == null) {
+                    result = new FlagsSerializer(clsType, this);
+                    m_flagsSers[clsType] = result;
                 }
                 return result;
             }

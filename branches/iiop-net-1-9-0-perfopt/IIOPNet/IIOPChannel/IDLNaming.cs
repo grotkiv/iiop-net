@@ -824,6 +824,13 @@ namespace Ch.Elca.Iiop.Idl {
         public object MapToIdlEnum(System.Type dotNetType) {
             return IdlNaming.MapFullTypeNameToIdlScoped(dotNetType);
         }
+        public object MapToIdlFlagsEquivalent(Type clsType) {            
+            Type underlyingType = Enum.GetUnderlyingType(clsType);
+            // map to the base type of the flags (i.e. underlyingType).
+            string refUnderlyingType = (string)m_mapper.MapClsType(underlyingType, AttributeExtCollection.EmptyCollection,
+                                                                   this);            
+            return refUnderlyingType;
+        }
         public object MapToIdlConcreteInterface(System.Type dotNetType) {
             if (!dotNetType.Equals(ReflectionHelper.MarshalByRefObjectType)) {
                 return IdlNaming.MapFullTypeNameToIdlScoped(dotNetType);

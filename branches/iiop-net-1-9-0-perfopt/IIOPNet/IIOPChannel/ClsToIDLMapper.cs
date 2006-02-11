@@ -105,8 +105,20 @@ namespace Ch.Elca.Iiop.Idl {
         /// <returns>an optional result of the mapping, null may be possible</returns>
         object MapException(Type clsType);
         
+        /// <summary>
+        /// This mapping method is used to map CLS enums, which are no flags to idl enum
+        /// or to the underlying integral type for enums based on int64/uint64.
+        /// </summary>
         /// <returns>an optional result of the mapping, null may be possible</returns>
         object MapToIdlEnum(Type clsType);
+        
+        /// <summary>
+        /// This mapping method is used to map CLS flags to underlying integral type.
+        /// Distinguish this from integral types to allow deserialization to Flags
+        /// in a good way.
+        /// </summary>
+        /// <returns>an optional result of the mapping, null may be possible</returns>
+        object MapToIdlFlagsEquivalent(Type clsType);
 
         /// <returns>an optional result of the mapping, null may be possible</returns>
         object MapToWStringValue(Type clsType);
@@ -185,10 +197,7 @@ namespace Ch.Elca.Iiop.Idl {
         
         private static Type s_anyType = typeof(omg.org.CORBA.Any);
         
-        private static Type s_intPtrType = typeof(System.IntPtr);
-        private static Type s_uint16Type = typeof(System.UInt16);
-        private static Type s_uint32Type = typeof(System.UInt32);
-        private static Type s_uint64Type = typeof(System.UInt64);
+        private static Type s_intPtrType = typeof(System.IntPtr);        
         private static Type s_uintPtrType = typeof(System.UIntPtr);
 
         #endregion SFields
@@ -224,6 +233,15 @@ namespace Ch.Elca.Iiop.Idl {
         /// </summary>
         public static bool IsEnum(Type type) {
             return (type.IsEnum);
+        }        
+        
+        /// <summary>
+        /// checks, if the enum type is a flags enumeration
+        /// </summary>        
+        private static bool HasEnumFlagsAttributes(Type enumType) {
+            object[] flagsAttrs = 
+                enumType.GetCustomAttributes(ReflectionHelper.FlagsAttributeType, true);
+            return (flagsAttrs != null && flagsAttrs.Length > 0);          
         }
 
         /// <summary>
@@ -346,9 +364,9 @@ namespace Ch.Elca.Iiop.Idl {
 
         /// <summary>checks, if the type is unmappable</summary>
         public static bool UnmappableType(Type clsType) {
-            if (clsType.Equals(s_intPtrType) || clsType.Equals(s_uint16Type) ||
-                clsType.Equals(s_uint32Type) || clsType.Equals(s_uint64Type) ||
-                clsType.Equals(s_uintPtrType)) {
+            if (clsType.Equals(s_intPtrType) || clsType.Equals(ReflectionHelper.UInt16Type) ||
+                clsType.Equals(ReflectionHelper.UInt32Type) || clsType.Equals(ReflectionHelper.UInt64Type) ||
+                clsType.Equals(s_uintPtrType) || clsType.Equals(ReflectionHelper.SByteType)) {
                 return true; 
             }
             return false;
@@ -477,7 +495,11 @@ namespace Ch.Elca.Iiop.Idl {
             } else if (IsMappablePrimitiveType(clsType)) {
                 return CallActionForDNPrimitveType(ref clsType, ref attributes, action);
             } else if (IsEnum(clsType)) { 
-                return action.MapToIdlEnum(clsType);
+                if (HasEnumFlagsAttributes(clsType)) {
+                    return action.MapToIdlFlagsEquivalent(clsType);
+                } else {
+                    return action.MapToIdlEnum(clsType);
+                }
             } else if (IsArray(clsType)) { 
                 return CallActionForDNArray(ref clsType, ref attributes, originalAttributes, action);
             } else if (clsType.IsSubclassOf(ReflectionHelper.BoxedValueBaseType)) {
@@ -704,7 +726,7 @@ namespace Ch.Elca.Iiop.Idl {
     internal enum MappingToResult {
         IdlStruct, IdlUnion, IdlAbstractIf, IdlConcreteIf, IdlLocalIf, IdlConcreteValue, IdlAbstractValue, 
         IdlBoxedValue, IdlSequence, IdlArray, IdlAny, IdlAbstractBase, IdlValueBase,
-        IdlException, IdlEnum, IdlWstringValue, IdlStringValue, IdlTypeCode,
+        IdlException, IdlEnum, IdlFlagsEquivalent, IdlWstringValue, IdlStringValue, IdlTypeCode,
         IdlTypeDesc, IdlBool, IdlFloat, IdlDouble, IdlShort, IdlUShort, IdlLong, IdlULong,
         IdlLongLong, IdlULongLong, IdlOctet, IdlVoid, IdlChar, IdlWChar, IdlString, IdlWString
     }
@@ -759,6 +781,9 @@ namespace Ch.Elca.Iiop.Idl {
         }
         public object MapToIdlEnum(System.Type clsType) {
             return MappingToResult.IdlEnum;
+        }
+        public object MapToIdlFlagsEquivalent(Type clsType) {
+            return MappingToResult.IdlFlagsEquivalent;
         }
         public object MapToWStringValue(System.Type clsType) {
             return MappingToResult.IdlWstringValue;
@@ -832,9 +857,91 @@ namespace Ch.Elca.Iiop.Tests {
     using Ch.Elca.Iiop.Idl;
     using Ch.Elca.Iiop.Util;
     using omg.org.CORBA;
+        
     
-    public enum TestEnum { 
-        a, b, c 
+    [IdlEnum]
+    public enum TestIdlEnumBI32 {
+        IDL_A, IDL_B, IDL_C
+    }
+
+    public enum TestEnumBI32 : int {
+        a1, b1, c1 
+    }
+    
+    public enum TestEnumBI16 : short {
+        a2, b2, c2
+    }    
+    
+    public enum TestEnumBI64 : long {
+        a3, b3, c3
+    }
+    
+    public enum TestEnumBB : byte {
+        a4, b4, c4
+    }
+    
+    [CLSCompliant(false)]
+    public enum TestEnumBSB : sbyte {
+        a5, b5, c5
+    }
+    
+    [CLSCompliant(false)]
+    public enum TestEnumBUI16 : ushort {
+        a6, b6, c6
+    }
+    
+    [CLSCompliant(false)]
+    public enum TestEnumBUI32 : uint {
+        a7, b7, c7
+    }
+    
+    [CLSCompliant(false)]
+    public enum TestEnumBUI64 : ulong {
+        a8, b8, c8
+    }    
+    
+    [Flags]
+    public enum TestFlagsBI32 : int {
+        a1, b1, c1 
+    }
+    
+    [Flags]
+    public enum TestFlagsBI16 : short {
+        a2, b2, c2
+    }    
+    
+    [Flags]
+    public enum TestFlagsBI64 : long {
+        a3, b3, c3
+    }
+    
+    [Flags]
+    public enum TestFlagsBB : byte {
+        a4, b4, c4
+    }
+    
+    [CLSCompliant(false)]
+    [Flags]
+    public enum TestFlagsBSB : sbyte {
+        a5, b5, c5
+    }
+    
+    [CLSCompliant(false)]
+    [Flags]
+    public enum TestFlagsBUI16 : ushort {
+        a6, b6, c6
+    }
+    
+    [CLSCompliant(false)]
+    [Flags]
+    public enum TestFlagsBUI32 : uint {
+        a7, b7, c7
+    }
+    
+    [CLSCompliant(false)]
+    [Flags]
+    public enum TestFlagsBUI64 : ulong {
+        a8, b8, c8
     }
     
     [IdlUnion]   
@@ -1197,17 +1304,157 @@ namespace Ch.Elca.Iiop.Tests {
         }
 
         [Test]
-        public void TestMapToIdlEnum() {
+        public void TestMapToIdlEnumFromIdlEnum() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
-            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnum), 
-                                                                           new AttributeExtCollection(),
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestIdlEnumBI32), 
+                                                                           AttributeExtCollection.EmptyCollection,
                                                                            s_testAction);
             Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);
-            mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnum), 
-                                                           new AttributeExtCollection(new Attribute[] { new IdlEnumAttribute() }),
-                                                           s_testAction);
-            Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);            
         }
+        
+        [Test]
+        public void TestMapToIdlEnumFromClsEnumBB() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnumBB), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);
+        }        
+        
+        [Test]
+        public void TestMapToIdlEnumFromClsEnumI16() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnumBI16), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);
+        }        
+
+        [Test]
+        public void TestMapToIdlEnumFromClsEnumI32() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnumBI32), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);
+        }        
+        
+        [Test]
+        public void TestMapToIdlEnumFromClsEnumI64() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnumBI64), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);
+        }
+        
+        [Test]
+        public void TestMapToIdlEnumFromClsEnumSB() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnumBSB), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);
+        }        
+        
+        [Test]
+        public void TestMapToIdlEnumFromClsEnumUI16() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnumBUI16), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);
+        }        
+
+        [Test]
+        public void TestMapToIdlEnumFromClsEnumUI32() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnumBUI32), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);
+        }        
+        
+        [Test]
+        public void TestMapToIdlEnumFromClsEnumUI64() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestEnumBUI64), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlEnum, mapResult);
+        }
+        
+        [Test]
+        public void TestMapToFlagsFromClsFlagsBB() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestFlagsBB), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlFlagsEquivalent, mapResult);
+        }        
+        
+        [Test]
+        public void TestMapToFlagsFromClsFlagsI16() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestFlagsBI16), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlFlagsEquivalent, mapResult);
+        }        
+
+        [Test]
+        public void TestMapToFlagsFromClsFlagsI32() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestFlagsBI32), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlFlagsEquivalent, mapResult);
+        }        
+        
+        [Test]
+        public void TestMapToFlagsFromClsFlagsI64() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestFlagsBI64), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlFlagsEquivalent, mapResult);
+        }
+        
+        [Test]
+        public void TestMapToFlagsFromClsFlagsSB() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestFlagsBSB), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlFlagsEquivalent, mapResult);
+        }        
+        
+        [Test]
+        public void TestMapToFlagsFromClsFlagsUI16() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestFlagsBUI16), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlFlagsEquivalent, mapResult);
+        }        
+
+        [Test]
+        public void TestMapToFlagsFromClsFlagsUI32() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestFlagsBUI32), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlFlagsEquivalent, mapResult);
+        }        
+        
+        [Test]
+        public void TestMapToFlagsFromClsFlagsUI64() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(TestFlagsBUI64), 
+                                                                           AttributeExtCollection.EmptyCollection,
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlFlagsEquivalent, mapResult);
+        }        
         
         [Test]
         public void TestMapToIdlStruct() {
