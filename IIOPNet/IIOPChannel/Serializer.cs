@@ -1854,7 +1854,7 @@ namespace Ch.Elca.Iiop.Tests {
         public SerialiserTest() {
         }
 
-        private void GenericSerTest(Type type, Serializer ser, object actual, byte[] expected) {
+        private void GenericSerTest(Serializer ser, object actual, byte[] expected) {
             MemoryStream outStream = new MemoryStream();
             try {
                 CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);                
@@ -1869,7 +1869,7 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }
         
-        private void GenericDeserTest(Type type, Serializer ser, byte[] actual, object expected) {
+        private void GenericDeserTest(Serializer ser, byte[] actual, object expected) {
             MemoryStream inStream = new MemoryStream();
             inStream.Write(actual, 0, actual.Length);
             inStream.Seek(0, SeekOrigin.Begin);
@@ -1883,59 +1883,59 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestByteSerialise() {
             Serializer ser = new ByteSerializer();
-            GenericSerTest(typeof(byte), ser, (byte)0, new byte[] { 0 });
-            GenericSerTest(typeof(byte), ser, (byte)11, new byte[] { 11 });
-            GenericSerTest(typeof(byte), ser, (byte)12, new byte[] { 12 });
-            GenericSerTest(typeof(byte), ser, (byte)225, new byte[] { 225 });            
+            GenericSerTest(ser, (byte)0, new byte[] { 0 });
+            GenericSerTest(ser, (byte)11, new byte[] { 11 });
+            GenericSerTest(ser, (byte)12, new byte[] { 12 });
+            GenericSerTest(ser, (byte)225, new byte[] { 225 });            
         }
         
         [Test]
         public void TestByteDeserialise() {
             Serializer ser = new ByteSerializer();
-            GenericDeserTest(typeof(byte), ser, new byte[] { 0 }, (byte)0);
-            GenericDeserTest(typeof(byte), ser, new byte[] { 11 }, (byte)11);
-            GenericDeserTest(typeof(byte), ser, new byte[] { 12 }, (byte)12);
-            GenericDeserTest(typeof(byte), ser, new byte[] { 225 }, (byte)225);
+            GenericDeserTest(ser, new byte[] { 0 }, (byte)0);
+            GenericDeserTest(ser, new byte[] { 11 }, (byte)11);
+            GenericDeserTest(ser, new byte[] { 12 }, (byte)12);
+            GenericDeserTest(ser, new byte[] { 225 }, (byte)225);
         }
 
         [Test]        
         public void TestBooleanSerialise() {
             Serializer ser = new BooleanSerializer();
-            GenericSerTest(typeof(bool), ser, false, new byte[] { 0 });
-            GenericSerTest(typeof(bool), ser, true, new byte[] { 1 });
+            GenericSerTest(ser, false, new byte[] { 0 });
+            GenericSerTest(ser, true, new byte[] { 1 });
         }
         
         [Test]
         public void TestBooleanDeserialise() {
             Serializer ser = new BooleanSerializer();
-            GenericDeserTest(typeof(bool), ser, new byte[] { 0 }, false);
-            GenericDeserTest(typeof(bool), ser, new byte[] { 1 }, true);
+            GenericDeserTest(ser, new byte[] { 0 }, false);
+            GenericDeserTest(ser, new byte[] { 1 }, true);
         }
         
         [Test]
         [ExpectedException(typeof(BAD_PARAM))]
         public void TestBooleanDeserialiseInvalidValue() {
             Serializer ser = new BooleanSerializer();
-            GenericDeserTest(typeof(bool), ser, new byte[] { 2 }, null);            
+            GenericDeserTest(ser, new byte[] { 2 }, null);            
         }
         
         private void EnumGenericSerTest(Type enumType, object actual, byte[] expected) {
-            GenericSerTest(enumType, new EnumSerializer(enumType, new SerializerFactory()),
+            GenericSerTest(new EnumSerializer(enumType, new SerializerFactory()),
                            actual, expected);
         }
         
         private void EnumGenericDeserTest(Type enumType, byte[] actual, object expected) {
-            GenericDeserTest(enumType, new EnumSerializer(enumType, new SerializerFactory()),
+            GenericDeserTest(new EnumSerializer(enumType, new SerializerFactory()),
                              actual, expected);            
         }
         
         private void FlagsGenericSerTest(Type flagsType, object actual, byte[] expected) {
-            GenericSerTest(flagsType, new FlagsSerializer(flagsType, new SerializerFactory()),
+            GenericSerTest(new FlagsSerializer(flagsType, new SerializerFactory()),
                            actual, expected);
         }
         
         private void FlagsGenericDeserTest(Type flagsType, byte[] actual, object expected) {
-            GenericDeserTest(flagsType, new FlagsSerializer(flagsType, new SerializerFactory()),
+            GenericDeserTest(new FlagsSerializer(flagsType, new SerializerFactory()),
                              actual, expected);
         }        
         
