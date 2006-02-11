@@ -57,10 +57,14 @@ namespace Ch.Elca.Iiop.Marshalling {
         private Serializer m_nonWideStringSer = new StringSerializer(false);        
         
         private Serializer m_byteSer = new ByteSerializer();
+        private Serializer m_sbyteSer = new SByteSerializer();
         private Serializer m_boolSer = new BooleanSerializer();
         private Serializer m_int16Ser = new Int16Serializer();
         private Serializer m_int32Ser = new Int32Serializer();
         private Serializer m_int64Ser = new Int64Serializer();
+        private Serializer m_uint16Ser = new UInt16Serializer();
+        private Serializer m_uint32Ser = new UInt32Serializer();
+        private Serializer m_uint64Ser = new UInt64Serializer();        
         private Serializer m_singleSer = new SingleSerializer();
         private Serializer m_doubleSer = new DoubleSerializer();   
         
@@ -291,26 +295,26 @@ namespace Ch.Elca.Iiop.Marshalling {
             return m_int16Ser;
         }
         public object MapToIdlUShort(System.Type clsType) {
-            // no CLS type is mapped to UShort
-            throw new INTERNAL(8702, CompletionStatus.Completed_MayBe);
+            return m_uint16Ser;
         }
         public object MapToIdlLong(System.Type clsType) {
             return m_int32Ser;
         }
         public object MapToIdlULong(System.Type clsType) {
-            // no CLS type is mapped to ULong
-            throw new INTERNAL(8703, CompletionStatus.Completed_MayBe);
+            return m_uint32Ser;
         }
         public object MapToIdlLongLong(System.Type clsType) {
             return m_int64Ser;
         }
         public object MapToIdlULongLong(System.Type clsType) {
-            // no CLS type is mapped to ULongLong
-            throw new INTERNAL(8703, CompletionStatus.Completed_MayBe);
+            return m_uint64Ser;
         }
         public object MapToIdlOctet(System.Type clsType) {
             return m_byteSer;
         }
+        public object MapToIdlSByteEquivalent(Type clsType) {
+            return m_sbyteSer;
+        }        
         public object MapToIdlVoid(System.Type clsType) {
             // void is not serializable
             throw new INTERNAL(8704, CompletionStatus.Completed_MayBe);

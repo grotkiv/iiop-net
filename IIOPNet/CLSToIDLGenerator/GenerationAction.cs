@@ -855,6 +855,9 @@ namespace Ch.Elca.Iiop.Idl {
         public object MapToIdlOctet(Type clsType) {
             throw new NotSupportedException("is a standard type, not redifinable");
         }
+        public object MapToIdlSByteEquivalent(Type clsType) {
+            throw new NotSupportedException("is a standard type, not redifinable");
+        }        
         public object MapToIdlUShort(Type clsType) {
             throw new NotSupportedException("is a standard type, not redifinable");
         }
@@ -1026,6 +1029,10 @@ namespace Ch.Elca.Iiop.Idl {
         }
 
         public object MapToIdlOctet(System.Type dotNetType) {
+            throw new NotSupportedException("no fwd declaration possible for this IDL-type");
+        }
+
+        public object MapToIdlSByteEquivalent(Type clsType) {
             throw new NotSupportedException("no fwd declaration possible for this IDL-type");
         }
         
@@ -1270,6 +1277,10 @@ namespace Ch.Elca.Iiop.Idl {
         public object MapToIdlOctet(System.Type dotNetType) {
             throw new NotSupportedException("no include possible for this IDL-type");
         }
+        
+        public object MapToIdlSByteEquivalent(Type clsType) {
+            throw new NotSupportedException("no include possible for this IDL-type");
+        }        
         
         public object MapToIdlShort(System.Type dotNetType) {
             throw new NotSupportedException("no include possible for this IDL-type");
