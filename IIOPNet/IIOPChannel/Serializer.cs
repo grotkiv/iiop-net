@@ -168,6 +168,24 @@ namespace Ch.Elca.Iiop.Marshalling {
 
     }
     
+    /// <summary>serializes instances of System.UInt16</summary>
+    internal class UInt16Serializer : Serializer {
+        
+        #region IMethods
+        
+        internal override void Serialize(object actual,
+                                       CdrOutputStream targetStream) {
+            targetStream.WriteUShort((ushort)actual);
+        }
+
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            return sourceStream.ReadUShort();
+        }
+
+        #endregion IMethods        
+        
+    }
+    
     /// <summary>serializes instances of System.Int32</summary>
     internal class Int32Serializer : Serializer {
 
@@ -1917,6 +1935,22 @@ namespace Ch.Elca.Iiop.Tests {
             GenericDeserTest(ser, new byte[] { 0x7F, 0xFF }, Int16.MaxValue);
             GenericDeserTest(ser, new byte[] { 0x80, 0x00 }, Int16.MinValue);
         }        
+        
+        [Test]
+        public void TestUInt16Serialise() {
+            Serializer ser = new UInt16Serializer();
+            GenericSerTest(ser, (ushort)0, new byte[] { 0, 0 });
+            GenericSerTest(ser, (ushort)225, new byte[] { 0, 225 });            
+            GenericSerTest(ser, UInt16.MaxValue, new byte[] { 0xFF, 0xFF });
+        }
+        
+        [Test]
+        public void TestUInt16Deserialise() {
+            Serializer ser = new UInt16Serializer();
+            GenericDeserTest(ser, new byte[] { 0, 0 }, (ushort)0);
+            GenericDeserTest(ser, new byte[] { 0, 225 }, (ushort)225);
+            GenericDeserTest(ser, new byte[] { 0xFF, 0xFF }, UInt16.MaxValue);
+        }                
 
         [Test]        
         public void TestBooleanSerialise() {
