@@ -1194,6 +1194,50 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IMethods
 
     }
+    
+    /// <summary>
+    /// Serializer for cls flags mapped to idl equivalents
+    /// </summary>
+    internal class FlagsSerializer : Serializer {
+        
+        #region IFields
+        
+        private Serializer m_netFlagsValSerializer;   
+        private Type m_forType;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        internal FlagsSerializer(Type forType, SerializerFactory serFactory) {
+            m_forType = forType;
+            Type underlyingType = Enum.GetUnderlyingType(m_forType);
+            // undelying type is not the same than the flags enum -> no problem with recursive serializers
+            // flags are mapped to the corresponding underlying type in idl, because no
+            // flags concept in idl
+            m_netFlagsValSerializer =
+                serFactory.Create(underlyingType, AttributeExtCollection.EmptyCollection);
+        }
+        
+        #endregion IConstructors
+        #region IMethods
+        
+        internal override void Serialize(object actual,
+                                         CdrOutputStream targetStream) {
+            // map to the base-type of the enum, write the value of the enum
+            m_netFlagsValSerializer.Serialize(actual, targetStream);
+        }
+
+        
+        internal override object Deserialize(CdrInputStream sourceStream) {            
+            // .NET flags handled with .NET to IDL mapping
+            object val = m_netFlagsValSerializer.Deserialize(sourceStream);
+            // every value is allowed for flags -> therefore no checks
+            return Enum.ToObject(m_forType, val);
+        }
+        
+        #endregion IMethods
+        
+    }
 
     /// <summary>serializes idl sequences</summary>
     internal class IdlSequenceSerializer : Serializer {
@@ -1880,6 +1924,290 @@ namespace Ch.Elca.Iiop.Tests {
                 throw e;
             }
         }
+                
+        private void GenericSerTest(Type type, Serializer ser, object actual, byte[] expected) {
+            MemoryStream outStream = new MemoryStream();
+            try {
+                CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);                
+                ser.Serialize(actual, cdrOut);
+                outStream.Seek(0, SeekOrigin.Begin);
+                byte[] result = new byte[expected.Length];
+                outStream.Read(result, 0, result.Length);
+                ArrayAssertion.AssertByteArrayEquals("value " + actual + " incorrectly serialized.",
+                                                     expected, result);
+            } finally {
+                outStream.Close();
+            }
+        }
+        
+        private void GenericDeserTest(Type type, Serializer ser, byte[] actual, object expected) {
+            MemoryStream inStream = new MemoryStream();
+            inStream.Write(actual, 0, actual.Length);
+            inStream.Seek(0, SeekOrigin.Begin);
+            CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
+            cdrIn.ConfigStream(0, new GiopVersion(1, 2));            
+            Assertion.AssertEquals("value " + expected + " not deserialized.", 
+                                   expected, ser.Deserialize(cdrIn));
+            inStream.Close();
+        }        
+        
+        private void EnumGenericSerTest(Type enumType, object actual, byte[] expected) {
+            GenericSerTest(enumType, new EnumSerializer(enumType, new SerializerFactory()),
+                           actual, expected);
+        }
+        
+        private void EnumGenericDeserTest(Type enumType, byte[] actual, object expected) {
+            GenericDeserTest(enumType, new EnumSerializer(enumType, new SerializerFactory()),
+                             actual, expected);            
+        }
+        
+        private void FlagsGenericSerTest(Type flagsType, object actual, byte[] expected) {
+            GenericSerTest(flagsType, new FlagsSerializer(flagsType, new SerializerFactory()),
+                           actual, expected);
+        }
+        
+        private void FlagsGenericDeserTest(Type flagsType, byte[] actual, object expected) {
+            GenericDeserTest(flagsType, new FlagsSerializer(flagsType, new SerializerFactory()),
+                             actual, expected);
+        }        
+        
+        [Test]        
+        public void TestIdlEnumSerialise() {
+            EnumGenericSerTest(typeof(TestIdlEnumBI32), TestIdlEnumBI32.IDL_A, new byte[] { 0, 0, 0, 0});
+            EnumGenericSerTest(typeof(TestIdlEnumBI32), TestIdlEnumBI32.IDL_B, new byte[] { 0, 0, 0, 1});
+            EnumGenericSerTest(typeof(TestIdlEnumBI32), TestIdlEnumBI32.IDL_C, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestIdlEnumDeserialise() {
+            EnumGenericDeserTest(typeof(TestIdlEnumBI32), new byte[] { 0, 0, 0, 0}, TestIdlEnumBI32.IDL_A);
+            EnumGenericDeserTest(typeof(TestIdlEnumBI32), new byte[] { 0, 0, 0, 1}, TestIdlEnumBI32.IDL_B);
+            EnumGenericDeserTest(typeof(TestIdlEnumBI32), new byte[] { 0, 0, 0, 2}, TestIdlEnumBI32.IDL_C);
+        }        
+        
+        [Test]        
+        public void TestEnumBI16Serialise() {
+            EnumGenericSerTest(typeof(TestEnumBI16), TestEnumBI16.a2, new byte[] { 0, 0, 0, 0});
+            EnumGenericSerTest(typeof(TestEnumBI16), TestEnumBI16.b2, new byte[] { 0, 0, 0, 1});
+            EnumGenericSerTest(typeof(TestEnumBI16), TestEnumBI16.c2, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestEnumBI16Deserialise() {
+            EnumGenericDeserTest(typeof(TestEnumBI16), new byte[] { 0, 0, 0, 0}, TestEnumBI16.a2);
+            EnumGenericDeserTest(typeof(TestEnumBI16), new byte[] { 0, 0, 0, 1}, TestEnumBI16.b2);
+            EnumGenericDeserTest(typeof(TestEnumBI16), new byte[] { 0, 0, 0, 2}, TestEnumBI16.c2);
+        }        
+        
+        [Test]        
+        public void TestEnumBI32Serialise() {
+            EnumGenericSerTest(typeof(TestEnumBI32), TestEnumBI32.a1, new byte[] { 0, 0, 0, 0});
+            EnumGenericSerTest(typeof(TestEnumBI32), TestEnumBI32.b1, new byte[] { 0, 0, 0, 1});
+            EnumGenericSerTest(typeof(TestEnumBI32), TestEnumBI32.c1, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestEnumBI32Deserialise() {
+            EnumGenericDeserTest(typeof(TestEnumBI32), new byte[] { 0, 0, 0, 0}, TestEnumBI32.a1);
+            EnumGenericDeserTest(typeof(TestEnumBI32), new byte[] { 0, 0, 0, 1}, TestEnumBI32.b1);
+            EnumGenericDeserTest(typeof(TestEnumBI32), new byte[] { 0, 0, 0, 2}, TestEnumBI32.c1);
+        }        
+        
+        [Test]        
+        public void TestEnumBBSerialise() {
+            EnumGenericSerTest(typeof(TestEnumBB), TestEnumBB.a4, new byte[] { 0, 0, 0, 0});
+            EnumGenericSerTest(typeof(TestEnumBB), TestEnumBB.b4, new byte[] { 0, 0, 0, 1});
+            EnumGenericSerTest(typeof(TestEnumBB), TestEnumBB.c4, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestEnumBBDeserialise() {
+            EnumGenericDeserTest(typeof(TestEnumBB), new byte[] { 0, 0, 0, 0}, TestEnumBB.a4);
+            EnumGenericDeserTest(typeof(TestEnumBB), new byte[] { 0, 0, 0, 1}, TestEnumBB.b4);
+            EnumGenericDeserTest(typeof(TestEnumBB), new byte[] { 0, 0, 0, 2}, TestEnumBB.c4);
+        }        
+        
+        [Test]        
+        public void TestEnumI64Serialise() {
+            EnumGenericSerTest(typeof(TestEnumBI64), TestEnumBI64.a3, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0});
+            EnumGenericSerTest(typeof(TestEnumBI64), TestEnumBI64.b3, new byte[] { 0, 0, 0, 0, 0, 0, 0, 1});
+            EnumGenericSerTest(typeof(TestEnumBI64), TestEnumBI64.c3, new byte[] { 0, 0, 0, 0, 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestEnumI64Deserialise() {
+            EnumGenericDeserTest(typeof(TestEnumBI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 0}, TestEnumBI64.a3);
+            EnumGenericDeserTest(typeof(TestEnumBI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 1}, TestEnumBI64.b3);
+            EnumGenericDeserTest(typeof(TestEnumBI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 2}, TestEnumBI64.c3);
+        }        
+        
+        [Test]        
+        public void TestEnumBUI16Serialise() {
+            EnumGenericSerTest(typeof(TestEnumBUI16), TestEnumBUI16.a6, new byte[] { 0, 0, 0, 0});
+            EnumGenericSerTest(typeof(TestEnumBUI16), TestEnumBUI16.b6, new byte[] { 0, 0, 0, 1});
+            EnumGenericSerTest(typeof(TestEnumBUI16), TestEnumBUI16.c6, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestEnumBUI16Deserialise() {
+            EnumGenericDeserTest(typeof(TestEnumBUI16), new byte[] { 0, 0, 0, 0}, TestEnumBUI16.a6);
+            EnumGenericDeserTest(typeof(TestEnumBUI16), new byte[] { 0, 0, 0, 1}, TestEnumBUI16.b6);
+            EnumGenericDeserTest(typeof(TestEnumBUI16), new byte[] { 0, 0, 0, 2}, TestEnumBUI16.c6);
+        }        
+        
+        [Test]        
+        public void TestEnumBUI32Serialise() {
+            EnumGenericSerTest(typeof(TestEnumBUI32), TestEnumBUI32.a7, new byte[] { 0, 0, 0, 0});
+            EnumGenericSerTest(typeof(TestEnumBUI32), TestEnumBUI32.b7, new byte[] { 0, 0, 0, 1});
+            EnumGenericSerTest(typeof(TestEnumBUI32), TestEnumBUI32.c7, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestEnumBUI32Deserialise() {
+            EnumGenericDeserTest(typeof(TestEnumBUI32), new byte[] { 0, 0, 0, 0}, TestEnumBUI32.a7);
+            EnumGenericDeserTest(typeof(TestEnumBUI32), new byte[] { 0, 0, 0, 1}, TestEnumBUI32.b7);
+            EnumGenericDeserTest(typeof(TestEnumBUI32), new byte[] { 0, 0, 0, 2}, TestEnumBUI32.c7);
+        }        
+        
+        [Test]        
+        public void TestEnumBSBSerialise() {
+            EnumGenericSerTest(typeof(TestEnumBSB), TestEnumBSB.a5, new byte[] { 0, 0, 0, 0});
+            EnumGenericSerTest(typeof(TestEnumBSB), TestEnumBSB.b5, new byte[] { 0, 0, 0, 1});
+            EnumGenericSerTest(typeof(TestEnumBSB), TestEnumBSB.c5, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestEnumBSBDeserialise() {
+            EnumGenericDeserTest(typeof(TestEnumBSB), new byte[] { 0, 0, 0, 0}, TestEnumBSB.a5);
+            EnumGenericDeserTest(typeof(TestEnumBSB), new byte[] { 0, 0, 0, 1}, TestEnumBSB.b5);
+            EnumGenericDeserTest(typeof(TestEnumBSB), new byte[] { 0, 0, 0, 2}, TestEnumBSB.c5);
+        }        
+        
+        [Test]        
+        public void TestEnumUI64Serialise() {
+            EnumGenericSerTest(typeof(TestEnumBUI64), TestEnumBUI64.a8, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0});
+            EnumGenericSerTest(typeof(TestEnumBUI64), TestEnumBUI64.b8, new byte[] { 0, 0, 0, 0, 0, 0, 0, 1});
+            EnumGenericSerTest(typeof(TestEnumBUI64), TestEnumBUI64.c8, new byte[] { 0, 0, 0, 0, 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestEnumUI64Deserialise() {
+            EnumGenericDeserTest(typeof(TestEnumBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 0}, TestEnumBUI64.a8);
+            EnumGenericDeserTest(typeof(TestEnumBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 1}, TestEnumBUI64.b8);
+            EnumGenericDeserTest(typeof(TestEnumBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 2}, TestEnumBUI64.c8);
+        }        
+                
+        [Test]        
+        public void TestFlagsBI16Serialise() {
+            FlagsGenericSerTest(typeof(TestFlagsBI16), TestFlagsBI16.a2, new byte[] { 0, 0});
+            FlagsGenericSerTest(typeof(TestFlagsBI16), TestFlagsBI16.b2, new byte[] { 0, 1});
+            FlagsGenericSerTest(typeof(TestFlagsBI16), TestFlagsBI16.c2, new byte[] { 0, 2});
+        }
+        
+        [Test]
+        public void TestFlagsBI16Deserialise() {
+            EnumGenericDeserTest(typeof(TestFlagsBI16), new byte[] { 0, 0}, TestFlagsBI16.a2);
+            EnumGenericDeserTest(typeof(TestFlagsBI16), new byte[] { 0, 1}, TestFlagsBI16.b2);
+            EnumGenericDeserTest(typeof(TestFlagsBI16), new byte[] { 0, 2}, TestFlagsBI16.c2);
+        }        
+        
+        [Test]        
+        public void TestFlagsBI32Serialise() {
+            FlagsGenericSerTest(typeof(TestFlagsBI32), TestFlagsBI32.a1, new byte[] { 0, 0, 0, 0});
+            FlagsGenericSerTest(typeof(TestFlagsBI32), TestFlagsBI32.b1, new byte[] { 0, 0, 0, 1});
+            FlagsGenericSerTest(typeof(TestFlagsBI32), TestFlagsBI32.c1, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestFlagsBI32Deserialise() {
+            FlagsGenericDeserTest(typeof(TestFlagsBI32), new byte[] { 0, 0, 0, 0}, TestFlagsBI32.a1);
+            FlagsGenericDeserTest(typeof(TestFlagsBI32), new byte[] { 0, 0, 0, 1}, TestFlagsBI32.b1);
+            FlagsGenericDeserTest(typeof(TestFlagsBI32), new byte[] { 0, 0, 0, 2}, TestFlagsBI32.c1);
+        }        
+        
+        [Test]        
+        public void TestFlagsBBSerialise() {
+            FlagsGenericSerTest(typeof(TestFlagsBB), TestFlagsBB.a4, new byte[] { 0});
+            FlagsGenericSerTest(typeof(TestFlagsBB), TestFlagsBB.b4, new byte[] { 1});
+            FlagsGenericSerTest(typeof(TestFlagsBB), TestFlagsBB.c4, new byte[] { 2});
+        }
+        
+        [Test]
+        public void TestFlagsBBDeserialise() {
+            FlagsGenericDeserTest(typeof(TestFlagsBB), new byte[] { 0}, TestFlagsBB.a4);
+            FlagsGenericDeserTest(typeof(TestFlagsBB), new byte[] { 1}, TestFlagsBB.b4);
+            FlagsGenericDeserTest(typeof(TestFlagsBB), new byte[] { 2}, TestFlagsBB.c4);
+        }        
+        
+        [Test]        
+        public void TestFlagsI64Serialise() {
+            FlagsGenericSerTest(typeof(TestFlagsBI64), TestFlagsBI64.a3, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0});
+            FlagsGenericSerTest(typeof(TestFlagsBI64), TestFlagsBI64.b3, new byte[] { 0, 0, 0, 0, 0, 0, 0, 1});
+            FlagsGenericSerTest(typeof(TestFlagsBI64), TestFlagsBI64.c3, new byte[] { 0, 0, 0, 0, 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestFlagsI64Deserialise() {
+            FlagsGenericDeserTest(typeof(TestFlagsBI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 0}, TestFlagsBI64.a3);
+            FlagsGenericDeserTest(typeof(TestFlagsBI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 1}, TestFlagsBI64.b3);
+            FlagsGenericDeserTest(typeof(TestFlagsBI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 2}, TestFlagsBI64.c3);
+        }        
+        
+        [Test]        
+        public void TestFlagsBUI16Serialise() {
+            FlagsGenericSerTest(typeof(TestFlagsBUI16), TestFlagsBUI16.a6, new byte[] { 0, 0});
+            FlagsGenericSerTest(typeof(TestFlagsBUI16), TestFlagsBUI16.b6, new byte[] { 0, 1});
+            FlagsGenericSerTest(typeof(TestFlagsBUI16), TestFlagsBUI16.c6, new byte[] { 0, 2});
+        }
+        
+        [Test]
+        public void TestFlagsBUI16Deserialise() {
+            FlagsGenericDeserTest(typeof(TestFlagsBUI16), new byte[] { 0, 0}, TestFlagsBUI16.a6);
+            FlagsGenericDeserTest(typeof(TestFlagsBUI16), new byte[] { 0, 1}, TestFlagsBUI16.b6);
+            FlagsGenericDeserTest(typeof(TestFlagsBUI16), new byte[] { 0, 2}, TestFlagsBUI16.c6);
+        }        
+        
+        [Test]        
+        public void TestFlagsBUI32Serialise() {
+            FlagsGenericSerTest(typeof(TestFlagsBUI32), TestFlagsBUI32.a7, new byte[] { 0, 0, 0, 0});
+            FlagsGenericSerTest(typeof(TestFlagsBUI32), TestFlagsBUI32.b7, new byte[] { 0, 0, 0, 1});
+            FlagsGenericSerTest(typeof(TestFlagsBUI32), TestFlagsBUI32.c7, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestFlagsBUI32Deserialise() {
+            FlagsGenericDeserTest(typeof(TestFlagsBUI32), new byte[] { 0, 0, 0, 0}, TestFlagsBUI32.a7);
+            FlagsGenericDeserTest(typeof(TestFlagsBUI32), new byte[] { 0, 0, 0, 1}, TestFlagsBUI32.b7);
+            FlagsGenericDeserTest(typeof(TestFlagsBUI32), new byte[] { 0, 0, 0, 2}, TestFlagsBUI32.c7);
+        }        
+        
+        [Test]        
+        public void TestFlagsBSBSerialise() {
+            FlagsGenericSerTest(typeof(TestFlagsBSB), TestFlagsBSB.a5, new byte[] { 0});
+            FlagsGenericSerTest(typeof(TestFlagsBSB), TestFlagsBSB.b5, new byte[] { 1});
+            FlagsGenericSerTest(typeof(TestFlagsBSB), TestFlagsBSB.c5, new byte[] { 2});
+        }
+        
+        [Test]
+        public void TestFlagsBSBDeserialise() {
+            FlagsGenericDeserTest(typeof(TestFlagsBSB), new byte[] { 0 }, TestFlagsBSB.a5);
+            FlagsGenericDeserTest(typeof(TestFlagsBSB), new byte[] { 1 }, TestFlagsBSB.b5);
+            FlagsGenericDeserTest(typeof(TestFlagsBSB), new byte[] { 2 }, TestFlagsBSB.c5);
+        }        
+        
+        [Test]        
+        public void TestFlagsUI64Serialise() {
+            FlagsGenericSerTest(typeof(TestFlagsBUI64), TestFlagsBUI64.a8, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0});
+            FlagsGenericSerTest(typeof(TestFlagsBUI64), TestFlagsBUI64.b8, new byte[] { 0, 0, 0, 0, 0, 0, 0, 1});
+            FlagsGenericSerTest(typeof(TestFlagsBUI64), TestFlagsBUI64.c8, new byte[] { 0, 0, 0, 0, 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestFlagsUI64Deserialise() {
+            FlagsGenericDeserTest(typeof(TestFlagsBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 0}, TestFlagsBUI64.a8);
+            FlagsGenericDeserTest(typeof(TestFlagsBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 1}, TestFlagsBUI64.b8);
+            FlagsGenericDeserTest(typeof(TestFlagsBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 2}, TestFlagsBUI64.c8);
+        }        
         
         [Test]  
         public void TestIorDeserialisation() {

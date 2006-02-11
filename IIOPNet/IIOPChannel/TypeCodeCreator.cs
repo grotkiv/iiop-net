@@ -436,6 +436,10 @@ namespace Ch.Elca.Iiop.Idl {
             return result;
 
         }
+        public object MapToIdlFlagsEquivalent(Type clsType) {
+            Type underlyingType = Enum.GetUnderlyingType(clsType);
+            return CreateOrGetTypeCodeForType(underlyingType, AttributeExtCollection.EmptyCollection);
+        }
         public object MapToIdlBoolean(Type clsType) {
             return new BooleanTC();
         }
