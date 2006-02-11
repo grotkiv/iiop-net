@@ -131,6 +131,26 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IMethods
 
     }
+    
+    /// <summary>serializes instances of System.SByte</summary>
+    internal class SByteSerializer : Serializer {
+        
+        #region IMethods
+
+        internal override void Serialize(object actual, 
+                                       CdrOutputStream targetStream) {
+            sbyte toSer = (sbyte)actual;
+            targetStream.WriteOctet((byte)toSer);
+        }
+
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            byte deser = sourceStream.ReadOctet();
+            return (sbyte)deser;
+        }
+
+        #endregion IMethods
+        
+    }
 
     /// <summary>serializes instances of System.Boolean</summary> 
     internal class BooleanSerializer : Serializer {
@@ -1951,6 +1971,28 @@ namespace Ch.Elca.Iiop.Tests {
             GenericDeserTest(ser, new byte[] { 12 }, (byte)12);
             GenericDeserTest(ser, new byte[] { 225 }, (byte)225);
         }
+        
+        [Test]
+        public void TestSByteSerialise() {
+            Serializer ser = new SByteSerializer();
+            GenericSerTest(ser, (sbyte)0, new byte[] { 0 });
+            GenericSerTest(ser, (sbyte)11, new byte[] { 11 });
+            GenericSerTest(ser, (sbyte)12, new byte[] { 12 });
+            GenericSerTest(ser, (sbyte)-1, new byte[] { 0xFF });
+            GenericSerTest(ser, SByte.MaxValue, new byte[] { 0x7F });
+            GenericSerTest(ser, SByte.MinValue, new byte[] { 0x80 });            
+        }
+        
+        [Test]
+        public void TestSByteDeserialise() {
+            Serializer ser = new SByteSerializer();
+            GenericDeserTest(ser, new byte[] { 0 }, (sbyte)0);
+            GenericDeserTest(ser, new byte[] { 11 }, (sbyte)11);
+            GenericDeserTest(ser, new byte[] { 12 }, (sbyte)12);
+            GenericDeserTest(ser, new byte[] { 0xFF }, (sbyte)-1);
+            GenericDeserTest(ser, new byte[] { 0x7F }, SByte.MaxValue);
+            GenericDeserTest(ser, new byte[] { 0x80 }, SByte.MinValue);
+        }        
         
         [Test]
         public void TestInt16Serialise() {
