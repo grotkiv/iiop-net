@@ -203,6 +203,24 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IMethods
 
     }
+    
+    /// <summary>serializes instances of System.UInt32</summary>
+    internal class UInt32Serializer : Serializer {
+
+        #region IMethods
+        
+        internal override void Serialize(object actual, 
+                                       CdrOutputStream targetStream) {
+            targetStream.WriteULong((uint)actual);
+        }
+
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            return sourceStream.ReadULong();
+        }
+
+        #endregion IMethods        
+        
+    }
 
     /// <summary>serializes instances of System.Int64</summary>
     internal class Int64Serializer : Serializer {
@@ -1970,6 +1988,22 @@ namespace Ch.Elca.Iiop.Tests {
             GenericDeserTest(ser, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF }, (int)-1);
             GenericDeserTest(ser, new byte[] { 0x7F, 0xFF, 0xFF, 0xFF }, Int32.MaxValue);
             GenericDeserTest(ser, new byte[] { 0x80, 0x00, 0x00, 0x00 }, Int32.MinValue);
+        }        
+        
+        [Test]
+        public void TestUInt32Serialise() {
+            Serializer ser = new UInt32Serializer();
+            GenericSerTest(ser, (uint)0, new byte[] { 0, 0, 0, 0 });
+            GenericSerTest(ser, (uint)225, new byte[] { 0, 0, 0, 225 });
+            GenericSerTest(ser, UInt32.MaxValue, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF });
+        }
+        
+        [Test]
+        public void TestUInt32Deserialise() {
+            Serializer ser = new UInt32Serializer();
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, (uint)0);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 225 }, (uint)225);            
+            GenericDeserTest(ser, new byte[] { 0xFF, 0xFF, 0xFF, 0xFF }, UInt32.MaxValue);
         }        
 
         [Test]        
