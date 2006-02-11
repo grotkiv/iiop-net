@@ -495,7 +495,11 @@ namespace Ch.Elca.Iiop.Idl {
             s_clsMapSpecial.Add(ReflectionHelper.Int16Type, "short");
             s_clsMapSpecial.Add(ReflectionHelper.Int32Type, "long");
             s_clsMapSpecial.Add(ReflectionHelper.Int64Type, "long long");
+            s_clsMapSpecial.Add(ReflectionHelper.UInt16Type, "ushort");
+            s_clsMapSpecial.Add(ReflectionHelper.UInt32Type, "ulong");
+            s_clsMapSpecial.Add(ReflectionHelper.UInt64Type, "ulong long");            
             s_clsMapSpecial.Add(ReflectionHelper.ByteType, "octet");
+            s_clsMapSpecial.Add(ReflectionHelper.SByteType, "octet");
             s_clsMapSpecial.Add(ReflectionHelper.BooleanType, "boolean");
             s_clsMapSpecial.Add(ReflectionHelper.VoidType, "void");
 
@@ -787,6 +791,9 @@ namespace Ch.Elca.Iiop.Idl {
         }
         public object MapToIdlOctet(System.Type dotNetType) {
             return "octet";
+        }
+        public object MapToIdlSByteEquivalent(Type clsType) {
+            return MapToIdlOctet(clsType);
         }
         public object MapToIdlVoid(System.Type dotNetType) {
             return "void";

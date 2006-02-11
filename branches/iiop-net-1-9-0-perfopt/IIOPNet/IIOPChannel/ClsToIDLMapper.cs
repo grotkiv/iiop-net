@@ -152,6 +152,14 @@ namespace Ch.Elca.Iiop.Idl {
         object MapToIdlULongLong(Type clsType);
 
         object MapToIdlOctet(Type clsType);
+        
+        /// <summary>
+        /// a mapping form system.SByte to an idl equivalent.
+        /// Distinguish this from byte to octet mapping to allow deserialization to sbyte
+        /// in a good way.
+        /// </summary>
+        /// <returns>an optional result of the mapping, null may be possible</returns>
+        object MapToIdlSByteEquivalent(Type clsType);
 
         object MapToIdlVoid(Type clsType);
         
@@ -280,7 +288,11 @@ namespace Ch.Elca.Iiop.Idl {
                 clsType.Equals(ReflectionHelper.SingleType) ||
                 clsType.Equals(ReflectionHelper.DoubleType) ||
                 clsType.Equals(ReflectionHelper.CharType) ||
-                clsType.Equals(ReflectionHelper.StringType)) { 
+                clsType.Equals(ReflectionHelper.StringType) ||
+                clsType.Equals(ReflectionHelper.UInt16Type) ||
+                clsType.Equals(ReflectionHelper.UInt32Type) ||
+                clsType.Equals(ReflectionHelper.UInt64Type) ||
+                clsType.Equals(ReflectionHelper.SByteType)) {
                 return true; 
             } else {
                 return false;
@@ -364,9 +376,8 @@ namespace Ch.Elca.Iiop.Idl {
 
         /// <summary>checks, if the type is unmappable</summary>
         public static bool UnmappableType(Type clsType) {
-            if (clsType.Equals(s_intPtrType) || clsType.Equals(ReflectionHelper.UInt16Type) ||
-                clsType.Equals(ReflectionHelper.UInt32Type) || clsType.Equals(ReflectionHelper.UInt64Type) ||
-                clsType.Equals(s_uintPtrType) || clsType.Equals(ReflectionHelper.SByteType)) {
+            if (clsType.Equals(s_intPtrType) ||                
+                clsType.Equals(s_uintPtrType)) {
                 return true; 
             }
             return false;
@@ -561,6 +572,14 @@ namespace Ch.Elca.Iiop.Idl {
                 return action.MapToIdlDouble(clsType);
             } else if (clsType.Equals(ReflectionHelper.SingleType)) {
                 return action.MapToIdlFloat(clsType);
+            } else if (clsType.Equals(ReflectionHelper.UInt16Type)) {
+                return action.MapToIdlUShort(clsType);
+            } else if (clsType.Equals(ReflectionHelper.UInt32Type)) {
+                return action.MapToIdlULong(clsType);
+            } else if (clsType.Equals(ReflectionHelper.UInt64Type)) {
+                return action.MapToIdlULongLong(clsType);
+            } else if (clsType.Equals(ReflectionHelper.SByteType)) {
+                return action.MapToIdlSByteEquivalent(clsType);
             } else if (clsType.Equals(ReflectionHelper.VoidType)) {
                 return action.MapToIdlVoid(clsType);
             } else {
@@ -728,7 +747,8 @@ namespace Ch.Elca.Iiop.Idl {
         IdlBoxedValue, IdlSequence, IdlArray, IdlAny, IdlAbstractBase, IdlValueBase,
         IdlException, IdlEnum, IdlFlagsEquivalent, IdlWstringValue, IdlStringValue, IdlTypeCode,
         IdlTypeDesc, IdlBool, IdlFloat, IdlDouble, IdlShort, IdlUShort, IdlLong, IdlULong,
-        IdlLongLong, IdlULongLong, IdlOctet, IdlVoid, IdlChar, IdlWChar, IdlString, IdlWString
+        IdlLongLong, IdlULongLong, IdlOctet, IdlSByteEquivalent, IdlVoid, 
+        IdlChar, IdlWChar, IdlString, IdlWString
     }
     
     /// <summary>
@@ -826,6 +846,9 @@ namespace Ch.Elca.Iiop.Idl {
         }
         public object MapToIdlOctet(System.Type clsType) {
             return MappingToResult.IdlOctet;
+        }
+        public object MapToIdlSByteEquivalent(Type clsType) {
+            return MappingToResult.IdlSByteEquivalent;
         }
         public object MapToIdlVoid(System.Type clsType) {
             return MappingToResult.IdlVoid;
@@ -1094,6 +1117,15 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
         [Test]
+        public void TestMapSByteToIdlOctet() {
+            ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
+            MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.SByteType, 
+                                                                           new AttributeExtCollection(),
+                                                                           s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlSByteEquivalent, mapResult);
+        }        
+        
+        [Test]
         public void TestMapToIdlShort() {
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(ReflectionHelper.Int16Type, 
@@ -1120,48 +1152,51 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(MappingToResult.IdlLongLong, mapResult);
         }
 
-        [Test]
-        [ExpectedException(typeof(BAD_PARAM))]
+        [Test]        
         public void TestMapUInt16() {
-            // System.UInt16 is not mappable, because UInt16 is not CLS compatible
+            // System.UInt16 is not CLS compliant, but if used in code map it to idl ushort
+            // the idl to cls compiler will map idl ushort to cls short to prevent cls compliance problems
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(UInt16), 
                                                                            new AttributeExtCollection(),
                                                                            s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlUShort, mapResult);
         }
 
         [Test]
-        [ExpectedException(typeof(BAD_PARAM))]
         public void TestMapUInt32() {
-            // System.UInt32 is not mappable, because UInt32 is not CLS compatible
+            // System.UInt32 is not CLS compliant, but if used in code map it to idl ulong
+            // the idl to cls compiler will map idl ulong to cls int to prevent cls compliance problems
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(UInt32), 
                                                                            new AttributeExtCollection(),
                                                                            s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlULong, mapResult);
         }
 
         [Test]
-        [ExpectedException(typeof(BAD_PARAM))]
         public void TestMapUInt64() {
-            // System.UInt64 is not mappable, because UInt64 is not CLS compatible
+            // System.UInt64 is not CLS compliant, but if used in code map it to idl ulonglong
+            // the idl to cls compiler will map idl ulonglong to cls long to prevent cls compliance problems
             ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
             MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(UInt64), 
                                                                            new AttributeExtCollection(),
                                                                            s_testAction);
+            Assertion.AssertEquals(MappingToResult.IdlULongLong, mapResult);
         }
         
         [Test]
         public void TestUnmappableException() {
             try {
-                // System.UInt16 is not mappable, because UInt16 is not CLS compatible
+                // System.IntPtr is not mappable, because System.IntPtr doesn't make sense outside of process
                 ClsToIdlMapper mapper = ClsToIdlMapper.GetSingleton();
-                MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(UInt16), 
+                MappingToResult mapResult = (MappingToResult)mapper.MapClsType(typeof(System.UIntPtr), 
                                                                                new AttributeExtCollection(),
                                                                                s_testAction);
                 Assertion.Fail("no exception, but expected BAD_PARAM");
             } catch (BAD_PARAM ex) {
                 Assertion.Assert("exception message not enough detailed",
-                                 ex.Message.IndexOf("System.UInt16") > 0);
+                                 ex.Message.IndexOf("System.UIntPtr") > 0);
                 Assertion.Assert("exception message not enough detailed",
                                  ex.Message.IndexOf("is not mappable to idl") > 0);
             }

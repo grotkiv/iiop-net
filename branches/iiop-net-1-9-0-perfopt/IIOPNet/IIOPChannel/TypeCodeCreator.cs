@@ -470,6 +470,10 @@ namespace Ch.Elca.Iiop.Idl {
         public object MapToIdlOctet(Type clsType) {
             return new OctetTC();
         }
+        public object MapToIdlSByteEquivalent(Type clsType) {
+            // TODO
+            throw new NO_IMPLEMENT(1827, CompletionStatus.Completed_MayBe);
+        }
         public object MapToIdlVoid(Type clsType) {
             return new VoidTC();
         }
