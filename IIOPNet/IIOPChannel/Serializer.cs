@@ -1897,6 +1897,26 @@ namespace Ch.Elca.Iiop.Tests {
             GenericDeserTest(ser, new byte[] { 12 }, (byte)12);
             GenericDeserTest(ser, new byte[] { 225 }, (byte)225);
         }
+        
+        [Test]
+        public void TestInt16Serialise() {
+            Serializer ser = new Int16Serializer();
+            GenericSerTest(ser, (short)0, new byte[] { 0, 0 });
+            GenericSerTest(ser, (short)225, new byte[] { 0, 225 });
+            GenericSerTest(ser, (short)-1, new byte[] { 0xFF, 0xFF });
+            GenericSerTest(ser, Int16.MaxValue, new byte[] { 0x7F, 0xFF });
+            GenericSerTest(ser, Int16.MinValue, new byte[] { 0x80, 0x00 });
+        }
+        
+        [Test]
+        public void TestInt16Deserialise() {
+            Serializer ser = new Int16Serializer();
+            GenericDeserTest(ser, new byte[] { 0, 0 }, (short)0);
+            GenericDeserTest(ser, new byte[] { 0, 225 }, (short)225);
+            GenericDeserTest(ser, new byte[] { 0xFF, 0xFF }, (short)-1);
+            GenericDeserTest(ser, new byte[] { 0x7F, 0xFF }, Int16.MaxValue);
+            GenericDeserTest(ser, new byte[] { 0x80, 0x00 }, Int16.MinValue);
+        }        
 
         [Test]        
         public void TestBooleanSerialise() {
