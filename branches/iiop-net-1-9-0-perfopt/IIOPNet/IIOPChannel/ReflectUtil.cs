@@ -66,6 +66,7 @@ namespace Ch.Elca.Iiop.Util {
         private static Type s_contextElementAttributeType = typeof(ContextElementAttribute);
         private static Type s_supportedInterfaceAttributeType = typeof(SupportedInterfaceAttribute);
         private static Type s_repositoryIdAttributeType = typeof(RepositoryIDAttribute);
+        private static Type s_flagsAttributeType = typeof(FlagsAttribute);
 
         private static Type s_voidType = typeof(void);
         private static Type s_stringType = typeof(System.String);
@@ -277,6 +278,15 @@ namespace Ch.Elca.Iiop.Util {
                 return s_repositoryIdAttributeType;
             }
         }        
+
+        /// <summary>
+        /// caches typeof(FlagsAttribute)
+        /// </summary>        
+        public static Type FlagsAttributeType {
+            get {
+                return s_flagsAttributeType;
+            }
+        }
 
         /// <summary>caches typeof(void)</summary>
         public static Type VoidType {
