@@ -310,6 +310,17 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         public bool CheckEqualityWithServiceV2(TestService toCheck) {
             return toCheck.Equals(this);
         }
+
+        public void EchoByOut(string arg, out string result) {
+            result = arg;
+        }
+
+//        public void EchoByRef(ref string result) {
+//        }
+
+        public void EchoIntByOut(int arg, out int result) {
+            result = arg;
+        }
         
         public override object InitializeLifetimeService() {
             // live forever
@@ -398,9 +409,14 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         [return: StringValue]
         [return: WideChar(false)]
         System.String CheckParamAttrs([StringValue][WideChar(false)]System.String arg);
-
         
-                
+        void EchoByOut([StringValue] string arg, [StringValue] out string result);
+
+        // the following leads to java idlj problem, because of string byref argument
+        // void EchoByRef(ref string result);
+
+        void EchoIntByOut(int arg, out int result);
+
     }
 
 
