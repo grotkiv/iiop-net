@@ -1264,6 +1264,11 @@ namespace Ch.Elca.Iiop.Idl {
             return null;            
         }
         
+        public object MapToIdlFlagsEquivalent(Type clsType) {
+            // nothing to do, because mapped to a base type
+            return null;
+        }
+        
         #region unsupported mappings for fwd decls
 
         public object MapToIdlVoid(System.Type dotNetType) {
@@ -1344,11 +1349,7 @@ namespace Ch.Elca.Iiop.Idl {
 
         public object MapToTypeCode(System.Type dotNetType) {
             throw new NotSupportedException("no include possible for this IDL-type");
-        }
-        
-        public object MapToIdlFlagsEquivalent(Type clsType) {
-            throw new NotSupportedException("no include possible for this IDL-type");
-        }
+        }                
 
         #endregion
                 

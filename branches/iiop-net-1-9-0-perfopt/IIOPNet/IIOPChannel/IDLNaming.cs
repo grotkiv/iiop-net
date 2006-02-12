@@ -495,9 +495,9 @@ namespace Ch.Elca.Iiop.Idl {
             s_clsMapSpecial.Add(ReflectionHelper.Int16Type, "short");
             s_clsMapSpecial.Add(ReflectionHelper.Int32Type, "long");
             s_clsMapSpecial.Add(ReflectionHelper.Int64Type, "long long");
-            s_clsMapSpecial.Add(ReflectionHelper.UInt16Type, "ushort");
-            s_clsMapSpecial.Add(ReflectionHelper.UInt32Type, "ulong");
-            s_clsMapSpecial.Add(ReflectionHelper.UInt64Type, "ulong long");            
+            s_clsMapSpecial.Add(ReflectionHelper.UInt16Type, "unsigned short");
+            s_clsMapSpecial.Add(ReflectionHelper.UInt32Type, "unsigned long");
+            s_clsMapSpecial.Add(ReflectionHelper.UInt64Type, "unsigned long long");            
             s_clsMapSpecial.Add(ReflectionHelper.ByteType, "octet");
             s_clsMapSpecial.Add(ReflectionHelper.SByteType, "octet");
             s_clsMapSpecial.Add(ReflectionHelper.BooleanType, "boolean");
@@ -775,16 +775,16 @@ namespace Ch.Elca.Iiop.Idl {
             return "long";
         }
         public object MapToIdlULong(System.Type dotNetType) {
-            return "ulong";
+            return "unsigned long";
         }
         public object MapToIdlLongLong(System.Type dotNetType) {
             return "long long";
         }
         public object MapToIdlULongLong(System.Type dotNetType) {
-            return "ulong ulong";
+            return "unsigned long long";
         }
         public object MapToIdlUShort(System.Type dotNetType) {
-            return "ushort";
+            return "unsigned short";
         }
         public object MapToIdlShort(System.Type dotNetType) {
             return "short";
