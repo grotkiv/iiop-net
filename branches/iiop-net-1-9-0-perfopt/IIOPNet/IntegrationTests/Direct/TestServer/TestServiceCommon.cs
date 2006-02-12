@@ -41,6 +41,19 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         A1 = 0x01, B1 = 0x02, C1 = 0x04, D1 = 0x08, All = A1 | B1 | C1 | D1
     }
 
+    public enum TestEnumBI16 : short {
+        A1, B1, C1
+    }
+
+    public enum TestEnumBI64 : long {
+        AL = Int64.MaxValue, BL = 1000
+    }
+
+    public enum TestEnumUI32 : uint {
+        A2, B2 = 10, C2 = 20
+    }
+
+
     [Serializable]
     public struct TestStructA {
         public System.Int32 X;
@@ -158,6 +171,12 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         System.String TestAppendString(System.String basic, System.String toAppend);
 
         TestEnum TestEchoEnumVal(TestEnum arg);
+
+        TestEnumBI16 TestEchoEnumI16Val(TestEnumBI16 arg);
+
+        TestEnumBI64 TestEchoEnumI64Val(TestEnumBI64 arg);        
+
+        TestEnumUI32 TestEchoEnumUI32Val(TestEnumUI32 arg);
 
         TestFlags TestEchoFlagsVal(TestFlags arg);
 
