@@ -132,6 +132,25 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
+        [Ignore("Need more work on the any mechanism first")]
+        public void TestSByteAsAny() {
+            System.SByte arg = 1;
+            System.SByte result = (System.SByte)
+                ((System.Byte)m_testService.EchoAnything(arg));
+            Assertion.AssertEquals((System.SByte)(arg + 1), result);
+            arg = -2;
+            result = (System.SByte)
+                ((System.Byte)m_testService.EchoAnything(arg));
+            Assertion.AssertEquals((System.SByte)(arg + 1), result);
+
+            Any argAny = new Any(arg);
+            Any resultAny = m_testService.EchoAnythingContainer(argAny);
+            result = (System.SByte)
+                ((System.Byte)resultAny.Value);
+            Assertion.AssertEquals((System.SByte)(arg + 1), result);
+        }
+
+        [Test]
         public void TestUInt16() {
             System.UInt16 arg = 1;
             System.UInt16 result = m_testService.TestIncUInt16(arg);
@@ -159,6 +178,24 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             arg = System.UInt64.MaxValue - 1;
             result = m_testService.TestIncUInt64(arg);
             Assertion.AssertEquals((System.UInt64)(arg + 1), result);
+        }
+
+        [Test]
+        [Ignore("Need more work on the any mechanism first")]
+        public void TestUInt64AsAny() {
+            System.UInt64 arg = 1;
+            System.UInt64 result = (System.UInt64)
+                ((System.Int64)m_testService.EchoAnything(arg));
+            Assertion.AssertEquals(arg, result);
+            arg = System.UInt64.MaxValue - 1;
+            result = (System.UInt64)
+                ((System.Int64)m_testService.EchoAnything(arg));
+            Assertion.AssertEquals(arg, result);
+            
+            Any argAny = new Any(arg);
+            Any resultAny = m_testService.EchoAnythingContainer(argAny);
+            result = (System.UInt64)resultAny.Value;
+            Assertion.AssertEquals(arg, result);
         }
 
         [Test]
