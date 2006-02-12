@@ -1268,44 +1268,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IMethods
         
     }
-    
-/*    /// <summary>serializes enums, which can't be mapped to idl enum range</summary>
-    internal class EnumMappedToIdlIntegralSerializer : EnumSerializerBase {
         
-        #region IFields
-        
-        private Serializer m_netEnumValSerializer; // for unmappable to idl enum range
-        
-        #endregion IFields
-        #region IConstructors
-        
-        internal EnumMappedToIdlIntegralSerializer(Type forType, SerializerFactory serFactory) :
-            base(forType) {
-            Type underlyingType = Enum.GetUnderlyingType(forType);
-            m_netEnumValSerializer =
-                serFactory.Create(underlyingType, AttributeExtCollection.EmptyCollection);            
-        }
-        
-        #endregion IConstructors
-        #region IMethods
-        
-        internal override void Serialize(object actual,
-                                         CdrOutputStream targetStream) {
-            m_netEnumValSerializer.Serialize(actual, targetStream);
-        }        
-        
-        internal override object Deserialize(CdrInputStream sourceStream) {
-            // map to the base-type of the enum, write the value of the enum
-            // -> not mapped to idl enum, but to the corresponding integral idl type
-            object val = m_netEnumValSerializer.Deserialize(sourceStream);
-            return CheckedConvertToEnum(val);
-        }        
-        
-        #endregion IMethods
-        
-    }
-*/    
-    
     /// <summary>serializes enums by mapping the cls range to idl range in
     /// the following way: </summary>
     internal class EnumMapClsToIdlRangeSerializer : EnumSerializerBase {
