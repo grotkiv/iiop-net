@@ -248,11 +248,16 @@ namespace Ch.Elca.Iiop.Marshalling {
         public object MapException(System.Type clsType) {
             return m_exceptionSer;
         }
+                
         public object MapToIdlEnum(System.Type clsType) {
             lock(m_enumSers.SyncRoot) {
                 Serializer result = (Serializer)m_enumSers[clsType];
                 if (result == null) {
-                    result = new EnumSerializer(clsType, this);
+                    if (ClsToIdlMapper.IsIdlEnum(clsType)) {
+                        result = new IdlEnumSerializer(clsType);
+                    } else {
+                        result = new EnumMapClsToIdlRangeSerializer(clsType);
+                    }
                     m_enumSers[clsType] = result;
                 }
                 return result;
@@ -339,3 +344,51 @@ namespace Ch.Elca.Iiop.Marshalling {
     }
 
 }
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using NUnit.Framework;
+    using Ch.Elca.Iiop.Marshalling;
+    using Ch.Elca.Iiop.Idl;    
+    using Ch.Elca.Iiop.Util;    
+   
+    /// <summary>
+    /// Unit-tests for the SerializerFactory
+    /// </summary>
+    [TestFixture]    
+    public class SerialiserFactoryTest {
+                       
+        public SerialiserFactoryTest() {
+        }
+        
+        private void GenericFactoryTest(Type createFor, Type expectedSerType) {
+            SerializerFactory factory = new SerializerFactory();
+            Serializer ser = factory.Create(createFor, 
+                                            AttributeExtCollection.EmptyCollection);
+            Assertion.AssertEquals("wrong serializer type", expectedSerType, ser.GetType());            
+        }
+        
+        [Test]
+        public void TestIdlEnumMapping() {
+            GenericFactoryTest(typeof(TestIdlEnumBI32), typeof(IdlEnumSerializer));
+        }
+        
+        [Test]
+        public void TestIndexMappedEnumMapping() {
+            GenericFactoryTest(typeof(TestEnumWithValueNotIndexBI32), 
+                               typeof(EnumMapClsToIdlRangeSerializer));
+        }
+        
+        [Test]
+        public void TestIntegralMappedEnumMapping() {
+            GenericFactoryTest(typeof(TestEnumBI64), 
+                               typeof(EnumMapClsToIdlRangeSerializer));
+        }
+                
+    }
+
+}
+
+#endif

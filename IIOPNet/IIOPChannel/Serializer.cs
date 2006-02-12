@@ -1206,63 +1206,143 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IMethods
 
     }
-    
-    
-    /// <summary>serializes enums</summary>
-    internal class EnumSerializer : Serializer {
+   
+    /// <summary>
+    /// base class for enum serializers
+    /// </summary>
+    internal abstract class EnumSerializerBase : Serializer {
         
         #region IFields
         
-        private Serializer m_netEnumValSerializer;   
-        private Type m_forType;
+        protected Type m_forType;
         
         #endregion IFields
         #region IConstructors
         
-        internal EnumSerializer(Type forType, SerializerFactory serFactory) {
+        protected EnumSerializerBase(Type forType) {
             m_forType = forType;
-            // check for IDL-enum mapped to a .NET enum
-            AttributeExtCollection attrs = ReflectionHelper.GetCustomAttributesForType(m_forType, true);
-            bool isIdlEnum = (attrs.IsInCollection(ReflectionHelper.IdlEnumAttributeType));
-            if (!isIdlEnum) {
-                Type underlyingType = Enum.GetUnderlyingType(m_forType);
-                // undelying type is not the same than the enum -> no problem with recursive serializers
-                m_netEnumValSerializer =
-                    serFactory.Create(underlyingType, AttributeExtCollection.EmptyCollection);
+        }
+        
+        #endregion IConstructors        
+        #region IMethods
+        
+        protected object CheckedConvertToEnum(object enumBaseVal) {
+            if (!Enum.IsDefined(m_forType, enumBaseVal)) { 
+                // illegal enum value for enum: formal, val: val
+                throw CreateInvalidEnumValException(enumBaseVal);
             }
+            return Enum.ToObject(m_forType, enumBaseVal);
+        }
+        
+        protected Exception CreateInvalidEnumValException(object val) {
+            return new BAD_PARAM(10041, CompletionStatus.Completed_MayBe, "val: " + val);
+        }
+        
+        #endregion IMethods
+        
+    }
+    
+    /// <summary>serializes enums mapped from idl to cls</summary>
+    internal class IdlEnumSerializer : EnumSerializerBase {
+
+        #region IConstructors
+        
+        internal IdlEnumSerializer(Type forType) : base(forType) {
         }
         
         #endregion IConstructors
         #region IMethods
-
+        
         internal override void Serialize(object actual,
                                          CdrOutputStream targetStream) {
-            // check for IDL-enum mapped to a .NET enum
-            if (m_netEnumValSerializer == null) {
-                // idl enum's are mapped to .NET enums with long base-type, therefore all possible 2^32 idl-values can be represented
-                int enumVal = (int) actual;
-                targetStream.WriteULong((uint)enumVal);
-            } else {
-                // map to the base-type of the enum, write the value of the enum
-                m_netEnumValSerializer.Serialize(actual, targetStream);
-            }
+            // all possible 2^32 values of an int based enum can be represented in idl enum range
+            int enumVal = (int)actual;
+            targetStream.WriteULong((uint)enumVal);
+        }        
         
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            int valAsInt = (int)sourceStream.ReadULong();
+            return CheckedConvertToEnum(valAsInt);
+        }
+        
+        #endregion IMethods
+        
+    }
+    
+/*    /// <summary>serializes enums, which can't be mapped to idl enum range</summary>
+    internal class EnumMappedToIdlIntegralSerializer : EnumSerializerBase {
+        
+        #region IFields
+        
+        private Serializer m_netEnumValSerializer; // for unmappable to idl enum range
+        
+        #endregion IFields
+        #region IConstructors
+        
+        internal EnumMappedToIdlIntegralSerializer(Type forType, SerializerFactory serFactory) :
+            base(forType) {
+            Type underlyingType = Enum.GetUnderlyingType(forType);
+            m_netEnumValSerializer =
+                serFactory.Create(underlyingType, AttributeExtCollection.EmptyCollection);            
+        }
+        
+        #endregion IConstructors
+        #region IMethods
+        
+        internal override void Serialize(object actual,
+                                         CdrOutputStream targetStream) {
+            m_netEnumValSerializer.Serialize(actual, targetStream);
+        }        
+        
+        internal override object Deserialize(CdrInputStream sourceStream) {
+            // map to the base-type of the enum, write the value of the enum
+            // -> not mapped to idl enum, but to the corresponding integral idl type
+            object val = m_netEnumValSerializer.Deserialize(sourceStream);
+            return CheckedConvertToEnum(val);
+        }        
+        
+        #endregion IMethods
+        
+    }
+*/    
+    
+    /// <summary>serializes enums by mapping the cls range to idl range in
+    /// the following way: </summary>
+    internal class EnumMapClsToIdlRangeSerializer : EnumSerializerBase {
+        
+        #region IFields
+        
+        private Array m_enumVals;        
+        
+        #endregion IFields
+        #region IConstructors
+        
+        internal EnumMapClsToIdlRangeSerializer(Type forType) : base(forType) {
+            m_enumVals = (Array)Enum.GetValues(forType);            
+        }
+        
+        #endregion IConstructors
+        #region IMethods
+        
+        private int MapEnumValToIndexVal(object enumVal) {
+            return Array.IndexOf(m_enumVals, enumVal);
+        }
+        
+        internal override void Serialize(object actual,
+                                         CdrOutputStream targetStream) {
+            int mappedVal = MapEnumValToIndexVal(actual);
+            targetStream.WriteULong((uint)mappedVal);
         }
 
-        internal override object Deserialize(CdrInputStream sourceStream) {
-            // check for IDL-enum mapped to a .NET enum
-            if (m_netEnumValSerializer == null) {
-                uint enumVal = sourceStream.ReadULong();
-                return Enum.ToObject(m_forType, enumVal);
+        internal override object Deserialize(CdrInputStream sourceStream) {            
+            int index = (int)sourceStream.ReadULong();
+            object val;
+            if (index >= 0 && index < m_enumVals.Length) {
+                val = m_enumVals.GetValue(index);
             } else {
-                // .NET enum handled with .NET to IDL mapping                                
-                object val = m_netEnumValSerializer.Deserialize(sourceStream);
-                if (!Enum.IsDefined(m_forType, val)) { 
-                    // illegal enum value for enum: formal, val: val
-                    throw new BAD_PARAM(10041, CompletionStatus.Completed_MayBe);
-                }
-                return Enum.ToObject(m_forType, val);
+                throw CreateInvalidEnumValException(index);
             }
+            return CheckedConvertToEnum(val);
         }
     
         #endregion IMethods
@@ -1919,6 +1999,10 @@ namespace Ch.Elca.Iiop.Tests {
     using Ch.Elca.Iiop.Util;
     using omg.org.CORBA;
     
+    public enum TestEnumWithValueNotIndexBI32 : int {
+        a1 = 10, b1 = 20, c1 = 30
+    }    
+    
     /// <summary>
     /// Unit-tests for the serialisers
     /// </summary>
@@ -2123,17 +2207,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestBooleanDeserialiseInvalidValue() {
             Serializer ser = new BooleanSerializer();
             GenericDeserTest(ser, new byte[] { 2 }, null);            
-        }
-        
-        private void EnumGenericSerTest(Type enumType, object actual, byte[] expected) {
-            GenericSerTest(new EnumSerializer(enumType, new SerializerFactory()),
-                           actual, expected);
-        }
-        
-        private void EnumGenericDeserTest(Type enumType, byte[] actual, object expected) {
-            GenericDeserTest(new EnumSerializer(enumType, new SerializerFactory()),
-                             actual, expected);            
-        }
+        }                
         
         private void FlagsGenericSerTest(Type flagsType, object actual, byte[] expected) {
             GenericSerTest(new FlagsSerializer(flagsType, new SerializerFactory()),
@@ -2147,128 +2221,162 @@ namespace Ch.Elca.Iiop.Tests {
         
         [Test]        
         public void TestIdlEnumSerialise() {
-            EnumGenericSerTest(typeof(TestIdlEnumBI32), TestIdlEnumBI32.IDL_A, new byte[] { 0, 0, 0, 0});
-            EnumGenericSerTest(typeof(TestIdlEnumBI32), TestIdlEnumBI32.IDL_B, new byte[] { 0, 0, 0, 1});
-            EnumGenericSerTest(typeof(TestIdlEnumBI32), TestIdlEnumBI32.IDL_C, new byte[] { 0, 0, 0, 2});
+            Serializer ser = new IdlEnumSerializer(typeof(TestIdlEnumBI32));
+            GenericSerTest(ser, TestIdlEnumBI32.IDL_A, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestIdlEnumBI32.IDL_B, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestIdlEnumBI32.IDL_C, new byte[] { 0, 0, 0, 2});
         }
         
         [Test]
         public void TestIdlEnumDeserialise() {
-            EnumGenericDeserTest(typeof(TestIdlEnumBI32), new byte[] { 0, 0, 0, 0}, TestIdlEnumBI32.IDL_A);
-            EnumGenericDeserTest(typeof(TestIdlEnumBI32), new byte[] { 0, 0, 0, 1}, TestIdlEnumBI32.IDL_B);
-            EnumGenericDeserTest(typeof(TestIdlEnumBI32), new byte[] { 0, 0, 0, 2}, TestIdlEnumBI32.IDL_C);
+            Serializer ser = new IdlEnumSerializer(typeof(TestIdlEnumBI32));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestIdlEnumBI32.IDL_A);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestIdlEnumBI32.IDL_B);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestIdlEnumBI32.IDL_C);
         }        
         
-        [Test]        
+        [Test]
         public void TestEnumBI16Serialise() {
-            EnumGenericSerTest(typeof(TestEnumBI16), TestEnumBI16.a2, new byte[] { 0, 0, 0, 0});
-            EnumGenericSerTest(typeof(TestEnumBI16), TestEnumBI16.b2, new byte[] { 0, 0, 0, 1});
-            EnumGenericSerTest(typeof(TestEnumBI16), TestEnumBI16.c2, new byte[] { 0, 0, 0, 2});
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBI16));
+            GenericSerTest(ser, TestEnumBI16.a2, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestEnumBI16.b2, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestEnumBI16.c2, new byte[] { 0, 0, 0, 2});
         }
         
         [Test]
         public void TestEnumBI16Deserialise() {
-            EnumGenericDeserTest(typeof(TestEnumBI16), new byte[] { 0, 0, 0, 0}, TestEnumBI16.a2);
-            EnumGenericDeserTest(typeof(TestEnumBI16), new byte[] { 0, 0, 0, 1}, TestEnumBI16.b2);
-            EnumGenericDeserTest(typeof(TestEnumBI16), new byte[] { 0, 0, 0, 2}, TestEnumBI16.c2);
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBI16));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestEnumBI16.a2);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestEnumBI16.b2);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestEnumBI16.c2);
         }        
         
-        [Test]        
+        [Test]
         public void TestEnumBI32Serialise() {
-            EnumGenericSerTest(typeof(TestEnumBI32), TestEnumBI32.a1, new byte[] { 0, 0, 0, 0});
-            EnumGenericSerTest(typeof(TestEnumBI32), TestEnumBI32.b1, new byte[] { 0, 0, 0, 1});
-            EnumGenericSerTest(typeof(TestEnumBI32), TestEnumBI32.c1, new byte[] { 0, 0, 0, 2});
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBI32));
+            GenericSerTest(ser, TestEnumBI32.a1, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestEnumBI32.b1, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestEnumBI32.c1, new byte[] { 0, 0, 0, 2});
         }
         
         [Test]
         public void TestEnumBI32Deserialise() {
-            EnumGenericDeserTest(typeof(TestEnumBI32), new byte[] { 0, 0, 0, 0}, TestEnumBI32.a1);
-            EnumGenericDeserTest(typeof(TestEnumBI32), new byte[] { 0, 0, 0, 1}, TestEnumBI32.b1);
-            EnumGenericDeserTest(typeof(TestEnumBI32), new byte[] { 0, 0, 0, 2}, TestEnumBI32.c1);
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBI32));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestEnumBI32.a1);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestEnumBI32.b1);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestEnumBI32.c1);
         }        
         
-        [Test]        
+        [Test]
+        public void TestEnumBI32ValueNotIndexSerialise() {
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumWithValueNotIndexBI32));
+            GenericSerTest(ser, TestEnumWithValueNotIndexBI32.a1, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestEnumWithValueNotIndexBI32.b1, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestEnumWithValueNotIndexBI32.c1, new byte[] { 0, 0, 0, 2});
+        }
+        
+        [Test]
+        public void TestEnumBI32ValueNotIndexDeserialise() {
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumWithValueNotIndexBI32));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestEnumWithValueNotIndexBI32.a1);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestEnumWithValueNotIndexBI32.b1);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestEnumWithValueNotIndexBI32.c1);
+        }        
+        
+        [Test]
         public void TestEnumBBSerialise() {
-            EnumGenericSerTest(typeof(TestEnumBB), TestEnumBB.a4, new byte[] { 0, 0, 0, 0});
-            EnumGenericSerTest(typeof(TestEnumBB), TestEnumBB.b4, new byte[] { 0, 0, 0, 1});
-            EnumGenericSerTest(typeof(TestEnumBB), TestEnumBB.c4, new byte[] { 0, 0, 0, 2});
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBB));
+            GenericSerTest(ser, TestEnumBB.a4, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestEnumBB.b4, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestEnumBB.c4, new byte[] { 0, 0, 0, 2});
         }
         
         [Test]
         public void TestEnumBBDeserialise() {
-            EnumGenericDeserTest(typeof(TestEnumBB), new byte[] { 0, 0, 0, 0}, TestEnumBB.a4);
-            EnumGenericDeserTest(typeof(TestEnumBB), new byte[] { 0, 0, 0, 1}, TestEnumBB.b4);
-            EnumGenericDeserTest(typeof(TestEnumBB), new byte[] { 0, 0, 0, 2}, TestEnumBB.c4);
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBB));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestEnumBB.a4);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestEnumBB.b4);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestEnumBB.c4);
         }        
         
         [Test]        
         public void TestEnumI64Serialise() {
-            EnumGenericSerTest(typeof(TestEnumBI64), TestEnumBI64.a3, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0});
-            EnumGenericSerTest(typeof(TestEnumBI64), TestEnumBI64.b3, new byte[] { 0, 0, 0, 0, 0, 0, 0, 1});
-            EnumGenericSerTest(typeof(TestEnumBI64), TestEnumBI64.c3, new byte[] { 0, 0, 0, 0, 0, 0, 0, 2});
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBI64));
+            GenericSerTest(ser, TestEnumBI64.a3, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestEnumBI64.b3, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestEnumBI64.c3, new byte[] { 0, 0, 0, 2});
         }
         
         [Test]
         public void TestEnumI64Deserialise() {
-            EnumGenericDeserTest(typeof(TestEnumBI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 0}, TestEnumBI64.a3);
-            EnumGenericDeserTest(typeof(TestEnumBI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 1}, TestEnumBI64.b3);
-            EnumGenericDeserTest(typeof(TestEnumBI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 2}, TestEnumBI64.c3);
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBI64));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestEnumBI64.a3);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestEnumBI64.b3);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestEnumBI64.c3);
         }        
         
-        [Test]        
+        [Test]
         public void TestEnumBUI16Serialise() {
-            EnumGenericSerTest(typeof(TestEnumBUI16), TestEnumBUI16.a6, new byte[] { 0, 0, 0, 0});
-            EnumGenericSerTest(typeof(TestEnumBUI16), TestEnumBUI16.b6, new byte[] { 0, 0, 0, 1});
-            EnumGenericSerTest(typeof(TestEnumBUI16), TestEnumBUI16.c6, new byte[] { 0, 0, 0, 2});
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBUI16));
+            GenericSerTest(ser, TestEnumBUI16.a6, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestEnumBUI16.b6, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestEnumBUI16.c6, new byte[] { 0, 0, 0, 2});
         }
         
         [Test]
         public void TestEnumBUI16Deserialise() {
-            EnumGenericDeserTest(typeof(TestEnumBUI16), new byte[] { 0, 0, 0, 0}, TestEnumBUI16.a6);
-            EnumGenericDeserTest(typeof(TestEnumBUI16), new byte[] { 0, 0, 0, 1}, TestEnumBUI16.b6);
-            EnumGenericDeserTest(typeof(TestEnumBUI16), new byte[] { 0, 0, 0, 2}, TestEnumBUI16.c6);
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBUI16));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestEnumBUI16.a6);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestEnumBUI16.b6);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestEnumBUI16.c6);
         }        
         
         [Test]        
         public void TestEnumBUI32Serialise() {
-            EnumGenericSerTest(typeof(TestEnumBUI32), TestEnumBUI32.a7, new byte[] { 0, 0, 0, 0});
-            EnumGenericSerTest(typeof(TestEnumBUI32), TestEnumBUI32.b7, new byte[] { 0, 0, 0, 1});
-            EnumGenericSerTest(typeof(TestEnumBUI32), TestEnumBUI32.c7, new byte[] { 0, 0, 0, 2});
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBUI32));
+            GenericSerTest(ser, TestEnumBUI32.a7, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestEnumBUI32.b7, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestEnumBUI32.c7, new byte[] { 0, 0, 0, 2});
         }
         
         [Test]
         public void TestEnumBUI32Deserialise() {
-            EnumGenericDeserTest(typeof(TestEnumBUI32), new byte[] { 0, 0, 0, 0}, TestEnumBUI32.a7);
-            EnumGenericDeserTest(typeof(TestEnumBUI32), new byte[] { 0, 0, 0, 1}, TestEnumBUI32.b7);
-            EnumGenericDeserTest(typeof(TestEnumBUI32), new byte[] { 0, 0, 0, 2}, TestEnumBUI32.c7);
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBUI32));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestEnumBUI32.a7);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestEnumBUI32.b7);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestEnumBUI32.c7);
         }        
         
-        [Test]        
+        [Test]
         public void TestEnumBSBSerialise() {
-            EnumGenericSerTest(typeof(TestEnumBSB), TestEnumBSB.a5, new byte[] { 0, 0, 0, 0});
-            EnumGenericSerTest(typeof(TestEnumBSB), TestEnumBSB.b5, new byte[] { 0, 0, 0, 1});
-            EnumGenericSerTest(typeof(TestEnumBSB), TestEnumBSB.c5, new byte[] { 0, 0, 0, 2});
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBSB));
+            GenericSerTest(ser, TestEnumBSB.a5, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestEnumBSB.b5, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestEnumBSB.c5, new byte[] { 0, 0, 0, 2});
         }
         
         [Test]
         public void TestEnumBSBDeserialise() {
-            EnumGenericDeserTest(typeof(TestEnumBSB), new byte[] { 0, 0, 0, 0}, TestEnumBSB.a5);
-            EnumGenericDeserTest(typeof(TestEnumBSB), new byte[] { 0, 0, 0, 1}, TestEnumBSB.b5);
-            EnumGenericDeserTest(typeof(TestEnumBSB), new byte[] { 0, 0, 0, 2}, TestEnumBSB.c5);
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBSB));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestEnumBSB.a5);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestEnumBSB.b5);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestEnumBSB.c5);
         }        
         
         [Test]        
         public void TestEnumUI64Serialise() {
-            EnumGenericSerTest(typeof(TestEnumBUI64), TestEnumBUI64.a8, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0});
-            EnumGenericSerTest(typeof(TestEnumBUI64), TestEnumBUI64.b8, new byte[] { 0, 0, 0, 0, 0, 0, 0, 1});
-            EnumGenericSerTest(typeof(TestEnumBUI64), TestEnumBUI64.c8, new byte[] { 0, 0, 0, 0, 0, 0, 0, 2});
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBUI64));
+            GenericSerTest(ser, TestEnumBUI64.a8, new byte[] { 0, 0, 0, 0});
+            GenericSerTest(ser, TestEnumBUI64.b8, new byte[] { 0, 0, 0, 1});
+            GenericSerTest(ser, TestEnumBUI64.c8, new byte[] { 0, 0, 0, 2});
         }
         
         [Test]
         public void TestEnumUI64Deserialise() {
-            EnumGenericDeserTest(typeof(TestEnumBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 0}, TestEnumBUI64.a8);
-            EnumGenericDeserTest(typeof(TestEnumBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 1}, TestEnumBUI64.b8);
-            EnumGenericDeserTest(typeof(TestEnumBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 2}, TestEnumBUI64.c8);
+            Serializer ser = new EnumMapClsToIdlRangeSerializer(typeof(TestEnumBUI64));
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0}, TestEnumBUI64.a8);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1}, TestEnumBUI64.b8);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 2}, TestEnumBUI64.c8);
         }        
                 
         [Test]        
@@ -2280,9 +2388,9 @@ namespace Ch.Elca.Iiop.Tests {
         
         [Test]
         public void TestFlagsBI16Deserialise() {
-            EnumGenericDeserTest(typeof(TestFlagsBI16), new byte[] { 0, 0}, TestFlagsBI16.a2);
-            EnumGenericDeserTest(typeof(TestFlagsBI16), new byte[] { 0, 1}, TestFlagsBI16.b2);
-            EnumGenericDeserTest(typeof(TestFlagsBI16), new byte[] { 0, 2}, TestFlagsBI16.c2);
+            FlagsGenericDeserTest(typeof(TestFlagsBI16), new byte[] { 0, 0}, TestFlagsBI16.a2);
+            FlagsGenericDeserTest(typeof(TestFlagsBI16), new byte[] { 0, 1}, TestFlagsBI16.b2);
+            FlagsGenericDeserTest(typeof(TestFlagsBI16), new byte[] { 0, 2}, TestFlagsBI16.c2);
         }        
         
         [Test]        
