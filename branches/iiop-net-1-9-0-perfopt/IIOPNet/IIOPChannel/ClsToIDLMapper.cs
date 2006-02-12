@@ -251,7 +251,15 @@ namespace Ch.Elca.Iiop.Idl {
                 enumType.GetCustomAttributes(ReflectionHelper.FlagsAttributeType, true);
             return (flagsAttrs != null && flagsAttrs.Length > 0);          
         }
-
+        
+        /// <summary>
+        /// Returns true, if the enum is mapped from idl to cls.
+        /// </summary>
+        internal static bool IsIdlEnum(Type enumType) {
+            AttributeExtCollection attrs = ReflectionHelper.GetCustomAttributesForType(enumType, true);
+            return (attrs.IsInCollection(ReflectionHelper.IdlEnumAttributeType));
+        }        
+        
         /// <summary>
         /// checks, if the type is a CLS-array
         /// </summary>
@@ -509,7 +517,13 @@ namespace Ch.Elca.Iiop.Idl {
                 if (HasEnumFlagsAttributes(clsType)) {
                     return action.MapToIdlFlagsEquivalent(clsType);
                 } else {
-                    return action.MapToIdlEnum(clsType);
+                    if (Enum.GetValues(clsType).LongLength - 1 <= UInt32.MaxValue) {
+                        return action.MapToIdlEnum(clsType);
+                    } else {
+                        // this one is very unlikely, i.e. values can't be mapped to idl enum range
+                        throw new BAD_PARAM(18805, CompletionStatus.Completed_MayBe, "The enum " + clsType.AssemblyQualifiedName +
+                                            " is not mappable to idl, because too many enum values");
+                    }
                 }
             } else if (IsArray(clsType)) { 
                 return CallActionForDNArray(ref clsType, ref attributes, originalAttributes, action);
@@ -890,7 +904,7 @@ namespace Ch.Elca.Iiop.Tests {
     public enum TestEnumBI32 : int {
         a1, b1, c1 
     }
-    
+        
     public enum TestEnumBI16 : short {
         a2, b2, c2
     }    
