@@ -126,6 +126,9 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             System.SByte arg = 1;
             System.SByte result = m_testService.TestIncSByte(arg);
             Assertion.AssertEquals((System.SByte)(arg + 1), result);
+            arg = -2;
+            result = m_testService.TestIncSByte(arg);
+            Assertion.AssertEquals((System.SByte)(arg + 1), result);
         }
 
         [Test]
@@ -209,6 +212,57 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Assertion.AssertEquals(arg, result);
             arg = TestFlags.All;
             result = m_testService.TestEchoFlagsVal(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestEnumBI16Val() {
+            TestEnumBI16 arg = TestEnumBI16.B1;
+            TestEnumBI16 result = m_testService.TestEchoEnumI16Val(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestEnumBUI32Val() {
+            TestEnumUI32 arg = TestEnumUI32.C2;
+            TestEnumUI32 result = m_testService.TestEchoEnumUI32Val(arg);
+            Assertion.AssertEquals(arg, result);
+            arg = TestEnumUI32.A2;
+            result = m_testService.TestEchoEnumUI32Val(arg);
+            Assertion.AssertEquals(arg, result);
+            arg = TestEnumUI32.B2;
+            result = m_testService.TestEchoEnumUI32Val(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestEnumBI64Val() {
+            TestEnumBI64 arg = TestEnumBI64.AL;
+            TestEnumBI64 result = m_testService.TestEchoEnumI64Val(arg);
+            Assertion.AssertEquals(arg, result);
+
+            arg = TestEnumBI64.BL;
+            result = m_testService.TestEchoEnumI64Val(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestEnumAsAny() {
+            TestEnum arg = TestEnum.A;
+            TestEnum result = (TestEnum)m_testService.EchoAnything(arg);
+            Assertion.AssertEquals(arg, result);
+            arg = TestEnum.D;
+            result = (TestEnum)m_testService.EchoAnything(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestFlagsAsAny() {
+            TestFlags arg = TestFlags.A1;
+            TestFlags result = (TestFlags)m_testService.EchoAnything(arg);
+            Assertion.AssertEquals(arg, result);
+            arg = TestFlags.All;
+            result = (TestFlags)m_testService.EchoAnything(arg);
             Assertion.AssertEquals(arg, result);
         }
 

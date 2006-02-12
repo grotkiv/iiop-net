@@ -116,6 +116,16 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
+        public void TestSByte() {
+            System.SByte arg = -2;
+            System.SByte result = (System.SByte)m_testService.TestIncSByte((byte)arg);
+            Assertion.AssertEquals((System.SByte)(arg + 1), result);
+            arg = 2;
+            result = (System.SByte)m_testService.TestIncSByte((byte)arg);
+            Assertion.AssertEquals((System.SByte)(arg + 1), result);
+        }
+
+        [Test]
         public void TestInt16() {
             System.Int16 arg = 1;
             System.Int16 result = m_testService.TestIncInt16(arg);
@@ -143,6 +153,36 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             arg = -11;
             result = m_testService.TestIncInt64(arg);
             Assertion.AssertEquals((System.Int64)(arg + 1), result);
+        }
+
+        [Test]
+        public void TestUInt16() {
+            ushort arg = 1;
+            ushort result = (ushort)m_testService.TestIncUInt16((short)arg);
+            Assertion.AssertEquals(((ushort)(arg + 1)), result);
+            arg = System.UInt16.MaxValue - 1;
+            result = (ushort)m_testService.TestIncUInt16((short)arg);
+            Assertion.AssertEquals(((ushort)(arg + 1)), result);
+        }
+
+        [Test]
+        public void TestUInt32() {
+            uint arg = 1;
+            uint result = (uint)m_testService.TestIncUInt32((int)arg);
+            Assertion.AssertEquals(((uint)(arg + 1)), result);
+            arg = System.UInt32.MaxValue - 1;
+            result = (uint)m_testService.TestIncUInt32((int)arg);
+            Assertion.AssertEquals(((uint)(arg + 1)), result);
+        }
+
+        [Test]
+        public void TestUInt64() {
+            ulong arg = 1;
+            ulong result = (ulong)m_testService.TestIncUInt64((long)arg);
+            Assertion.AssertEquals((ulong)(arg + 1), result);
+            arg = System.UInt64.MaxValue - 1;
+            result = (ulong)m_testService.TestIncUInt64((long)arg);
+            Assertion.AssertEquals((ulong)(arg + 1), result);
         }
 
         [Test]
@@ -186,6 +226,51 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Assertion.AssertEquals(arg, result);
             arg = TestEnum.TestEnum_D;
             result = m_testService.TestEchoEnumVal(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestFlags() {
+            int arg = 1;
+            int result = m_testService.TestEchoFlagsVal(arg);
+            Assertion.AssertEquals(arg, result);
+            arg = 3;
+            result = m_testService.TestEchoFlagsVal(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestEnumBI16Val() {
+            TestEnumBI16 arg = TestEnumBI16.TestEnumBI16_B1;
+            TestEnumBI16 result = m_testService.TestEchoEnumI16Val(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestEnumBUI32Val() {
+            TestEnumUI32 arg = TestEnumUI32.TestEnumUI32_C2;
+            TestEnumUI32 result = m_testService.TestEchoEnumUI32Val(arg);
+            Assertion.AssertEquals(arg, result);
+        }
+
+        [Test]
+        public void TestEnumBI64Val() {
+            TestEnumBI64 arg = TestEnumBI64.TestEnumBI64_AL;
+            TestEnumBI64 result = m_testService.TestEchoEnumI64Val(arg);
+            Assertion.AssertEquals(arg, result);
+
+            arg = TestEnumBI64.TestEnumBI64_BL;
+            result = m_testService.TestEchoEnumI64Val(arg);
+            Assertion.AssertEquals(arg, result);
+        }        
+        
+        [Test]
+        public void TestEnumAsAny() {
+            TestEnum arg = TestEnum.TestEnum_A;
+            TestEnum result = (TestEnum)m_testService.EchoAnything(arg);
+            Assertion.AssertEquals(arg, result);
+            arg = TestEnum.TestEnum_D;
+            result = (TestEnum)m_testService.EchoAnything(arg);
             Assertion.AssertEquals(arg, result);
         }
 

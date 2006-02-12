@@ -126,6 +126,18 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             return arg;
         }
 
+        public TestEnumBI16 TestEchoEnumI16Val(TestEnumBI16 arg) {
+            return arg;
+        }
+
+        public TestEnumBI64 TestEchoEnumI64Val(TestEnumBI64 arg) {
+            return arg;
+        }
+
+        public TestEnumUI32 TestEchoEnumUI32Val(TestEnumUI32 arg) {
+            return arg;
+        }
+
         public System.Byte[] TestAppendElementToByteArray(System.Byte[] arg, System.Byte toAppend) {
             System.Byte[] result;
             if (arg != null) {
