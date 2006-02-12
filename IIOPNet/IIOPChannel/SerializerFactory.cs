@@ -382,7 +382,7 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
         [Test]
-        public void TestIntegralMappedEnumMapping() {
+        public void TestInt64EnumMapping() {
             GenericFactoryTest(typeof(TestEnumBI64), 
                                typeof(EnumMapClsToIdlRangeSerializer));
         }
