@@ -55,6 +55,7 @@ namespace Ch.Elca.Iiop.Demo.Chatroom {
             m_nameServiceHost = nameServiceHost;
             m_nameServicePort = nameServicePort;
             m_callbackPort = callbackPort;
+            Setup();
         }
 
         public Client(string[] args) {
@@ -65,7 +66,7 @@ namespace Ch.Elca.Iiop.Demo.Chatroom {
         #endregion IConstructors
         #region IProperties
         
-        public IChatroom Chatroom {
+        protected IChatroom Chatroom {
             get {
                 return m_chatroom;
             }
@@ -117,9 +118,16 @@ namespace Ch.Elca.Iiop.Demo.Chatroom {
             }
         }
 
+        public Chatform CreateChatForm() {
+            Chatform form = new Chatform();
+            form.Chatroom = Chatroom;            
+            return form;
+        }
+
         public void Run() {
             try {
-                Application.Run(new Chatform(Chatroom));
+                Chatform form = CreateChatForm();
+                Application.Run(form);
             } finally {
                 TearDown();
             }

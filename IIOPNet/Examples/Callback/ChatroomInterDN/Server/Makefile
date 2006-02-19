@@ -5,6 +5,10 @@ IDL         = IDL\
 IDLType     = Ch.Elca.Iiop.Demo.Chatroom.IChatroom
 SERVEREXE      = $(bin)ChatServer.exe
 
+LAUNCH = ..\..\..\..\Utils\launch.exe
+KILL = ..\..\..\..\Utils\kill.exe
+
+
 build: build-exe build-idl
 
 build-exe: $(bin) $(SERVEREXE)
@@ -21,6 +25,13 @@ $(SERVEREXE): $(bin)IIOPChannel.dll *.cs
 
 build-idl: $(IDL) $(SERVEREXE) 
 	$(CLS2IDL) -o $(IDL) $(IDLType) $(SERVEREXE)
+
+start-server:
+	@$(LAUNCH) bin\ChatServer.exe >> pid
+
+stop-server:
+	@for /F %%p in (pid) do @$(KILL) %%p
+	@del pid
 
 clean:
 	if exist $(bin)nul rmdir /q /s $(bin)
