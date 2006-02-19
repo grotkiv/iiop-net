@@ -1,8 +1,8 @@
 IIOPCHANNEL = ..\..\..\..\IIOPChannel\bin\IIOPChannel.dll
 IIOPCHANNELPDB = ..\..\..\..\IIOPChannel\bin\IIOPChannel.pdb
-LAUNCH = ..\..\..\Utils\launch.exe
-KILL = ..\..\..\Utils\kill.exe
-DELAY = ..\..\..\Utils\delay.exe
+LAUNCH = ..\..\..\..\Utils\launch.exe
+KILL = ..\..\..\..\Utils\kill.exe
+DELAY = ..\..\..\..\Utils\delay.exe
 
 bin         = bin\ 
 

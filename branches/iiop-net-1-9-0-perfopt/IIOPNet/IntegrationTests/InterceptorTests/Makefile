@@ -1,4 +1,4 @@
-PRCURRENTTIME = ..\Utils\currenttime.exe
+PRCURRENTTIME = ..\..\Utils\currenttime.exe
 
 build: nunit-var
     cd InvocationScenarios

@@ -1,5 +1,5 @@
 include ../../MakeVars.mono
-PRCURRENTTIME = ../Utils/currenttime.exe
+PRCURRENTTIME = ../../Utils/currenttime.exe
 
 build: 
 	$(MAKE) -C OnlyInGac build -f Makefile.mono

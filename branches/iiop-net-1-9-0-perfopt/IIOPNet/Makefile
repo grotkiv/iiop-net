@@ -20,6 +20,9 @@ build-base: key
     cd IDLToCLSCompiler
     $(MAKE) build
     cd ..
+    cd Utils
+    $(MAKE) build
+    cd ..
 
 build-base-debug:
     set CSFLAGS=/debug+ /d:DEBUG /d:TRACE /d:DEBUG_LOGFILE
@@ -74,6 +77,9 @@ clean-base:
     $(MAKE) clean
     cd ..
     cd IDLToCLSCompiler
+    $(MAKE) clean
+    cd ..
+    cd Utils
     $(MAKE) clean
     cd ..
 

@@ -1,8 +1,8 @@
 IIOPCHANNEL = ..\..\..\..\IIOPChannel\bin\IIOPChannel.dll
 IIOPCHANNELPDB = ..\..\..\..\IIOPChannel\bin\IIOPChannel.pdb
-DELAY=..\..\..\utils\delay.exe
-LAUNCH=..\..\..\utils\launch.exe
-KILL=..\..\..\utils\kill.exe
+DELAY=..\..\..\..\Utils\delay.exe
+LAUNCH=..\..\..\..\Utils\launch.exe
+KILL=..\..\..\..\Utils\kill.exe
 bin         = bin\ 
 
 build: $(bin)TestService.dll $(bin)TestServer.exe

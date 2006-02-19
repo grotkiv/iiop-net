@@ -1,8 +1,8 @@
 !include .\MakeVars.Win32
 RELATIVE=$(MICO_HOME)
-DELAY=..\..\utils\delay.exe
-LAUNCH=..\..\utils\launch.exe
-KILL=..\..\utils\kill.exe
+DELAY=..\..\..\utils\delay.exe
+LAUNCH=..\..\..\utils\launch.exe
+KILL=..\..\..\utils\kill.exe
 
 
 build: mico_home_var server

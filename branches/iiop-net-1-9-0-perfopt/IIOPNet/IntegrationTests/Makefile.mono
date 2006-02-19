@@ -1,9 +1,8 @@
 include ../MakeVars.mono
 
-PRCURRENTTIME = Utils/currenttime.exe
+PRCURRENTTIME = ../Utils/currenttime.exe
 
 build:
-	$(MAKE) -C Utils build -f Makefile.mono
 	$(MAKE) -C Basic build -f Makefile.mono
 	$(MAKE) -C Direct build -f Makefile.mono
 	$(MAKE) -C CodeSets build -f Makefile.mono
@@ -26,7 +25,6 @@ test:
 	$(MAKE) -C Multithread test -f Makefile.mono
 
 clean:
-	$(MAKE) -C Utils clean -f Makefile.mono
 	$(MAKE) -C Basic clean -f Makefile.mono
 	$(MAKE) -C Direct clean -f Makefile.mono
 	$(MAKE) -C CodeSets clean -f Makefile.mono
