@@ -43,11 +43,23 @@ namespace Ch.Elca.Iiop.Demo.Chatroom {
         private IChatroom m_chatroom;
         private IiopChannel m_channel;
 
+        private int m_callbackPort;
+        private string m_nameServiceHost;
+        private int m_nameServicePort;
+
         #endregion IFields
         #region IConstructors
 
+        public Client(string nameServiceHost, int nameServicePort,
+                      int callbackPort) {
+            m_nameServiceHost = nameServiceHost;
+            m_nameServicePort = nameServicePort;
+            m_callbackPort = callbackPort;
+        }
+
         public Client(string[] args) {
-            Setup(args);
+            ParseArgs(args);
+            Setup();
         }
 
         #endregion IConstructors
@@ -77,22 +89,25 @@ namespace Ch.Elca.Iiop.Demo.Chatroom {
             m_chatroom = (IChatroom) nameService.resolve(name);
         }
 
-        private void Setup(string[] args) {
-            string nameServiceHost = "localhost";
-            int nameServicePort = 8087;
+        private void ParseArgs(string[] args) {
+            m_nameServiceHost = "localhost";
+            m_nameServicePort = 8087;
             if (args.Length > 0) {
-                nameServiceHost = args[0];
+                m_nameServiceHost = args[0];
             }
             if (args.Length > 1) {
-                nameServicePort = Int32.Parse(args[1]);
+                m_nameServicePort = Int32.Parse(args[1]);
             }
             // the port the callback is listening on
-            int callbackPort = 0; // auto assign
+            m_callbackPort = 0; // auto assign
             if (args.Length > 2) {
-                callbackPort = Int32.Parse(args[2]);
+                m_callbackPort = Int32.Parse(args[2]);
             }
-            SetupChannel(callbackPort);
-            RetrieveChatRoom(nameServiceHost, nameServicePort);
+        }
+
+        private void Setup() {
+            SetupChannel(m_callbackPort);
+            RetrieveChatRoom(m_nameServiceHost, m_nameServicePort);
         }
 
         public void TearDown() {
