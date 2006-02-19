@@ -1,8 +1,8 @@
 IIOPCHANNEL = ..\..\..\IIOPChannel\bin\IIOPChannel.dll
 IIOPCHANNELPDB = ..\..\..\IIOPChannel\bin\IIOPChannel.pdb
-LAUNCH = ..\..\Utils\launch.exe
-KILL = ..\..\Utils\kill.exe
-DELAY = ..\..\Utils\delay.exe
+LAUNCH = ..\..\..\Utils\launch.exe
+KILL = ..\..\..\Utils\kill.exe
+DELAY = ..\..\..\Utils\delay.exe
 
 bin         = bin\ 
 
@@ -27,7 +27,7 @@ $(bin)TestServer.exe: $(bin)IIOPChannel.dll $(bin)TestServiceCommon.dll $(bin)te
 
 start-server:    
 	@$(LAUNCH) bin\TestServer.exe >> pid
-#	for /F "usebackq" %%r in (`..\..\Utils\launch.exe bin\TestServer.exe`) do set pid=%%r
+#	for /F "usebackq" %%r in (`..\..\..\Utils\launch.exe bin\TestServer.exe`) do set pid=%%r
 
 stop-server:
 	@for /F %%p in (pid) do @$(KILL) %%p

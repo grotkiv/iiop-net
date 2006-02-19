@@ -1,8 +1,8 @@
 
 
-LAUNCH = ..\..\Utils\launch.exe
-KILL = ..\..\Utils\kill.exe
-DELAY = ..\..\Utils\delay.exe
+LAUNCH = ..\..\..\Utils\launch.exe
+KILL = ..\..\..\Utils\kill.exe
+DELAY = ..\..\..\Utils\delay.exe
 
 bin         = bin\ 
 IDL         = IDL\ 

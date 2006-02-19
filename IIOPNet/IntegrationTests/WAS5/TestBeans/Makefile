@@ -1,6 +1,6 @@
-LAUNCH = ..\..\Utils\launch.exe
-DELAY = ..\..\Utils\delay.exe
-KILL = ..\..\Utils\kill.exe
+LAUNCH = ..\..\..\Utils\launch.exe
+DELAY = ..\..\..\Utils\delay.exe
+KILL = ..\..\..\Utils\kill.exe
 
 ANT_ARGS=-Dbasedir="." -Dwas_home="$(WAS_HOME)" 
 JAVA_HOME=$(WAS_HOME)\java 

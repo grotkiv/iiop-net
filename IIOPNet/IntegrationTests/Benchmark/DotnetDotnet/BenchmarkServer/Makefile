@@ -3,9 +3,9 @@ IIOPCHANNELPDB = ..\..\..\..\IIOPChannel\bin\IIOPChannel.pdb
 CLSTOIDLGEN    = ..\..\..\..\CLSToIDLGenerator\bin\CLSIDLGenerator.exe
 bin         = bin\ 
 IDL         = IDL\ 
-LAUNCH      = ..\..\..\Utils\launch.exe
-KILL        = ..\..\..\Utils\kill.exe
-DELAY       = ..\..\..\Utils\delay.exe
+LAUNCH      = ..\..\..\..\Utils\launch.exe
+KILL        = ..\..\..\..\Utils\kill.exe
+DELAY       = ..\..\..\..\Utils\delay.exe
 
 
 build:  build-server build-idl

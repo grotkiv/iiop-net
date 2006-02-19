@@ -1,10 +1,7 @@
-PRCURRENTTIME = Utils\currenttime.exe
+PRCURRENTTIME = ..\Utils\currenttime.exe
 
 
 build: nunit-var junit-var
-    cd Utils
-    $(MAKE) build
-    cd ..
     cd Basic
     $(MAKE) build
     cd ..
@@ -164,9 +161,6 @@ test-ssl:
     
 
 clean:
-    cd Utils
-    $(MAKE) clean
-    cd ..
     cd Basic
     $(MAKE) clean
     cd ..
