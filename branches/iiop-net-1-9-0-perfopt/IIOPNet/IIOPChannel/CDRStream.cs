@@ -1250,6 +1250,11 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         private string ReadStringData(uint length) {
+            if (length == 0) {
+                // not valid accoring to CORBA 2.6 standard 15.3.2.7, but used by some orbs.
+                // -> therefore, return the zero length string too, instead of an exception
+                return String.Empty;
+            }
             byte[] charData = ReadOpaque((int)length - 1); // read string data
             ReadOctet(); // read terminating 0
             Encoding encoding = CodeSetService.GetCharEncoding(CharSet, false);

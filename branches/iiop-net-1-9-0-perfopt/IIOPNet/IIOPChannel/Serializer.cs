@@ -1988,7 +1988,7 @@ namespace Ch.Elca.Iiop.Tests {
             } finally {
                 outStream.Close();
             }
-        }
+        }                
         
         private void GenericDeserTest(Serializer ser, byte[] actual, object expected) {
             MemoryStream inStream = new MemoryStream();
@@ -2452,6 +2452,57 @@ namespace Ch.Elca.Iiop.Tests {
             FlagsGenericDeserTest(typeof(TestFlagsBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 0}, TestFlagsBUI64.a8);
             FlagsGenericDeserTest(typeof(TestFlagsBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 1}, TestFlagsBUI64.b8);
             FlagsGenericDeserTest(typeof(TestFlagsBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 2}, TestFlagsBUI64.c8);
+        }        
+        
+        [Test]
+        public void TestDeserializeEmptyStringNonWide() {
+            Serializer ser = new StringSerializer(false);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1, 0 }, String.Empty);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, String.Empty); // visibroker interop            
+        }
+        
+        [Test]
+        public void TestSerializeEmptyStringNonWide() {
+            Serializer ser = new StringSerializer(false);
+            GenericSerTest(ser, String.Empty, new byte[] { 0, 0, 0, 1, 0 });
+        }
+        
+        [Test]
+        public void TestDeserializeEmptyStringWide() {
+            Serializer ser = new StringSerializer(true);            
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, String.Empty); // giop 1.2, no terminating null char
+        }
+        
+        [Test]
+        public void TestSerializeEmptyStringWide() {
+            Serializer ser = new StringSerializer(true);
+            GenericSerTest(ser, String.Empty, new byte[] { 0, 0, 0, 0 }); // giop 1.2, no terminating null char
+        }        
+        
+        [Test]
+        public void TestDeserializeStringNonWide() {
+            Serializer ser = new StringSerializer(false);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 9, 73, 73, 79, 80, 46, 78, 69, 84, 0}, "IIOP.NET");
+        }
+        
+        [Test]
+        public void TestSerializeStringNonWide() {
+            Serializer ser = new StringSerializer(false);
+            GenericSerTest(ser, "IIOP.NET", new byte[] { 0, 0, 0, 9, 73, 73, 79, 80, 46, 78, 69, 84, 0});
+        }
+        
+        [Test]
+        public void TestDeserializeStringWide() {
+            Serializer ser = new StringSerializer(true);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 16, 0, 73, 0, 73, 0, 79, 0, 80, 0, 46, 0, 78, 0, 69, 0, 84 }, 
+                             "IIOP.NET");
+        }        
+        
+        [Test]
+        public void TestSerializeStringWide() {
+            Serializer ser = new StringSerializer(true);
+            GenericSerTest(ser, "IIOP.NET", 
+                           new byte[] { 0, 0, 0, 16, 0, 73, 0, 73, 0, 79, 0, 80, 0, 46, 0, 78, 0, 69, 0, 84 });
         }        
         
         [Test]  
