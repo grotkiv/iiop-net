@@ -142,3 +142,48 @@ namespace omg.org.CORBA {
 	}
 	
 }
+
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using System;
+    using System.Reflection;
+    using NUnit.Framework;
+    using omg.org.CORBA;
+    
+    /// <summary>
+    /// Unit-tests for testing Any container
+    /// </summary>
+    [TestFixture]
+    public class AnyContainerTest {
+    
+        
+        [Test]
+        public void BoxOctet() {
+            byte val = 11;
+            omg.org.CORBA.TypeCode tc = new OctetTC();
+            Any anyContainer = new Any(val, tc);
+            Assertion.AssertEquals("wrong tc", tc, anyContainer.Type);
+            Assertion.AssertEquals("wrong val", val, anyContainer.Value);
+        }
+        
+        [Test]
+        public void BoxIncompatibleType() {
+            try {
+                byte val = 11;
+                omg.org.CORBA.TypeCode tc = new LongTC();
+                Any anyContainer = new Any(val, tc);
+                Assertion.Fail("expected exception");
+            } catch (BAD_PARAM bp) {
+                Assertion.AssertEquals(456, bp.Minor);
+            }
+        }
+        
+    }
+    
+}
+    
+#endif
+
