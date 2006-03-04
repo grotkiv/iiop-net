@@ -253,13 +253,16 @@ namespace omg.org.CORBA {
         }
 
         #region Implementation of TypeCode
-        public bool equal(omg.org.CORBA.TypeCode tc) {
+        public virtual bool equal(omg.org.CORBA.TypeCode tc) {
             if (tc.kind() != kind()) {
                 return false;
             }
             return true;
         }
-        public bool equivalent(omg.org.CORBA.TypeCode tc) {
+        public virtual bool equivalent(omg.org.CORBA.TypeCode tc) {
+            if (tc.kind() != kind()) {
+                return false;
+            }            
             return true;
         }
 
@@ -1821,3 +1824,60 @@ namespace omg.org.CORBA {
     }
     
 }  
+
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using System;
+    using System.Reflection;
+    using NUnit.Framework;
+    using omg.org.CORBA;
+    
+    /// <summary>
+    /// Unit-tests for testing Any container
+    /// </summary>
+    [TestFixture]
+    public class LongTypeCodeTest {
+    
+        
+        private LongTC m_tc;
+        
+        [SetUp]
+        public void Setup() {
+            m_tc = new LongTC();
+        }
+        
+        [Test]
+        public void TestTypeForTypeCode() {            
+            Assertion.AssertEquals("wrong type for typecode",
+                                   ReflectionHelper.Int32Type, m_tc.GetClsForTypeCode());
+        }
+        
+        [Test]
+        public void TestEqual() {
+            LongTC other = new LongTC();
+            Assertion.Assert("not equal", m_tc.equal(other));
+            ULongTC other2 = new ULongTC();
+            Assertion.Assert("equal but shoudln't", !m_tc.equal(other2));            
+        }
+        
+        [Test]
+        public void TestEquivalent() {
+            LongTC other = new LongTC();
+            Assertion.Assert("not equal", m_tc.equivalent(other));
+            ULongTC other2 = new ULongTC();
+            Assertion.Assert("equal but shoudln't", !m_tc.equivalent(other2));
+        }        
+        
+        [Test]
+        public void TestKind() {
+            Assertion.AssertEquals("wrong kind", TCKind.tk_long, m_tc.kind());
+        }
+    }
+    
+}
+    
+#endif
+
