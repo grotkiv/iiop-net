@@ -776,7 +776,8 @@ namespace Ch.Elca.Iiop.Tests {
             string repositoryID = Repository.GetRepositoryID(target.GetType());
             // this server support GIOP 1.2 --> create an GIOP 1.2 profile
             InternetIiopProfile profile = new InternetIiopProfile(new GiopVersion(1, 2), host,
-                                                                  port, objectKey);                           
+                                                                  port, objectKey);
+            profile.AddTaggedComponent(Services.CodeSetService.CreateDefaultCodesetComponent());
             Ior locFwdTarget = new Ior(repositoryID, new IorProfile[] { profile });
             CdrOutputStreamImpl iorStream = new CdrOutputStreamImpl(new MemoryStream(), 
                                                                     0, new GiopVersion(1, 2));
