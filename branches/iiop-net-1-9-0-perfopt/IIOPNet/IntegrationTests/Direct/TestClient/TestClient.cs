@@ -132,22 +132,21 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
-        [Ignore("Need more work on the any mechanism first")]
         public void TestSByteAsAny() {
             System.SByte arg = 1;
             System.SByte result = (System.SByte)
                 ((System.Byte)m_testService.EchoAnything(arg));
-            Assertion.AssertEquals((System.SByte)(arg + 1), result);
+            Assertion.AssertEquals((System.SByte)arg, result);
             arg = -2;
             result = (System.SByte)
                 ((System.Byte)m_testService.EchoAnything(arg));
-            Assertion.AssertEquals((System.SByte)(arg + 1), result);
+            Assertion.AssertEquals((System.SByte)arg, result);
 
             Any argAny = new Any(arg);
             Any resultAny = m_testService.EchoAnythingContainer(argAny);
             result = (System.SByte)
                 ((System.Byte)resultAny.Value);
-            Assertion.AssertEquals((System.SByte)(arg + 1), result);
+            Assertion.AssertEquals((System.SByte)arg, result);
         }
 
         [Test]
@@ -181,7 +180,6 @@ namespace Ch.Elca.Iiop.IntegrationTests {
         }
 
         [Test]
-        [Ignore("Need more work on the any mechanism first")]
         public void TestUInt64AsAny() {
             System.UInt64 arg = 1;
             System.UInt64 result = (System.UInt64)
@@ -673,7 +671,15 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Any result = m_testService.EchoAnythingContainer(any);
             Assertion.AssertEquals(any.Value, result.Value);
         }
-                
+
+        // this test is a replacement for the next one, until behaviour is decided
+        [Test]
+        public void TestCallEqualityServerAndProxy() {
+            m_testService.CheckEqualityWithServiceV2((TestService)m_testService);
+            m_testService.CheckEqualityWithService((MarshalByRefObject)m_testService);
+        }
+                        
+        [Ignore("Not yet decided, what behaviour should be supported by IIOP.NET")]
         [Test]
         public void TestEqualityServerAndProxy() {
             bool result = m_testService.CheckEqualityWithServiceV2((TestService)m_testService);
