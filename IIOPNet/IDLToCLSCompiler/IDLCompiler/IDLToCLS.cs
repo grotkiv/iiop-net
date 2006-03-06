@@ -125,7 +125,8 @@ public class IDLToCLS {
     private bool m_delaySign = false;
     private string m_asmVersion = null;
     private bool m_mapAnyToAnyCont = false;
-    
+    private Type m_baseInterface = null;
+
     #endregion IFields
     #region IConstructors
 
@@ -168,6 +169,7 @@ public class IDLToCLS {
         Console.WriteLine("-r assembly     assemblies to check for types in, instead of generating them");
         Console.WriteLine("-c xmlfile      specifies custom mappings");
         Console.WriteLine("-d define       defines a preprocessor symbol");
+        Console.WriteLine("-b baseIF       the created Interfaces inherit from baseIF.");
         Console.WriteLine("-basedir directory directory to change to before doing any processing.");
         Console.WriteLine("-idir directory directory containing idl files (multiple -idir allowed)");
         Console.WriteLine("-vtSkel         enable creation of value type implementation skeletons");
@@ -268,6 +270,9 @@ public class IDLToCLS {
             } else if (args[i].Equals("-mapAnyToCont")) {
                 i++;
                 m_mapAnyToAnyCont = true;
+            } else if (args[i].Equals("-b")){
+                i++;
+                m_baseInterface = Type.GetType(args[i++]);
             } else {
                 Error(String.Format("Error: invalid option {0}", args[i]));
             }
@@ -383,7 +388,10 @@ public class IDLToCLS {
                                                         m_vtSkelOverwrite);
         }       
         generator.MapAnyToAnyContainer = m_mapAnyToAnyCont;
-        
+        if (m_baseInterface != null) {
+            generator.InheritedInterface = m_baseInterface;
+        }
+
         string currentDir = Directory.GetCurrentDirectory();
         for (int i = 0; i < m_inputFileNames.Length; i++) {
             Debug.WriteLine("checking file: " + m_inputFileNames[i] );
