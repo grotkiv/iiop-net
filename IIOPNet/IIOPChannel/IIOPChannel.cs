@@ -867,6 +867,8 @@ namespace Ch.Elca.Iiop {
 
         private void SetupChannelData(string hostName, int port, TaggedComponent[] additionalComponents) {
             IiopChannelData newChannelData = new IiopChannelData(hostName, port);
+            newChannelData.AddAdditionalTaggedComponent(
+                Services.CodeSetService.CreateDefaultCodesetComponent());
             if ((additionalComponents != null) && (additionalComponents.Length > 0)){
                 newChannelData.AddAdditionalTaggedComponents(additionalComponents);
             }
@@ -987,6 +989,7 @@ namespace Ch.Elca.Iiop {
         private ArrayList m_additionTaggedComponents = new ArrayList();
         #endregion IFields
         #region IConstructors
+
         public IiopChannelData(string hostName, int port) : base(new String[] { "iiop://"+hostName+":"+port } ) {
             m_hostName = hostName;
             m_port = port;
@@ -1037,3 +1040,60 @@ namespace Ch.Elca.Iiop {
     }
     
 }
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using NUnit.Framework;
+    using Ch.Elca.Iiop.Services;
+    using Ch.Elca.Iiop;
+    
+    /// <summary>
+    /// Unit-test for class IiopChannelData
+    /// </summary>
+    [TestFixture]    
+    public class IiopChannelDataTest {
+        
+        private const string HOST = "localhost";
+        private const int PORT = 8087;
+        
+        private IiopChannelData m_channelData;
+        
+        [SetUp]
+        public void Setup() {
+            m_channelData = new IiopChannelData(HOST, PORT);
+        }
+        
+        [Test]
+        public void TestCorrectCreation() {
+            Assertion.AssertEquals("Host", HOST, m_channelData.HostName);
+            Assertion.AssertEquals("Port", PORT, m_channelData.Port);
+            Assertion.AssertEquals("No components by default", 0, 
+                                   m_channelData.AdditionalTaggedComponents.Length);
+            Assertion.AssertEquals("chan uris length", 1,
+                                   m_channelData.ChannelUris.Length);
+            Assertion.AssertEquals("chan uri 1", "iiop://" + HOST + ":" + PORT,
+                                   m_channelData.ChannelUris[0]);
+        }
+        
+        [Test]
+        public void AddComponent() {
+            TaggedComponent comp = 
+                TaggedComponent.CreateTaggedComponent(TAG_CODE_SETS.ConstVal,
+                                                      new Services.CodeSetComponentData(10000,
+                                                                                        new int[0],
+                                                                                        20000,
+                                                                                        new int[0]));                                    
+            m_channelData.AddAdditionalTaggedComponent(comp);
+            Assertion.AssertEquals("Component not added correctly", 1, 
+                                   m_channelData.AdditionalTaggedComponents.Length);
+            Assertion.AssertEquals("Component not added correctly", comp.tag, 
+                                   m_channelData.AdditionalTaggedComponents[0].tag);
+        }
+        
+    }
+    
+}
+
+#endif
