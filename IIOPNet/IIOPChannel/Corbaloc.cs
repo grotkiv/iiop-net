@@ -178,6 +178,12 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     /// </summary>
     internal abstract class CorbaLocIiopAddrBase : CorbaLocObjAddr {
 
+        #region SFields
+        
+        private readonly static object s_defaultCodeSetTaggedComponent = 
+            Services.CodeSetService.CreateDefaultCodesetComponent();
+        
+        #endregion SFields        
 		#region IFields
 		
 		private GiopVersion m_version;
@@ -268,6 +274,13 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 
 	    
 	    #endregion IMethods
+        #region SMethods
+        
+        protected void AddDefaultComponents(IorProfile toProfile) {
+            toProfile.AddTaggedComponent((TaggedComponent)s_defaultCodeSetTaggedComponent);
+        }
+        
+        #endregion SMethods	    
 
 	}
 	
@@ -293,6 +306,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 
         public override IorProfile[] GetProfilesForAddr(byte[] objectKey) {	        
             InternetIiopProfile result = new InternetIiopProfile(Version, Host, (short)Port, objectKey);
+            AddDefaultComponents(result);
             return new IorProfile[] { result };
         }
 
@@ -337,6 +351,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         
         public override IorProfile[] GetProfilesForAddr(byte[] objectKey) {
             InternetIiopProfile result = new InternetIiopProfile(Version, Host, 0, objectKey);
+            AddDefaultComponents(result);
             result.AddTaggedComponentWithData(TAG_SSL_SEC_TRANS.ConstVal, 
                                               new SSLComponentData(SecurityAssociationOptions.EstablishTrustInClient,
                                                                    SecurityAssociationOptions.EstablishTrustInTarget,
