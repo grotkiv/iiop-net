@@ -892,7 +892,15 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
             TestJaggedArrays(); // problems with name mapping possible -> make sure to check afterwards
         }
-                
+
+        // this test is a replacement for the next one, until behaviour is decided
+        [Test]
+        public void TestCallEqualityServerAndProxy() {
+            m_testService.CheckEqualityWithServiceV2((TestService)m_testService);            
+            m_testService.CheckEqualityWithService((MarshalByRefObject)m_testService);
+        }
+                        
+        [Ignore("Not yet decided, what behaviour should be supported by IIOP.NET")]
         [Test]
         public void TestEqualityServerAndProxy() {
             bool result = m_testService.CheckEqualityWithServiceV2((TestService)m_testService);
