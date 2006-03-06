@@ -1524,6 +1524,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         private TypeCodeSerializer m_typeCodeSer = new TypeCodeSerializer();
         private SerializerFactory m_serFactory;
         private bool m_formalIsAnyContainer;
+        private bool m_unboxAnyToCls = true;
 
         #endregion IFields
         #region IConstructors
@@ -1577,7 +1578,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                     if ((!(typeCode is NullTC)) && (!(typeCode is VoidTC))) {
                         actualType = Repository.GetTypeForTypeCode(typeCode); // no .NET type for null-tc, void-tc
                     }
-                    actualToSerialise = ((Any)actual).Value;
+                    actualToSerialise = ((Any)actual).ValueInternalRepresenation;
                 } else {
                     // automatic type code creation
                     actualType = DetermineTypeToUse(actual);
@@ -1595,8 +1596,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
 
         internal override object Deserialize(CdrInputStream sourceStream) {
-            omg.org.CORBA.TypeCode typeCode = 
-                (omg.org.CORBA.TypeCode)m_typeCodeSer.Deserialize(sourceStream);
+            TypeCodeImpl typeCode = 
+                (omg.org.CORBA.TypeCodeImpl)m_typeCodeSer.Deserialize(sourceStream);
             object result;
             // when returning 0 in a mico-server for any, the typecode used is VoidTC
             if ((!(typeCode is NullTC)) && (!(typeCode is VoidTC))) {
@@ -1605,9 +1606,9 @@ namespace Ch.Elca.Iiop.Marshalling {
                 Serializer actualSer = 
                     m_serFactory.Create(dotNetType, typeAttributes);                
                 result = actualSer.Deserialize(sourceStream);                
-                if (result is BoxedValueBase) {
-                    result = ((BoxedValueBase)result).Unbox(); // unboxing the boxed-value, because BoxedValueTypes are internal types, which should not be used by users
-                }
+                // e.g. for boxed valueTypes, do an unbox here; for non cls complian types, 
+                // perform a conversion, if m_unboxAnyToCls.
+                result = typeCode.ConvertToExternalRepresentation(result, m_unboxAnyToCls);
             } else {
                 result = null;
             }
@@ -1981,8 +1982,7 @@ namespace Ch.Elca.Iiop.Tests {
                 CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);                
                 ser.Serialize(actual, cdrOut);
                 outStream.Seek(0, SeekOrigin.Begin);
-                byte[] result = new byte[expected.Length];
-                outStream.Read(result, 0, result.Length);
+                byte[] result = outStream.ToArray();
                 ArrayAssertion.AssertByteArrayEquals("value " + actual + " incorrectly serialized.",
                                                      expected, result);
             } finally {
@@ -1990,15 +1990,29 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }                
         
-        private void GenericDeserTest(Serializer ser, byte[] actual, object expected) {
+        private object GenericDeserForTest(Serializer ser, byte[] actual) {
             MemoryStream inStream = new MemoryStream();
-            inStream.Write(actual, 0, actual.Length);
-            inStream.Seek(0, SeekOrigin.Begin);
-            CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
-            cdrIn.ConfigStream(0, new GiopVersion(1, 2));            
-            Assertion.AssertEquals("value " + expected + " not deserialized.", 
-                                   expected, ser.Deserialize(cdrIn));
-            inStream.Close();
+            try {
+                inStream.Write(actual, 0, actual.Length);
+                inStream.Seek(0, SeekOrigin.Begin);
+                CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
+                cdrIn.ConfigStream(0, new GiopVersion(1, 2));            
+                return ser.Deserialize(cdrIn);
+            } finally {
+                inStream.Close();        
+            }
+        }
+        
+        private void GenericDeserTest(Serializer ser, byte[] actual, object expected,
+                                      out object deserialized) {
+            deserialized = GenericDeserForTest(ser, actual);
+            Assertion.AssertEquals("value " + expected + " not deserialized.",
+                                       expected, deserialized);
+        }
+        
+        private void GenericDeserTest(Serializer ser, byte[] actual, object expected) {
+            object deser;
+            GenericDeserTest(ser, actual, expected, out deser);
         }        
         
         [Test]
@@ -2563,8 +2577,232 @@ namespace Ch.Elca.Iiop.Tests {
             }
             
         }
+        
+        [Test]
+        public void TestSerLongAsAnyNoAnyContainer() {
+            int val = 2;
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 3, 0, 0, 0, 2 });
+        }
 
+        [Test]
+        public void TestDeSerLongAsAnyNoAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            GenericDeserTest(anySer, new byte[] { 0, 0, 0, 3, 0, 0, 0, 2 }, (int)2);
+        }
 
+        [Test]
+        public void TestSerULongAsAnyNoAnyContainer() {            
+            uint val = 4;
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 5, 0, 0, 0, 4 });            
+        }
+
+        [Test]
+        public void TestDeSerULongAsAnyNoAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            object deser;
+            GenericDeserTest(anySer, new byte[] { 0, 0, 0, 5, 0, 0, 0, 4 }, (int)4,
+                             out deser);
+            Assertion.AssertEquals("deser type", ReflectionHelper.Int32Type,
+                                   deser.GetType());            
+        }
+        
+        [Test]
+        public void TestSerSbyteAsAnyNoAnyContainer() {            
+            sbyte val = 2;
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 10, 2 });            
+        }
+
+        [Test]
+        public void TestDeSerSByteAsAnyNoAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            object deser;
+            GenericDeserTest(anySer, new byte[] { 0, 0, 0, 10, 2 }, (sbyte)2,
+                             out deser);
+            Assertion.AssertEquals("deser type", ReflectionHelper.ByteType,
+                                   deser.GetType());            
+        }        
+        
+        [Test]
+        public void TestSerBoxedStringAsAnyNoAnyContainer() {            
+            string val = "test";
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 30, // tc-kind
+                                                     0, 0, 0, 72, // encap length
+                                                     0, 0, 0, 0, // flags
+                                                     0, 0, 0, 35, 73, 68, 76, 58, // rep-id
+                                                     111, 109, 103, 46, 111, 114, 103, 47, 
+                                                     67, 79, 82, 66, 65, 47, 87, 83,
+                                                     116, 114, 105, 110, 103, 86, 97, 108,
+                                                     117, 101, 58, 49, 46, 48, 0, 0,
+                                                     0, 0, 0, 13, 87, 83, 116, 114, // name
+                                                     105, 110, 103, 86, 97, 108, 117, 101,
+                                                     0, 0, 0, 0, 0, 0, 0, 27,  // boxed value tc for wstring
+                                                     0, 0, 0, 0, 127, 255, 255, 2, // bound, value
+                                                     0, 0, 0, 35, 73, 68, 76, 58, // rep-id of value
+                                                     111, 109, 103, 46, 111, 114, 103, 47, 
+                                                     67, 79, 82, 66, 65, 47, 87, 83,
+                                                     116, 114, 105, 110, 103, 86, 97, 108,
+                                                     117, 101, 58, 49, 46, 48, 0, 0,                                                     
+                                                     0, 0, 0, 8, 0, 116, 0, 101, // "test"
+                                                     0, 115, 0, 116 });
+        }
+
+        [Test]
+        public void TestDeSerBoxedStringAsAnyNoAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            object deser;
+            GenericDeserTest(anySer, new byte[] { 0, 0, 0, 30, // tc-kind
+                                                  0, 0, 0, 72, // encap length
+                                                  0, 0, 0, 0, // flags
+                                                  0, 0, 0, 35, 73, 68, 76, 58, // rep-id
+                                                  111, 109, 103, 46, 111, 114, 103, 47, 
+                                                  67, 79, 82, 66, 65, 47, 87, 83,
+                                                  116, 114, 105, 110, 103, 86, 97, 108,
+                                                  117, 101, 58, 49, 46, 48, 0, 0,
+                                                  0, 0, 0, 13, 87, 83, 116, 114, // name
+                                                  105, 110, 103, 86, 97, 108, 117, 101,
+                                                  0, 0, 0, 0, 0, 0, 0, 27,  // boxed value tc for wstring
+                                                  0, 0, 0, 0, 127, 255, 255, 2, // bound, value
+                                                  0, 0, 0, 35, 73, 68, 76, 58, // rep-id of value
+                                                  111, 109, 103, 46, 111, 114, 103, 47, 
+                                                  67, 79, 82, 66, 65, 47, 87, 83,
+                                                  116, 114, 105, 110, 103, 86, 97, 108,
+                                                  117, 101, 58, 49, 46, 48, 0, 0,                                                     
+                                                  0, 0, 0, 8, 0, 116, 0, 101, // "test"
+                                                  0, 115, 0, 116 },
+                             "test",
+                             out deser);
+            Assertion.AssertEquals("deser type", ReflectionHelper.StringType,
+                                   deser.GetType());
+        }        
+        
+        [Test]
+        public void TestSerNullAsAnyNoAnyContainer() {            
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            object val = null;
+            GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 0 });
+        }
+
+        [Test]
+        public void TestDeSerNullAsAnyNoAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            object val = null;
+            GenericDeserTest(anySer, new byte[] { 0, 0, 0, 0 }, val);
+        }        
+        
+        [Test]
+        public void TestSerLongAsAnyAnyContainer() {
+            Any any = new Any((int)2);
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            GenericSerTest(anySer, any, new byte[] { 0, 0, 0, 3, 0, 0, 0, 2 });
+        }
+
+        [Test]
+        public void TestDeSerLongAsAnyAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            Any any = new Any((int)2);
+            GenericDeserTest(anySer, new byte[] { 0, 0, 0, 3, 0, 0, 0, 2 }, any);
+        }
+
+        [Test]
+        public void TestSerULongAsAnyAnyContainer() {            
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            Any any = new Any((uint)4);
+            GenericSerTest(anySer, any, new byte[] { 0, 0, 0, 5, 0, 0, 0, 4 });
+        }
+
+        [Test]
+        public void TestDeSerULongAsAnyAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            Any any = new Any((uint)4);
+            GenericDeserTest(anySer, new byte[] { 0, 0, 0, 5, 0, 0, 0, 4 }, any);
+        }
+        
+        [Test]
+        public void TestSerNullAsAnyAnyContainer() {            
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            Any any = new Any(null);
+            GenericSerTest(anySer, any, new byte[] { 0, 0, 0, 0 });
+        }
+
+        [Test]
+        public void TestDeSerNullAsAnyAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            Any any = new Any(null);
+            GenericDeserTest(anySer, new byte[] { 0, 0, 0, 0 }, any);
+        }
+        
+        [Test]
+        public void TestSerNullAsAnyWithVoidTcAnyContainer() {            
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            Any any = new Any(null, new VoidTC());
+            GenericSerTest(anySer, any, new byte[] { 0, 0, 0, 1 });
+        }        
+        
+        [Test]
+        public void TestDeSerNullAsAnyWithVoidTcAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            Any any = new Any(null, new VoidTC());
+            GenericDeserTest(anySer, new byte[] { 0, 0, 0, 1 }, any);
+        }
+        
+        [Test]
+        public void TestSerBoxedStringAsAnyAnyContainer() {            
+            Any val = new Any("test");
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 30, // tc-kind
+                                                     0, 0, 0, 72, // encap length
+                                                     0, 0, 0, 0, // flags
+                                                     0, 0, 0, 35, 73, 68, 76, 58, // rep-id
+                                                     111, 109, 103, 46, 111, 114, 103, 47, 
+                                                     67, 79, 82, 66, 65, 47, 87, 83,
+                                                     116, 114, 105, 110, 103, 86, 97, 108,
+                                                     117, 101, 58, 49, 46, 48, 0, 0,
+                                                     0, 0, 0, 13, 87, 83, 116, 114, // name
+                                                     105, 110, 103, 86, 97, 108, 117, 101,
+                                                     0, 0, 0, 0, 0, 0, 0, 27,  // boxed value tc for wstring
+                                                     0, 0, 0, 0, 127, 255, 255, 2, // bound, value
+                                                     0, 0, 0, 35, 73, 68, 76, 58, // rep-id of value
+                                                     111, 109, 103, 46, 111, 114, 103, 47, 
+                                                     67, 79, 82, 66, 65, 47, 87, 83,
+                                                     116, 114, 105, 110, 103, 86, 97, 108,
+                                                     117, 101, 58, 49, 46, 48, 0, 0,                                                     
+                                                     0, 0, 0, 8, 0, 116, 0, 101, // "test"
+                                                     0, 115, 0, 116 });
+        }
+
+        [Test]
+        public void TestDeSerBoxedStringAsAnyAnyContainer() {
+            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            Any val = new Any("test");
+            object deser =
+                GenericDeserForTest(anySer, new byte[] { 0, 0, 0, 30, // tc-kind
+                                                  0, 0, 0, 72, // encap length
+                                                  0, 0, 0, 0, // flags
+                                                  0, 0, 0, 35, 73, 68, 76, 58, // rep-id
+                                                  111, 109, 103, 46, 111, 114, 103, 47, 
+                                                  67, 79, 82, 66, 65, 47, 87, 83,
+                                                  116, 114, 105, 110, 103, 86, 97, 108,
+                                                  117, 101, 58, 49, 46, 48, 0, 0,
+                                                  0, 0, 0, 13, 87, 83, 116, 114, // name
+                                                  105, 110, 103, 86, 97, 108, 117, 101,
+                                                  0, 0, 0, 0, 0, 0, 0, 27,  // boxed value tc for wstring
+                                                  0, 0, 0, 0, 127, 255, 255, 2, // bound, value
+                                                  0, 0, 0, 35, 73, 68, 76, 58, // rep-id of value
+                                                  111, 109, 103, 46, 111, 114, 103, 47, 
+                                                  67, 79, 82, 66, 65, 47, 87, 83,
+                                                  116, 114, 105, 110, 103, 86, 97, 108,
+                                                  117, 101, 58, 49, 46, 48, 0, 0,                                                     
+                                                  0, 0, 0, 8, 0, 116, 0, 101, // "test"
+                                                  0, 115, 0, 116 });
+            Assertion.AssertEquals("deser value", val.Value,
+                                   ((Any)deser).Value);
+            Assertion.AssertEquals("deser type", ReflectionHelper.StringType,
+                                   ((Any)deser).Value.GetType());
+        }
 
     }
 

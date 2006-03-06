@@ -224,7 +224,52 @@ namespace omg.org.CORBA {
             return cdrStream.ReadString();
         }
 
+        /// <summary>
+        /// get the corresponding .NET type for this typecode.
+        /// </summary>        
         internal abstract Type GetClsForTypeCode();
+        
+        /// <summary>checks, if the value is of this typecode.</summary>
+        internal virtual bool IsInstanceOfTypeCode(object val) {
+            if (val == null) {
+                return !GetClsForTypeCode().IsValueType;
+            }
+            return GetClsForTypeCode() == val.GetType();
+        }
+        
+        protected Exception CreateCantConvertToAssignableException(object val) {
+            return new BAD_PARAM(456, CompletionStatus.Completed_MayBe);
+        }
+        
+        protected Exception CreateCantConvertToExternalRepresentationException(object val) {
+            return new BAD_PARAM(456, CompletionStatus.Completed_MayBe);
+        }        
+        
+        /// <summary>
+        /// If the type of the value is equal to the expected one, this
+        /// method can assign the value without conversion.
+        /// For non CLS compliant types and other not directly assignable values,
+        /// this method can be used to check, if convert from
+        /// a tc equivalent representation to the type compatible with the typecode
+        /// is possible.
+        /// </summary>
+        internal virtual object ConvertToAssignable(object val) {
+            if (IsInstanceOfTypeCode(val)) {
+                return val;
+            } else {
+                throw CreateCantConvertToAssignableException(val);
+            }
+        }
+
+        /// <summary>
+        /// If result of a Deserialization is an internal helper type, this
+        /// method can be used to convert to the external representation.
+        /// For non CLS compliant types, this method can be used to convert from
+        /// the type compatible with the typecode to a cls compliant equivalent.
+        /// </summary>
+        internal virtual object ConvertToExternalRepresentation(object val, bool useClsOnly) {
+            return val;
+        }
         
 
         /// <summary>
@@ -464,7 +509,11 @@ namespace omg.org.CORBA {
         public NullTC() : base(TCKind.tk_null) { }
 
         #endregion IConstructors
-        #region IMethods
+        #region IMethods        
+        
+        internal override bool IsInstanceOfTypeCode(object val) {
+            return val == null;
+        }
         
         internal override Type GetClsForTypeCode() {
             // this operation is not supported for a NullTC
@@ -482,6 +531,11 @@ namespace omg.org.CORBA {
 
         #endregion IConstructors
         #region IMethods
+
+        internal override bool IsInstanceOfTypeCode(object val) {
+            return (val == null) ||
+                (val.GetType() == GetClsForTypeCode());
+        }
         
         internal override Type GetClsForTypeCode() {
             return ReflectionHelper.VoidType;
@@ -533,9 +587,32 @@ namespace omg.org.CORBA {
         #region IMethods
         
         internal override Type GetClsForTypeCode() {
-            return ReflectionHelper.Int16Type;
+            return ReflectionHelper.UInt16Type;
         }
 
+        internal override object ConvertToAssignable(object val) {
+            if (IsInstanceOfTypeCode(val)) {
+                return val;
+            } else if (val != null && val.GetType().Equals(ReflectionHelper.Int16Type)) {
+                short valCls = (short)val;
+                return (ushort)valCls;
+            } else {
+                throw CreateCantConvertToAssignableException(val);
+            }
+        }
+
+        internal override object ConvertToExternalRepresentation(object val, bool useClsOnly) {
+            if (!useClsOnly) {
+                return val;
+            }
+            if (val.GetType().Equals(GetClsForTypeCode())) {
+                ushort valToConv = (ushort)val;
+                return (short)valToConv;
+            } else {
+                throw CreateCantConvertToExternalRepresentationException(val);
+            }
+        }                
+        
         #endregion IMethods
 
     }
@@ -550,8 +627,31 @@ namespace omg.org.CORBA {
         #region IMethods
 
         internal override Type GetClsForTypeCode() {
-            return ReflectionHelper.Int32Type;
+            return ReflectionHelper.UInt32Type;
         }
+                        
+        internal override object ConvertToAssignable(object val) {
+            if (IsInstanceOfTypeCode(val)) {
+                return val;
+            } else if (val != null && val.GetType().Equals(ReflectionHelper.Int32Type)) {
+                int valCls = (int)val;
+                return (uint)valCls;
+            } else {
+                throw CreateCantConvertToAssignableException(val);
+            }
+        }
+
+        internal override object ConvertToExternalRepresentation(object val, bool useClsOnly) {
+            if (!useClsOnly) {
+                return val;
+            }
+            if (val.GetType().Equals(GetClsForTypeCode())) {
+                uint valToConv = (uint)val;
+                return (int)valToConv;
+            } else {
+                throw CreateCantConvertToExternalRepresentationException(val);
+            }
+        }        
 
         #endregion IMethods
 
@@ -641,6 +741,17 @@ namespace omg.org.CORBA {
 
         #endregion IConstructors
         #region IMethods
+        
+        internal override object ConvertToAssignable(object val) {
+            if (IsInstanceOfTypeCode(val)) {
+                return val;
+            } else if (val != null && val.GetType().Equals(ReflectionHelper.SByteType)) {
+                sbyte valNonCls = (sbyte)val;
+                return (byte)valNonCls;
+            } else {
+                throw CreateCantConvertToAssignableException(val);
+            }
+        }
 
         internal override Type GetClsForTypeCode() {
             return ReflectionHelper.ByteType;
@@ -906,9 +1017,32 @@ namespace omg.org.CORBA {
 
         #endregion IConstructors
         #region IMethods
+        
+        internal override object ConvertToAssignable(object val) {
+            if (IsInstanceOfTypeCode(val)) {
+                return val;
+            } else if (val != null && val.GetType().Equals(ReflectionHelper.Int64Type)) {
+                long valCls = (long)val;
+                return (ulong)valCls;
+            } else {
+                throw CreateCantConvertToAssignableException(val);
+            }
+        }
+
+        internal override object ConvertToExternalRepresentation(object val, bool useClsOnly) {
+            if (!useClsOnly) {
+                return val;
+            }
+            if (val.GetType().Equals(GetClsForTypeCode())) {
+                ulong valToConv = (ulong)val;
+                return (long)valToConv;
+            } else {
+                throw CreateCantConvertToExternalRepresentationException(val);
+            }
+        }
 
         internal override Type GetClsForTypeCode() {
-            return ReflectionHelper.Int64Type;
+            return ReflectionHelper.UInt64Type;
         }
 
         #endregion IMethods
@@ -1024,7 +1158,7 @@ namespace omg.org.CORBA {
 
         private string m_id;
         private string m_name;
-        private TypeCode m_boxed;
+        private TypeCodeImpl m_boxed;
 
         #endregion IFields
         #region IConstructors
@@ -1036,7 +1170,7 @@ namespace omg.org.CORBA {
         public ValueBoxTC(string repositoryID, string name, TypeCode boxed) : base(TCKind.tk_value_box) {
             m_id = repositoryID;
             m_name = name;
-            m_boxed = boxed;    
+            m_boxed = (TypeCodeImpl)boxed;
         }
 
         #endregion IConstructors
@@ -1061,7 +1195,7 @@ namespace omg.org.CORBA {
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
             TypeCodeSerializer ser = new TypeCodeSerializer();
-            m_boxed = (TypeCode) ser.Deserialize(encap);
+            m_boxed = (TypeCodeImpl) ser.Deserialize(encap);
         }
 
         internal override void WriteToStream(CdrOutputStream cdrStream) {
@@ -1092,7 +1226,46 @@ namespace omg.org.CORBA {
             TypeBuilder result = generator.CreateBoxedType(boxedType, modBuilder, fullTypeName, attrs);
             return result.CreateType();
         }
+        
+        internal override object ConvertToAssignable(object val) {
+            Type requiredObjectType = GetClsForTypeCode();
+            if (IsInstanceOfTypeCode(val)) {
+                return val;            
+            } else if (IsBoxableTo(val.GetType(),requiredObjectType)) {
+                // box value
+                return Activator.CreateInstance(requiredObjectType, new object[] { val } );
+            } else {
+                throw CreateCantConvertToAssignableException(val);
+            }
+        }        
 
+		private bool IsBoxableTo(Type boxIt, Type boxInto) {
+		    if (!boxInto.IsSubclassOf(ReflectionHelper.BoxedValueBaseType)) {
+		        return false;
+		    }
+		    try {
+                Type boxedType = (Type)boxInto.InvokeMember(BoxedValueBase.GET_FIRST_NONBOXED_TYPE_METHODNAME,
+                                                            BindingFlags.InvokeMethod | BindingFlags.Public |
+                                                            BindingFlags.NonPublic | BindingFlags.Static |
+                                                            BindingFlags.DeclaredOnly,
+                                                            null, null, new object[0]);
+		        if (boxedType.IsAssignableFrom(boxIt)) {
+		            return true;
+		        }
+		    } catch {
+		        throw new INTERNAL(10041, CompletionStatus.Completed_MayBe);
+		    }
+		    return false;
+		}        
+        
+        internal override object ConvertToExternalRepresentation(object val, bool useClsOnly) {
+            if (val is BoxedValueBase) {
+                val = ((BoxedValueBase)val).Unbox(); // unboxing the boxed-value, because BoxedValueTypes are internal types, which should not be used by users
+            }   
+            // because the container instance is replaced by this instance,
+            // convert to external representation.
+            return m_boxed.ConvertToExternalRepresentation(val, useClsOnly);
+        }
 
         #endregion IMethods
 
@@ -1819,6 +1992,17 @@ namespace omg.org.CORBA {
             return result.CreateType();
         }
 
+        // fix for Orbs (e.g. JBoss), 
+        // which send boxed value types as normal value types and non-boxed types.
+        internal override object ConvertToExternalRepresentation(object val, bool useClsOnly) {
+            if (val is BoxedValueBase) {
+                val = ((BoxedValueBase)val).Unbox(); // unboxing the boxed-value, because BoxedValueTypes are internal types, which should not be used by users
+                val = ((TypeCodeImpl)m_members[0].m_type).
+                    ConvertToExternalRepresentation(val, useClsOnly);
+            }   
+            return val;
+        }        
+        
         #endregion IMethods
 
     }
@@ -1836,7 +2020,7 @@ namespace Ch.Elca.Iiop.Tests {
     using omg.org.CORBA;
     
     /// <summary>
-    /// Unit-tests for testing Any container
+    /// Unit-tests for testing long type code
     /// </summary>
     [TestFixture]
     public class LongTypeCodeTest {
@@ -1875,7 +2059,217 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestKind() {
             Assertion.AssertEquals("wrong kind", TCKind.tk_long, m_tc.kind());
         }
+        
+        [Test]
+        public void CanAssignValue() {
+            int val = 11;
+            Assertion.Assert("value assignement not possible", m_tc.IsInstanceOfTypeCode(val));
+            uint val2 = 22;
+            Assertion.Assert("value assignement possible, but shouldn't", 
+                             !m_tc.IsInstanceOfTypeCode(val2));
+            Assertion.Assert("value assignement possible, but shouldn't", 
+                             !m_tc.IsInstanceOfTypeCode(null));
+        }
+        
+        [Test]
+        public void ConvertFromClsCompliant() {
+            int val = 11;
+            Assertion.AssertEquals("convert was not correct", val, m_tc.ConvertToAssignable(val));
+            Assertion.AssertEquals("convert was not correct", val.GetType(), 
+                                   m_tc.ConvertToAssignable(val).GetType());
+        }
+        
+        [Test]
+        public void ConvertToClsCompliant() {
+            int val = 11;
+            Assertion.AssertEquals("convert was not correct", val, 
+                                   m_tc.ConvertToExternalRepresentation(val, true));
+            Assertion.AssertEquals("convert was not correct", val.GetType(),
+                                   m_tc.ConvertToExternalRepresentation(val, true).GetType());
+        }        
     }
+    
+    /// <summary>
+    /// Unit-tests for testing ulong type code
+    /// </summary>
+    [TestFixture]
+    public class ULongTypeCodeTest {
+    
+        
+        private ULongTC m_tc;
+        
+        [SetUp]
+        public void Setup() {
+            m_tc = new ULongTC();
+        }
+        
+        [Test]
+        public void TestTypeForTypeCode() {            
+            Assertion.AssertEquals("wrong type for typecode",
+                                   ReflectionHelper.UInt32Type, m_tc.GetClsForTypeCode());
+        }
+        
+        [Test]
+        public void TestEqual() {
+            ULongTC other = new ULongTC();
+            Assertion.Assert("not equal", m_tc.equal(other));
+            LongTC other2 = new LongTC();
+            Assertion.Assert("equal but shoudln't", !m_tc.equal(other2));            
+        }
+        
+        [Test]
+        public void TestEquivalent() {
+            ULongTC other = new ULongTC();
+            Assertion.Assert("not equal", m_tc.equivalent(other));
+            LongTC other2 = new LongTC();
+            Assertion.Assert("equal but shoudln't", !m_tc.equivalent(other2));
+        }        
+        
+        [Test]
+        public void TestKind() {
+            Assertion.AssertEquals("wrong kind", TCKind.tk_ulong, m_tc.kind());
+        }
+        
+        [Test]
+        public void CanAssignValue() {
+            uint val = 11;
+            Assertion.Assert("value assignement not possible", m_tc.IsInstanceOfTypeCode(val));
+            int val2 = 22;
+            Assertion.Assert("value assignement possible, but shouldn't", 
+                             !m_tc.IsInstanceOfTypeCode(val2));
+            Assertion.Assert("value assignement possible, but shouldn't", 
+                             !m_tc.IsInstanceOfTypeCode(null));
+        }
+                
+        [Test]
+        public void ConvertFromClsCompliant() {
+            uint val = 11;
+            int valCls = (int)val;
+            Assertion.AssertEquals("convert was not correct", val, m_tc.ConvertToAssignable(valCls));
+            Assertion.AssertEquals("convert was not correct", val.GetType(),
+                                   m_tc.ConvertToAssignable(valCls).GetType());
+        }
+        
+        [Test]
+        public void ConvertToClsCompliant() {
+            uint val = 11;
+            int valCls = (int)val;
+            Assertion.AssertEquals("convert was not correct", 
+                                   valCls, m_tc.ConvertToExternalRepresentation(val, true));            
+            Assertion.AssertEquals("convert was not correct", 
+                                   valCls.GetType(), 
+                                   m_tc.ConvertToExternalRepresentation(val, true).GetType());
+        }        
+        
+    }    
+    
+    /// <summary>
+    /// Unit-tests for testing ulong type code
+    /// </summary>
+    [TestFixture]
+    public class ULongLongTypeCodeTest {
+    
+        
+        private ULongLongTC m_tc;
+        
+        [SetUp]
+        public void Setup() {
+            m_tc = new ULongLongTC();
+        }
+        
+        [Test]
+        public void TestTypeForTypeCode() {            
+            Assertion.AssertEquals("wrong type for typecode",
+                                   ReflectionHelper.UInt64Type, m_tc.GetClsForTypeCode());
+        }
+        
+        [Test]
+        public void TestEqual() {
+            ULongLongTC other = new ULongLongTC();
+            Assertion.Assert("not equal", m_tc.equal(other));
+            LongLongTC other2 = new LongLongTC();
+            Assertion.Assert("equal but shoudln't", !m_tc.equal(other2));            
+        }
+        
+        [Test]
+        public void TestEquivalent() {
+            ULongLongTC other = new ULongLongTC();
+            Assertion.Assert("not equal", m_tc.equivalent(other));
+            LongLongTC other2 = new LongLongTC();
+            Assertion.Assert("equal but shoudln't", !m_tc.equivalent(other2));
+        }        
+        
+        [Test]
+        public void TestKind() {
+            Assertion.AssertEquals("wrong kind", TCKind.tk_ulonglong, m_tc.kind());
+        }
+        
+        [Test]
+        public void CanAssignValue() {
+            ulong val = 11;
+            Assertion.Assert("value assignement not possible", m_tc.IsInstanceOfTypeCode(val));
+            long val2 = 22;
+            Assertion.Assert("value assignement possible, but shouldn't", 
+                             !m_tc.IsInstanceOfTypeCode(val2));
+            Assertion.Assert("value assignement possible, but shouldn't", 
+                             !m_tc.IsInstanceOfTypeCode(null));
+        }
+    }    
+    
+    
+    /// <summary>
+    /// Unit-tests for testing ulong type code
+    /// </summary>
+    [TestFixture]
+    public class UShortTypeCodeTest {
+    
+        
+        private UShortTC m_tc;
+        
+        [SetUp]
+        public void Setup() {
+            m_tc = new UShortTC();
+        }
+        
+        [Test]
+        public void TestTypeForTypeCode() {            
+            Assertion.AssertEquals("wrong type for typecode",
+                                   ReflectionHelper.UInt16Type, m_tc.GetClsForTypeCode());
+        }
+        
+        [Test]
+        public void TestEqual() {
+            UShortTC other = new UShortTC();
+            Assertion.Assert("not equal", m_tc.equal(other));
+            ShortTC other2 = new ShortTC();
+            Assertion.Assert("equal but shoudln't", !m_tc.equal(other2));            
+        }
+        
+        [Test]
+        public void TestEquivalent() {
+            UShortTC other = new UShortTC();
+            Assertion.Assert("not equal", m_tc.equivalent(other));
+            ShortTC other2 = new ShortTC();
+            Assertion.Assert("equal but shoudln't", !m_tc.equivalent(other2));
+        }        
+        
+        [Test]
+        public void TestKind() {
+            Assertion.AssertEquals("wrong kind", TCKind.tk_ushort, m_tc.kind());
+        }
+        
+        [Test]
+        public void CanAssignValue() {
+            ushort val = 11;
+            Assertion.Assert("value assignement not possible", m_tc.IsInstanceOfTypeCode(val));
+            short val2 = 22;
+            Assertion.Assert("value assignement possible, but shouldn't", 
+                             !m_tc.IsInstanceOfTypeCode(val2));
+            Assertion.Assert("value assignement possible, but shouldn't", 
+                             !m_tc.IsInstanceOfTypeCode(null));
+        }
+    }    
+    
     
 }
     
