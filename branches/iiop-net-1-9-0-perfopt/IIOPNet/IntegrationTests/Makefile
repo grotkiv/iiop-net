@@ -45,13 +45,9 @@ build: nunit-var junit-var
     @if not defined JBOSS_HOME echo JBOSS_HOME not set, skipping JBOSS integration test
     @if defined JBOSS_HOME $(MAKE) build
     cd ..
-    cd WAS5
-    @if not defined WAS_HOME echo WAS_HOME not set, skipping WAS5 integration test
-    @if defined WAS_HOME $(MAKE) build
-    cd ..
-    cd WAS5_1
-    @if not defined WAS5_1_HOME echo WAS5_1_HOME not set, skipping WAS5_1 integration test
-    @if defined WAS5_1_HOME $(MAKE) build
+    cd Jboss4.0
+    @if not defined JBOSS_HOME_4 echo JBOSS_HOME_4 not set, skipping JBOSS 4 integration test
+    @if defined JBOSS_HOME_4 $(MAKE) build
     cd ..
     cd MICO
     @if not defined MICO_HOME echo MICO_HOME not set, skipping MICO integration test
@@ -67,6 +63,14 @@ build: nunit-var junit-var
 #   cd ..
     cd GacTest
     $(MAKE) build
+    cd ..
+    cd WAS5
+    @if not defined WAS_HOME echo WAS_HOME not set, skipping WAS5 integration test
+    @if defined WAS_HOME $(MAKE) build
+    cd ..
+    cd WAS5_1
+    @if not defined WAS5_1_HOME echo WAS5_1_HOME not set, skipping WAS5_1 integration test
+    @if defined WAS5_1_HOME $(MAKE) build
     cd ..
 
 build-ssl:
@@ -132,13 +136,9 @@ test: nunit-var junit-var
     @if not defined JBOSS_HOME echo JBOSS_HOME not set, skipping JBOSS integration test
     @if defined JBOSS_HOME $(MAKE) test
     cd ..
-    cd WAS5
-    @if not defined WAS_HOME echo WAS_HOME not set, skipping WAS5 integration test
-    @if defined WAS_HOME $(MAKE) test
-    cd ..
-    cd WAS5_1
-    @if not defined WAS5_1_HOME echo WAS5_1_HOME not set, skipping WAS5_1 integration test
-    @if defined WAS5_1_HOME $(MAKE) test
+    cd Jboss4.0
+    @if not defined JBOSS_HOME_4 echo JBOSS_HOME_4 not set, skipping JBOSS 4 integration test
+    @if defined JBOSS_HOME_4 $(MAKE) test
     cd ..
     cd MICO
     @if not defined MICO_HOME echo MICO_HOME not set, skipping MICO integration test
@@ -150,6 +150,14 @@ test: nunit-var junit-var
     cd ..
     cd GacTest
     $(MAKE) test
+    cd ..
+    cd WAS5
+    @if not defined WAS_HOME echo WAS_HOME not set, skipping WAS5 integration test
+    @if defined WAS_HOME $(MAKE) test
+    cd ..
+    cd WAS5_1
+    @if not defined WAS5_1_HOME echo WAS5_1_HOME not set, skipping WAS5_1 integration test
+    @if defined WAS5_1_HOME $(MAKE) test
     cd ..
 
 test-ssl:
@@ -198,6 +206,9 @@ clean:
     $(MAKE) clean
     cd ..
     cd Jboss3.2.1
+    $(MAKE) clean
+    cd ..
+    cd Jboss4.0
     $(MAKE) clean
     cd ..
     cd WAS5
