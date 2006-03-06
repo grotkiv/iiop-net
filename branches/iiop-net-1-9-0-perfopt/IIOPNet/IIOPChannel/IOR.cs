@@ -290,10 +290,6 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     internal abstract class IorProfile : IIorProfile {
         
         #region SFields
-        
-        private readonly static object s_defaultCodeSetTaggedComponent = 
-            Services.CodeSetService.CreateDefaultCodesetComponent();            
-            
         #endregion SFields
         #region IFields
 
@@ -393,15 +389,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         public abstract TaggedProfile CreateTaggedProfile();
         
         #endregion IMethods
-        #region SMethods
-        
-        /// <summary>
-        /// returns the codeset tagged component, which should be added to the profiles by default.
-        /// </summary>        
-        protected static TaggedComponent GetDefaultCodeSetTaggedComponent() {
-            return (TaggedComponent)s_defaultCodeSetTaggedComponent;
-        }
-        
+        #region SMethods                
         #endregion SMethods
     
     }
@@ -423,8 +411,6 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         public InternetIiopProfile(GiopVersion version, string hostName, short port, byte[] objectKey) : base(version, objectKey) {
             m_hostName = hostName;
             m_port = port;
-            // default codesetComponent
-            TaggedComponents.AddComponent(IorProfile.GetDefaultCodeSetTaggedComponent());
         }
 
         /// <summary>
@@ -538,10 +524,8 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     internal sealed class MultipleComponentsProfile : IorProfile {
     
         #region IConstructors
-
+        
         public MultipleComponentsProfile() : base(new GiopVersion(1,2), null) {
-            // default codesetComponent
-            TaggedComponents.AddComponent(IorProfile.GetDefaultCodeSetTaggedComponent());        
         }
 
         /// <summary>
@@ -822,7 +806,7 @@ namespace Ch.Elca.Iiop.Tests {
             m_profile = new InternetIiopProfile(m_version, m_hostName, m_port, m_objectKey);
         }
 
-        [Test]        
+        [Test]
         public void TestDefaultProfileCreateion() {
             Assertion.AssertEquals("profile version wrong", m_version, m_profile.Version); 
             Assertion.AssertEquals("profile Hostname wrong", m_hostName, m_profile.HostName);
@@ -831,7 +815,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("profile key wrong", m_objectKey.Length, m_profile.ObjectKey.Length);
             Assertion.AssertEquals("tagged components empty", 0, m_profile.TaggedComponents.Count);
         }
-
+        
         [Test]
         public void TestAddTaggedComponent() {
             CodeSetComponentData codeSetCompVal = 
