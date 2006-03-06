@@ -222,6 +222,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 }
             } else {
                 // do serialize as value type
+                // TODO: is this correct? Check for Any mapping ...
                 return MapToIdlConcreateValueType(clsType);
             }
         }
