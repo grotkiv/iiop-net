@@ -126,11 +126,12 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 	    }
 
 	    public IorProfile[] GetProfiles() {
-	        ArrayList resultList = new ArrayList();
-	        foreach (CorbaLocObjAddr addr in m_objAddrs) {
-	            resultList.AddRange(addr.GetProfilesForAddr(GetKeyAsByteArray()));        
-	        }
-	        IorProfile[] result = (IorProfile[])resultList.ToArray(ReflectionHelper.IorProfileType);
+	        IorProfile[] result = new IorProfile[m_objAddrs.Length];	        
+	        for (int i = 0; i < m_objAddrs.Length; i++) {
+	            IorProfile addrProfile = 
+	                m_objAddrs[i].GetProfileForAddr(GetKeyAsByteArray());
+	            result[i] = addrProfile;
+	        }	        
             if (result.Length == 0) {
                 throw new INV_OBJREF(8421, CompletionStatus.Completed_MayBe);
             }
@@ -163,9 +164,9 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 	/// <summary>marker interface to mark a corbaloc obj addr</summary>
 	internal interface CorbaLocObjAddr {
         /// <summary>
-        /// converts the address to IorProfiles
+        /// converts this address to an IorProfile
         /// </summary>
-        IorProfile[] GetProfilesForAddr(byte[] objectKey);
+        IorProfile GetProfileForAddr(byte[] objectKey);
         
         /// <summary>
         /// parses the address into a .NET usable form
@@ -268,7 +269,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 	    	
 	    }
 	    
-	    public abstract IorProfile[] GetProfilesForAddr(byte[] objectKey);
+	    public abstract IorProfile GetProfileForAddr(byte[] objectKey);
 	    
 	    public abstract Uri ParseUrl(string objectUri, out GiopVersion version);
 
@@ -304,10 +305,10 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             }
         }
 
-        public override IorProfile[] GetProfilesForAddr(byte[] objectKey) {	        
+        public override IorProfile GetProfileForAddr(byte[] objectKey) {	        
             InternetIiopProfile result = new InternetIiopProfile(Version, Host, (short)Port, objectKey);
             AddDefaultComponents(result);
-            return new IorProfile[] { result };
+            return result;
         }
 
         public override Uri ParseUrl(string objectUri, out GiopVersion version) {
@@ -349,14 +350,14 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             return 9;
         }
         
-        public override IorProfile[] GetProfilesForAddr(byte[] objectKey) {
+        public override IorProfile GetProfileForAddr(byte[] objectKey) {
             InternetIiopProfile result = new InternetIiopProfile(Version, Host, 0, objectKey);
             AddDefaultComponents(result);
             result.AddTaggedComponentWithData(TAG_SSL_SEC_TRANS.ConstVal, 
                                               new SSLComponentData(SecurityAssociationOptions.EstablishTrustInClient,
                                                                    SecurityAssociationOptions.EstablishTrustInTarget,
                                                                    (short)Port));
-            return new IorProfile[] { result };
+            return result;
         }        
     
         public override Uri ParseUrl(string objectUri, out GiopVersion version) {
