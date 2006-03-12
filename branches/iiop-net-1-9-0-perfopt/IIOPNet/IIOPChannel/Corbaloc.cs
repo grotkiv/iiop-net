@@ -393,6 +393,8 @@ namespace Ch.Elca.Iiop.Tests {
 	
     using NUnit.Framework;
     using Ch.Elca.Iiop.CorbaObjRef;
+    using Ch.Elca.Iiop.Services;
+    using Ch.Elca.Iiop.Security.Ssl;
     
     /// <summary>
     /// Unit-test for class Corbaloc
@@ -415,6 +417,11 @@ namespace Ch.Elca.Iiop.Tests {
         	Assertion.AssertEquals(2, addr.Version.Minor);
         	Assertion.AssertEquals("elca.ch", addr.Host);
         	Assertion.AssertEquals(1234, addr.Port);
+        	
+        	Assertion.AssertEquals(1, parsed.GetProfiles().Length);
+        	Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
+        	Assertion.Assert(parsed.GetProfiles()[0].TaggedComponents.ContainsTaggedComponent(
+                                CodeSetService.SERVICE_ID));
         }
         
         [Test]
@@ -472,7 +479,7 @@ namespace Ch.Elca.Iiop.Tests {
         	Assertion.AssertEquals(2809, addr.Port);
         	
         	testCorbaLoc = "corbaloc:iiop:1.2@elca.ch/test";
-        	 parsed = new Corbaloc(testCorbaLoc);
+        	parsed = new Corbaloc(testCorbaLoc);
         	Assertion.AssertEquals("test", parsed.KeyString);
         	Assertion.AssertEquals(1, parsed.ObjAddrs.Length);
         	Assertion.AssertEquals(typeof(CorbaLocIiopAddr), parsed.ObjAddrs[0].GetType());
@@ -491,19 +498,28 @@ namespace Ch.Elca.Iiop.Tests {
         	Assertion.AssertEquals(1, addr.Version.Major);
         	Assertion.AssertEquals(0, addr.Version.Minor);
         	Assertion.AssertEquals("elca.ch", addr.Host);
-        	Assertion.AssertEquals(1234, addr.Port);
-            
-        	testCorbaLoc = "corbaloc:iiop-ssl:elca.ch:1234/test";
-        	parsed = new Corbaloc(testCorbaLoc);
+        	Assertion.AssertEquals(1234, addr.Port);                        
+        }
+        
+        [Test]
+        public void TestCorbaLocIiopSsl() {
+        	string testCorbaLoc = "corbaloc:iiop-ssl:elca.ch:1234/test";
+        	Corbaloc parsed = new Corbaloc(testCorbaLoc);
         	Assertion.AssertEquals("test", parsed.KeyString);
         	Assertion.AssertEquals(1, parsed.ObjAddrs.Length);
         	Assertion.AssertEquals(typeof(CorbaLocIiopSslAddr), parsed.ObjAddrs[0].GetType());
-        	addr = (CorbaLocIiopSslAddr)(parsed.ObjAddrs[0]);
+        	CorbaLocIiopAddrBase addr = (CorbaLocIiopSslAddr)(parsed.ObjAddrs[0]);
         	Assertion.AssertEquals(1, addr.Version.Major);
         	Assertion.AssertEquals(0, addr.Version.Minor);
         	Assertion.AssertEquals("elca.ch", addr.Host);
-        	Assertion.AssertEquals(1234, addr.Port);
-            
+        	Assertion.AssertEquals(1234, addr.Port);     
+        	
+        	Assertion.AssertEquals(1, parsed.GetProfiles().Length);
+        	Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
+        	Assertion.Assert(parsed.GetProfiles()[0].TaggedComponents.ContainsTaggedComponent(
+                                 CodeSetService.SERVICE_ID));
+        	Assertion.Assert(parsed.GetProfiles()[0].TaggedComponents.ContainsTaggedComponent(
+                                 TAG_SSL_SEC_TRANS.ConstVal));
         }
         
     }
