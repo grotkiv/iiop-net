@@ -110,8 +110,9 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         }        
         
         public IorProfile[] GetProfiles() {
-            IorProfile[] result = new IorProfile[] { 
-                m_objAddr.GetProfileForAddr(GetKeyAsByteArray()) };
+            IorProfile addrProfile = 
+                m_objAddr.GetProfileForAddr(GetKeyAsByteArray());
+            IorProfile[] result = new IorProfile[] { addrProfile };
             return result;
         }
         
