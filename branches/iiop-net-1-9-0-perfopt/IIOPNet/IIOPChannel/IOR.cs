@@ -439,7 +439,8 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 
         public int Port {
             get { 
-                return (ushort)m_port; // m_port is mapped from an unsigned short -> cast back to ushort, before return
+        		// do an unchecked cast, overflow no issue here
+        		return unchecked((ushort)m_port); // m_port is mapped from an unsigned short -> cast back to ushort, before return
             }
         }        
 
@@ -457,7 +458,8 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             Debug.WriteLine("giop-verion: " + m_giopVersion);
             m_hostName = encapsulation.ReadString();
             Debug.WriteLine("hostname: " + m_hostName);
-            m_port = (short)encapsulation.ReadUShort();
+            m_port = unchecked(
+				(short)encapsulation.ReadUShort()); // do an unchecked cast, overflow no issue here
             Debug.WriteLine("port: " + m_port);
             uint objectKeyLength = encapsulation.ReadULong();
             m_objectKey = new byte[objectKeyLength];
