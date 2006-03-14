@@ -140,12 +140,13 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal override void Serialize(object actual, 
                                        CdrOutputStream targetStream) {
             sbyte toSer = (sbyte)actual;
-            targetStream.WriteOctet((byte)toSer);
+            targetStream.WriteOctet(
+				unchecked((byte)toSer)); // do an unchecked cast, overflow no issue here
         }
 
         internal override object Deserialize(CdrInputStream sourceStream) {
             byte deser = sourceStream.ReadOctet();
-            return (sbyte)deser;
+            return unchecked((sbyte)deser); // do an unchecked cast, overflow no issue here
         }
 
         #endregion IMethods
@@ -1968,15 +1969,11 @@ namespace Ch.Elca.Iiop.Tests {
     }    
     
     /// <summary>
-    /// Unit-tests for the serialisers
+    /// constains helper methods for serializer tests.
     /// </summary>
-    [TestFixture]    
-    public class SerialiserTest {
-        
-        public SerialiserTest() {
-        }
-
-        private void GenericSerTest(Serializer ser, object actual, byte[] expected) {
+    public class AbstractSerializerTest {
+    	
+        internal void GenericSerTest(Serializer ser, object actual, byte[] expected) {
             MemoryStream outStream = new MemoryStream();
             try {
                 CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);                
@@ -1990,7 +1987,7 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }                
         
-        private object GenericDeserForTest(Serializer ser, byte[] actual) {
+        internal object GenericDeserForTest(Serializer ser, byte[] actual) {
             MemoryStream inStream = new MemoryStream();
             try {
                 inStream.Write(actual, 0, actual.Length);
@@ -2003,17 +2000,28 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }
         
-        private void GenericDeserTest(Serializer ser, byte[] actual, object expected,
+        internal void GenericDeserTest(Serializer ser, byte[] actual, object expected,
                                       out object deserialized) {
             deserialized = GenericDeserForTest(ser, actual);
             Assertion.AssertEquals("value " + expected + " not deserialized.",
                                        expected, deserialized);
         }
         
-        private void GenericDeserTest(Serializer ser, byte[] actual, object expected) {
+        internal void GenericDeserTest(Serializer ser, byte[] actual, object expected) {
             object deser;
             GenericDeserTest(ser, actual, expected, out deser);
-        }        
+        }            	
+    	
+    }
+    
+    /// <summary>
+    /// Unit-tests for the serialisers
+    /// </summary>
+    [TestFixture]        
+    public class SerialiserTestBaseTypes : AbstractSerializerTest {
+        
+        public SerialiserTestBaseTypes() {
+        }
         
         [Test]
         public void TestByteSerialise() {
@@ -2185,6 +2193,78 @@ namespace Ch.Elca.Iiop.Tests {
             Serializer ser = new BooleanSerializer();
             GenericDeserTest(ser, new byte[] { 2 }, null);            
         }                
+        
+        [Test]
+        public void TestDeserializeEmptyStringNonWide() {
+            Serializer ser = new StringSerializer(false);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1, 0 }, String.Empty);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, String.Empty); // visibroker interop            
+        }
+        
+        [Test]
+        public void TestSerializeEmptyStringNonWide() {
+            Serializer ser = new StringSerializer(false);
+            GenericSerTest(ser, String.Empty, new byte[] { 0, 0, 0, 1, 0 });
+        }
+        
+        [Test]
+        public void TestDeserializeEmptyStringWide() {
+            Serializer ser = new StringSerializer(true);            
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, String.Empty); // giop 1.2, no terminating null char
+        }
+        
+        [Test]
+        public void TestSerializeEmptyStringWide() {
+            Serializer ser = new StringSerializer(true);
+            GenericSerTest(ser, String.Empty, new byte[] { 0, 0, 0, 0 }); // giop 1.2, no terminating null char
+        }        
+        
+        [Test]
+        public void TestDeserializeStringNonWide() {
+            Serializer ser = new StringSerializer(false);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 9, 73, 73, 79, 80, 46, 78, 69, 84, 0}, "IIOP.NET");
+        }
+        
+        [Test]
+        public void TestSerializeStringNonWide() {
+            Serializer ser = new StringSerializer(false);
+            GenericSerTest(ser, "IIOP.NET", new byte[] { 0, 0, 0, 9, 73, 73, 79, 80, 46, 78, 69, 84, 0});
+        }
+        
+        [Test]
+        public void TestDeserializeStringWide() {
+            Serializer ser = new StringSerializer(true);
+            GenericDeserTest(ser, new byte[] { 0, 0, 0, 16, 0, 73, 0, 73, 0, 79, 0, 80, 0, 46, 0, 78, 0, 69, 0, 84 }, 
+                             "IIOP.NET");
+        }        
+        
+        [Test]
+        public void TestSerializeStringWide() {
+            Serializer ser = new StringSerializer(true);
+            GenericSerTest(ser, "IIOP.NET", 
+                           new byte[] { 0, 0, 0, 16, 0, 73, 0, 73, 0, 79, 0, 80, 0, 46, 0, 78, 0, 69, 0, 84 });
+        }                
+        
+        [Test]
+        [ExpectedException(typeof(BAD_PARAM))]
+        public void TestNotAllowEmptyStringForBasicStrings() {
+            StringSerializer stringSer = new StringSerializer(false);
+            MemoryStream outStream = new MemoryStream();
+            try {            
+                CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);            
+                stringSer.Serialize(null, cdrOut);
+            } finally {
+                outStream.Close();
+            }            
+        }        
+        
+    }
+    
+	/// <summary>
+	/// Serializer tests for enum / flags.
+	/// </summary>
+	[TestFixture]
+    public class SerializerTestEnumFalgs : AbstractSerializerTest {
         
         private void FlagsGenericSerTest(Type flagsType, object actual, byte[] expected) {
             GenericSerTest(new FlagsSerializer(flagsType, new SerializerFactory()),
@@ -2468,58 +2548,15 @@ namespace Ch.Elca.Iiop.Tests {
             FlagsGenericDeserTest(typeof(TestFlagsBUI64), new byte[] { 0, 0, 0, 0, 0, 0, 0, 2}, TestFlagsBUI64.c8);
         }        
         
-        [Test]
-        public void TestDeserializeEmptyStringNonWide() {
-            Serializer ser = new StringSerializer(false);
-            GenericDeserTest(ser, new byte[] { 0, 0, 0, 1, 0 }, String.Empty);
-            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, String.Empty); // visibroker interop            
-        }
+	}
+	
+	/// <summary>
+	/// SerializerTests for obj ref.
+	/// </summary>
+	[TestFixture]
+	public class SerializerTestObjRef : AbstractSerializerTest {
         
-        [Test]
-        public void TestSerializeEmptyStringNonWide() {
-            Serializer ser = new StringSerializer(false);
-            GenericSerTest(ser, String.Empty, new byte[] { 0, 0, 0, 1, 0 });
-        }
-        
-        [Test]
-        public void TestDeserializeEmptyStringWide() {
-            Serializer ser = new StringSerializer(true);            
-            GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, String.Empty); // giop 1.2, no terminating null char
-        }
-        
-        [Test]
-        public void TestSerializeEmptyStringWide() {
-            Serializer ser = new StringSerializer(true);
-            GenericSerTest(ser, String.Empty, new byte[] { 0, 0, 0, 0 }); // giop 1.2, no terminating null char
-        }        
-        
-        [Test]
-        public void TestDeserializeStringNonWide() {
-            Serializer ser = new StringSerializer(false);
-            GenericDeserTest(ser, new byte[] { 0, 0, 0, 9, 73, 73, 79, 80, 46, 78, 69, 84, 0}, "IIOP.NET");
-        }
-        
-        [Test]
-        public void TestSerializeStringNonWide() {
-            Serializer ser = new StringSerializer(false);
-            GenericSerTest(ser, "IIOP.NET", new byte[] { 0, 0, 0, 9, 73, 73, 79, 80, 46, 78, 69, 84, 0});
-        }
-        
-        [Test]
-        public void TestDeserializeStringWide() {
-            Serializer ser = new StringSerializer(true);
-            GenericDeserTest(ser, new byte[] { 0, 0, 0, 16, 0, 73, 0, 73, 0, 79, 0, 80, 0, 46, 0, 78, 0, 69, 0, 84 }, 
-                             "IIOP.NET");
-        }        
-        
-        [Test]
-        public void TestSerializeStringWide() {
-            Serializer ser = new StringSerializer(true);
-            GenericSerTest(ser, "IIOP.NET", 
-                           new byte[] { 0, 0, 0, 16, 0, 73, 0, 73, 0, 79, 0, 80, 0, 46, 0, 78, 0, 69, 0, 84 });
-        }        
-        
-        [Test]  
+		[Test]
         public void TestIorDeserialisation() {
             IiopClientChannel testChannel = new IiopClientChannel();
             ChannelServices.RegisterChannel(testChannel);
@@ -2563,22 +2600,16 @@ namespace Ch.Elca.Iiop.Tests {
             ChannelServices.UnregisterChannel(testChannel);
             
         }
+		
+	}
+	
+	/// <summary>
+	/// Serializer tests for any.
+	/// </summary>
+	[TestFixture]
+	public class SerializerTestAny : AbstractSerializerTest {
 
-        [Test]
-        [ExpectedException(typeof(BAD_PARAM))]
-        public void TestNotAllowEmptyStringForBasicStrings() {
-            StringSerializer stringSer = new StringSerializer(false);
-            MemoryStream outStream = new MemoryStream();
-            try {            
-                CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);            
-                stringSer.Serialize(null, cdrOut);
-            } finally {
-                outStream.Close();
-            }
-            
-        }
-        
-        [Test]
+		[Test]
         public void TestSerLongAsAnyNoAnyContainer() {
             int val = 2;
             AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
@@ -2804,6 +2835,143 @@ namespace Ch.Elca.Iiop.Tests {
                                    ((Any)deser).Value.GetType());
         }
 
+    }
+    
+	[Serializable]
+	[RepositoryID("IDL:Ch/Elca/Iiop/Tests/SimpleValueTypeWith2Ints")]
+	public class SimpleValueTypeWith2Ints {
+		
+		private int m_val1;
+		private int m_val2;
+		
+		public SimpleValueTypeWith2Ints() {			
+		}
+		
+		public SimpleValueTypeWith2Ints(int val1, int val2) {
+			Val1 = val1;
+			Val2 = val2;
+		}		
+		
+		public int Val1 {
+			get {
+				return m_val1;
+			}
+			set {
+				m_val1 = value;
+			}
+		}
+		
+		public int Val2 {
+			get {
+				return m_val2;
+			}
+			set {
+				m_val2 = value;
+			}
+		}
+		
+		public override bool Equals(object obj) {
+			SimpleValueTypeWith2Ints other = 
+				obj as SimpleValueTypeWith2Ints;
+			if (other == null) {
+				return false;
+			}
+			return other.Val1 == Val1 &&
+				   other.Val2 == Val2;
+		}
+		
+		public override int GetHashCode() {
+			return Val1.GetHashCode() ^
+				Val2.GetHashCode();
+		}
+		
+	}
+	
+	[TestFixture]
+	public class SerializerTestValueTypes : AbstractSerializerTest {
+    
+
+		[Test]
+		public void TestSerWStringValue() {
+			Serializer ser = new ValueObjectSerializer(typeof(WStringValue),
+			                                           new SerializerFactory());
+            string testVal = "test";
+            WStringValue toSer = new WStringValue(testVal);
+            GenericSerTest(ser, toSer, new byte[] { 127, 255, 255, 2, // start value tag
+                                              0, 0, 0, 35, 73, 68, 76, 58, // rep-id of value
+                                              111, 109, 103, 46, 111, 114, 103, 47, 
+                                              67, 79, 82, 66, 65, 47, 87, 83,
+                                              116, 114, 105, 110, 103, 86, 97, 108,
+                                              117, 101, 58, 49, 46, 48, 0, 0,                                                     
+                                              0, 0, 0, 8, 0, 116, 0, 101, // "test"
+                                              0, 115, 0, 116 } );
+			
+		}
+		
+		[Test]
+		public void TestDeSerWStringValue() {
+			Serializer ser = new ValueObjectSerializer(typeof(WStringValue),
+			                                           new SerializerFactory());
+            string testVal = "test";
+            WStringValue deser = (WStringValue)
+	            GenericDeserForTest(ser, new byte[] { 127, 255, 255, 2, // start value tag
+                                              0, 0, 0, 35, 73, 68, 76, 58, // rep-id of value
+                                              111, 109, 103, 46, 111, 114, 103, 47, 
+                                              67, 79, 82, 66, 65, 47, 87, 83,
+                                              116, 114, 105, 110, 103, 86, 97, 108,
+                                              117, 101, 58, 49, 46, 48, 0, 0,                                                     
+                                              0, 0, 0, 8, 0, 116, 0, 101, // "test"
+                                              0, 115, 0, 116 } );
+			Assertion.AssertEquals("deserialised value wrong", 
+                                   testVal, deser.Unbox());			
+		}
+		
+		[Test]
+		[Ignore("incomplete")]
+		public void TestSerBasicContainingValueType() {
+			Serializer ser = new ValueObjectSerializer(typeof(SimpleValueTypeWith2Ints),
+			                                           new SerializerFactory());
+			
+			SimpleValueTypeWith2Ints toSer = new SimpleValueTypeWith2Ints(1, 2);
+            	
+            GenericSerTest(ser, toSer, new byte[] { 127, 255, 255, 2, // start value tag
+                                              0, 0, 0, 48, 73, 68, 76, 58, // rep-id of value
+                                              67, 104, 47, 69, 108, 99, 97, 47, 
+                                              73, 105, 111, 112, 47, 84, 87, 83,
+                                              116, 114, 105, 110, 103, 86, 97, 108,
+                                              0, 0, 0, 0, 0, 0, 0, 0, 
+                                              0, 0, 0, 0, 117, 101, 58, 49,
+                                              46, 48, 0, 0,
+                                              0, 0, 0, 1, // 1
+                                              0, 0, 0, 2 } ); // 2
+			
+			// "IDL:Ch/Elca/Iiop/Tests/SimpleValueTypeWith2Ints"
+		}
+
+		[Test]
+		[Ignore("incomplete")]		
+		public void TestDeserBasicContainingValueType() {
+			Serializer ser = new ValueObjectSerializer(typeof(SimpleValueTypeWith2Ints),
+			                                           new SerializerFactory());
+			
+			SimpleValueTypeWith2Ints toDeser = new SimpleValueTypeWith2Ints(1, 2);
+            	
+            GenericDeserTest(ser, new byte[] { 127, 255, 255, 2, // bound, value
+                                              0, 0, 0, 35, 73, 68, 76, 58, // rep-id of value
+                                              111, 109, 103, 46, 111, 114, 103, 47, 
+                                              67, 79, 82, 66, 65, 47, 87, 83,
+                                              116, 114, 105, 110, 103, 86, 97, 108,
+                                              117, 101, 58, 49, 46, 48, 0, 0,                                                     
+                                              0, 0, 0, 8, 0, 116, 0, 101, // "test"
+                                              0, 115, 0, 116 }, toDeser );			
+			
+			// "IDL:Ch/Elca/Iiop/Tests/SimpleValueTypeWith2Ints"			
+		}
+		
+		
+
+		
+		
     }
 
 }
