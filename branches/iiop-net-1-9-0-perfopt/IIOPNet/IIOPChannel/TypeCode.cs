@@ -595,7 +595,7 @@ namespace omg.org.CORBA {
                 return val;
             } else if (val != null && val.GetType().Equals(ReflectionHelper.Int16Type)) {
                 short valCls = (short)val;
-                return (ushort)valCls;
+                return unchecked((ushort)valCls); // do an unchecked cast, overflow no issue here
             } else {
                 throw CreateCantConvertToAssignableException(val);
             }
@@ -607,7 +607,7 @@ namespace omg.org.CORBA {
             }
             if (val.GetType().Equals(GetClsForTypeCode())) {
                 ushort valToConv = (ushort)val;
-                return (short)valToConv;
+                return unchecked((short)valToConv); // do an unchecked cast, overflow no issue here
             } else {
                 throw CreateCantConvertToExternalRepresentationException(val);
             }
@@ -635,7 +635,7 @@ namespace omg.org.CORBA {
                 return val;
             } else if (val != null && val.GetType().Equals(ReflectionHelper.Int32Type)) {
                 int valCls = (int)val;
-                return (uint)valCls;
+                return unchecked((uint)valCls); // do an unchecked cast, overflow no issue here
             } else {
                 throw CreateCantConvertToAssignableException(val);
             }
@@ -647,7 +647,7 @@ namespace omg.org.CORBA {
             }
             if (val.GetType().Equals(GetClsForTypeCode())) {
                 uint valToConv = (uint)val;
-                return (int)valToConv;
+                return unchecked((int)valToConv); // do an unchecked cast, overflow no issue here
             } else {
                 throw CreateCantConvertToExternalRepresentationException(val);
             }
@@ -747,7 +747,7 @@ namespace omg.org.CORBA {
                 return val;
             } else if (val != null && val.GetType().Equals(ReflectionHelper.SByteType)) {
                 sbyte valNonCls = (sbyte)val;
-                return (byte)valNonCls;
+                return unchecked((byte)valNonCls); // do an unchecked cast, overflow no issue here
             } else {
                 throw CreateCantConvertToAssignableException(val);
             }
@@ -1023,7 +1023,7 @@ namespace omg.org.CORBA {
                 return val;
             } else if (val != null && val.GetType().Equals(ReflectionHelper.Int64Type)) {
                 long valCls = (long)val;
-                return (ulong)valCls;
+                return unchecked((ulong)valCls); // do an unchecked cast, overflow no issue here
             } else {
                 throw CreateCantConvertToAssignableException(val);
             }
@@ -1035,7 +1035,7 @@ namespace omg.org.CORBA {
             }
             if (val.GetType().Equals(GetClsForTypeCode())) {
                 ulong valToConv = (ulong)val;
-                return (long)valToConv;
+                return unchecked((long)valToConv); // do an unchecked cast, overflow no issue here
             } else {
                 throw CreateCantConvertToExternalRepresentationException(val);
             }

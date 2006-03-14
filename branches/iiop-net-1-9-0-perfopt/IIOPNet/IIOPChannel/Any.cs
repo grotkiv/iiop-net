@@ -223,7 +223,19 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("wrong val", (uint)val, anyContainer.Value);
             Assertion.AssertEquals("wrong val", ((uint)val).GetType(), anyContainer.Value.GetType());
             Assertion.AssertEquals("wrong val", val, anyContainer.ClsValue);
-        }        
+        }           
+
+        [Test]
+        public void BoxULongFromClsOutsideRange() {
+            int val = -11;
+            omg.org.CORBA.TypeCode tc = new ULongTC();
+            Any anyContainer = new Any(val, tc);
+            Assertion.AssertEquals("wrong tc", tc, anyContainer.Type);
+            // do an unchecked cast, overflow no issue here
+            Assertion.AssertEquals("wrong val", unchecked((uint)val), anyContainer.Value);
+            Assertion.AssertEquals("wrong val", unchecked((uint)val).GetType(), anyContainer.Value.GetType());
+            Assertion.AssertEquals("wrong val", val, anyContainer.ClsValue);
+        }       
         
         [Test]
         public void BoxLong() {
@@ -259,6 +271,18 @@ namespace Ch.Elca.Iiop.Tests {
         }        
         
         [Test]
+        public void BoxULongLongFromClsOutsideRange() {
+            long val = -11;
+            omg.org.CORBA.TypeCode tc = new ULongLongTC();
+            Any anyContainer = new Any(val, tc);
+            Assertion.AssertEquals("wrong tc", tc, anyContainer.Type);
+            // do an unchecked cast, overflow no issue here
+            Assertion.AssertEquals("wrong val", unchecked((ulong)val), anyContainer.Value);
+            Assertion.AssertEquals("wrong val", unchecked((ulong)val).GetType(), anyContainer.Value.GetType());
+            Assertion.AssertEquals("wrong val", val, anyContainer.ClsValue);
+        }        
+        
+        [Test]
         public void BoxUShort() {
             ushort val = 11;
             omg.org.CORBA.TypeCode tc = new UShortTC();
@@ -282,6 +306,18 @@ namespace Ch.Elca.Iiop.Tests {
         }        
         
         [Test]
+        public void BoxUShortFromClsOutsideRange() {
+            short val = -11;
+            omg.org.CORBA.TypeCode tc = new UShortTC();
+            Any anyContainer = new Any(val, tc);
+            Assertion.AssertEquals("wrong tc", tc, anyContainer.Type);
+            // do an unchecked cast, overflow no issue here
+            Assertion.AssertEquals("wrong val", unchecked((ushort)val), anyContainer.Value);
+            Assertion.AssertEquals("wrong val", unchecked((ushort)val).GetType(), anyContainer.Value.GetType());
+            Assertion.AssertEquals("wrong val", val, anyContainer.ClsValue);
+        }                
+        
+        [Test]
         public void BoxSByteToOctet() {
             sbyte val = 11;
             omg.org.CORBA.TypeCode tc = new OctetTC();
@@ -289,6 +325,19 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("wrong tc", tc, anyContainer.Type);
             Assertion.AssertEquals("wrong val", (byte)val, anyContainer.Value);
             Assertion.AssertEquals("wrong val", (byte)val, anyContainer.ClsValue);
+            Assertion.AssertEquals("wrong val type", ReflectionHelper.ByteType, 
+                                   anyContainer.ClsValue.GetType());
+        }        
+        
+        [Test]
+        public void BoxSByteToOctetOutsideRange() {
+            sbyte val = -11;
+            omg.org.CORBA.TypeCode tc = new OctetTC();
+            Any anyContainer = new Any(val, tc);
+            Assertion.AssertEquals("wrong tc", tc, anyContainer.Type);
+            // do an unchecked cast, overflow no issue here
+            Assertion.AssertEquals("wrong val", unchecked((byte)val), anyContainer.Value);
+            Assertion.AssertEquals("wrong val", unchecked((byte)val), anyContainer.ClsValue);
             Assertion.AssertEquals("wrong val type", ReflectionHelper.ByteType, 
                                    anyContainer.ClsValue.GetType());
         }        
