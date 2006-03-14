@@ -2946,23 +2946,23 @@ namespace Ch.Elca.Iiop.Tests {
 		}
 
 		[Test]
-		[Ignore("incomplete")]		
 		public void TestDeserBasicContainingValueType() {
 			Serializer ser = new ValueObjectSerializer(typeof(SimpleValueTypeWith2Ints),
 			                                           new SerializerFactory());
 			
 			SimpleValueTypeWith2Ints toDeser = new SimpleValueTypeWith2Ints(1, 2);
             	
-            GenericDeserTest(ser, new byte[] { 127, 255, 255, 2, // bound, value
-                                              0, 0, 0, 35, 73, 68, 76, 58, // rep-id of value
-                                              111, 109, 103, 46, 111, 114, 103, 47, 
-                                              67, 79, 82, 66, 65, 47, 87, 83,
-                                              116, 114, 105, 110, 103, 86, 97, 108,
-                                              117, 101, 58, 49, 46, 48, 0, 0,                                                     
-                                              0, 0, 0, 8, 0, 116, 0, 101, // "test"
-                                              0, 115, 0, 116 }, toDeser );			
-			
-			// "IDL:Ch/Elca/Iiop/Tests/SimpleValueTypeWith2Ints"			
+            GenericDeserTest(ser, new byte[] { 127, 255, 255, 2, // start value tag
+                                              0, 0, 0, 48, 73, 68, 76, 58, // rep-id of value
+                                              67, 104, 47, 69, 108, 99, 97, 47, 
+                                              73, 105, 111, 112, 47, 84, 101, 115,
+                                              116, 115, 47, 83, 105, 109, 112, 108,
+                                              101, 86, 97, 108, 117, 101, 84, 121, 
+                                              112, 101, 87, 105, 116, 104, 50, 73,
+                                              110, 116, 115, 0,
+                                              0, 0, 0, 1, // 1
+                                              0, 0, 0, 2 }, // 2			
+										      toDeser );			
 		}
 		
 		
