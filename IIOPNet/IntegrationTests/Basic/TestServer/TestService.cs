@@ -441,6 +441,10 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             return arrayAsAny;
         }
 
+        public object[] EchoObjectArray(object[] arg) {
+            return arg;
+        }
+
         public Adder RetrieveAdder() {
             return new Adder();
         }
@@ -777,6 +781,13 @@ namespace Ch.Elca.Iiop.IntegrationTests {
 
         [return: BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_TestStruct:1.0")]
         public TestStructWB EchoBoxedStruct([BoxedValueAttribute("IDL:Ch.Elca.Iiop.IntegrationTests.boxed_TestStruct:1.0")] TestStructWB arg) {
+            return arg;
+        }
+
+        
+
+        [return: BoxedValueAttribute("IDL:Ch/Elca/Iiop/IntegrationTests/ValidListSeq:1.0")]
+        public Int32[]  EchoBoxedSeq([BoxedValueAttribute("IDL:Ch/Elca/Iiop/IntegrationTests/ValidListSeq:1.0")] Int32[] arg) {
             return arg;
         }
 
