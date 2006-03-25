@@ -1335,6 +1335,26 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             }            
         }
 
+        [Test]
+        public void TestEchoBoxedSeq() {
+            int[] arg = new int[] { 1, 2 };
+            int[] result = m_testIdlTypesService.EchoBoxedSeq(arg);
+            Assertion.AssertNotNull(result);
+            Assertion.AssertEquals(arg.Length, result.Length);
+            Assertion.AssertEquals(arg[0], result[0]);
+            Assertion.AssertEquals(arg[1], result[1]);
+        }
+
+        [Test]
+        public void TestEchoObjectArray() {
+            object[] arg = new object[] { "abc", (int)123 };
+            object[] result = m_testService.EchoObjectArray(arg);
+            Assertion.AssertNotNull(result);
+            Assertion.AssertEquals(arg.Length, result.Length);
+            Assertion.AssertEquals(arg[0], result[0]);
+            Assertion.AssertEquals(arg[1], result[1]);
+        }
+
         #endregion IMethods
 
 
