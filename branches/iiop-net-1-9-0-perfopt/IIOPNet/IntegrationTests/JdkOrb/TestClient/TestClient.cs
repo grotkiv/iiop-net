@@ -83,6 +83,18 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Assertion.AssertEquals(arg, result);
         }
 
+        [Test]
+        public void TestStringArrayAsAny() {
+            string arg1 = "s1";
+            string arg2 = "s2";
+            object result = m_testService.StringArrayAsAny(arg1, arg2);
+            Assertion.AssertNotNull(result);
+            string[] resAsStrArray = (string[])result;
+            Assertion.AssertEquals(2, resAsStrArray.Length);
+            Assertion.AssertEquals(arg1, resAsStrArray[0]);
+            Assertion.AssertEquals(arg2, resAsStrArray[1]);
+        }
+
 
 
         
