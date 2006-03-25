@@ -241,6 +241,39 @@ namespace Ch.Elca.Iiop.Tests {
     	}        
         
     }
+    
+    /// <summary>
+    /// Unit-tests for testing type from typecode code generation for boxed value types.
+    /// </summary>
+    [TestFixture]
+    public class TypeFromTypeCodeGeneratorEnumTypeTest {
+        
+    	private TypeFromTypeCodeRuntimeGenerator m_gen;
+    	
+    	[SetUp]
+    	public void SetUp() {
+    		m_gen = TypeFromTypeCodeRuntimeGenerator.GetSingleton();
+    	}
+    	
+    	[Test]
+    	public void TestGenerateSimple() {
+    		string name = "TestEnumGenForTypeCodeType";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestEnumGenForTypeCodeType:1.0";    		
+    		EnumTC tc = new EnumTC(repId,
+    		                       name,
+    		                       new string[] { name + "_1", name + "_2" });
+    		
+    		Type res = m_gen.CreateOrGetType(typeName, tc);
+    		Assertion.AssertNotNull(res);
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
+    	}        
+        
+        
+    }
+
+    
 }
 
 #endif
