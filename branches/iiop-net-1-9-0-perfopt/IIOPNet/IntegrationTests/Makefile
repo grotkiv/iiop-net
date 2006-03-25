@@ -29,6 +29,9 @@ build: nunit-var junit-var
     cd JavaRMIIIOP
     $(MAKE) build
     cd ..
+    cd JdkOrb
+    $(MAKE) build
+    cd ..
     cd JavaRMIIIOPAsClient
     $(MAKE) build
     cd ..
@@ -120,6 +123,9 @@ test: nunit-var junit-var
     cd JavaRMIIIOP
     $(MAKE) test
     cd ..
+    cd JdkOrb
+    $(MAKE) test
+    cd ..
     cd JavaRMIIIOPAsClient
     $(MAKE) test
     cd ..
@@ -191,6 +197,9 @@ clean:
     $(MAKE) clean
     cd ..
     cd JavaRMIIIOP
+    $(MAKE) clean
+    cd ..
+    cd JdkOrb
     $(MAKE) clean
     cd ..
     cd JavaRMIIIOPAsClient
