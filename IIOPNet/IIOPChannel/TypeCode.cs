@@ -1145,6 +1145,9 @@ namespace omg.org.CORBA {
             result.SetCustomAttribute(new IdlEnumAttribute().CreateAttributeBuilder());
             // add rep-id Attr
             IlEmitHelper.GetSingleton().AddRepositoryIDAttribute(result, m_id);
+            // serializable attribute
+            IlEmitHelper.GetSingleton().AddSerializableAttribute(result);
+
         
             // create the type
             return result.CreateType();            
@@ -1599,6 +1602,33 @@ namespace omg.org.CORBA {
         public StructTC(string repositoryID, string name, StructMember[] members) : base(repositoryID, name, members, TCKind.tk_struct) { }        
         
         #endregion IConstructors
+        #region IMethods
+        
+        internal override Type CreateType(ModuleBuilder modBuilder, string fullTypeName) {
+            // layout-sequential causes problem, if member of array type is not fully defined (TypeLoadException) -> use autolayout instead
+            TypeAttributes typeAttrs = TypeAttributes.Class | TypeAttributes.Public | TypeAttributes.Serializable | TypeAttributes.BeforeFieldInit | 
+                                   /* TypeAttributes.SequentialLayout | */ TypeAttributes.Sealed;
+        
+            TypeBuilder result = modBuilder.DefineType(fullTypeName, typeAttrs, typeof(System.ValueType));
+            // add rep-id Attr
+            IlEmitHelper.GetSingleton().AddRepositoryIDAttribute(result, id());
+            // define members
+            for (int i = 0; i < member_count(); i++) {
+                Type memberType = ((TypeCodeImpl) (member_type(i))).GetClsForTypeCode();
+                FieldAttributes fieldAttrs = FieldAttributes.Public;
+                FieldBuilder field = result.DefineField(member_name(i), memberType, fieldAttrs);
+                CustomAttributeBuilder[] cAttrs = ((TypeCodeImpl) (member_type(i))).GetAttributes();
+                foreach (CustomAttributeBuilder cAttr in cAttrs) {
+                    field.SetCustomAttribute(cAttr);
+                }            
+            }
+            // add type specific attributes
+            result.SetCustomAttribute(new IdlStructAttribute().CreateAttributeBuilder());
+            IlEmitHelper.GetSingleton().AddSerializableAttribute(result);
+            return result.CreateType();
+        }
+        
+        #endregion IMethods
 
     }
 
@@ -1980,6 +2010,8 @@ namespace omg.org.CORBA {
             TypeBuilder result = modBuilder.DefineType(fullTypeName, attrs ,baseType);
             // add rep-id Attr
             IlEmitHelper.GetSingleton().AddRepositoryIDAttribute(result, m_id);
+            // serializable attribute
+            IlEmitHelper.GetSingleton().AddSerializableAttribute(result);
             // define members
             foreach (ValueTypeMember member in m_members) {
                 Type memberType = ((TypeCodeImpl) (member.m_type)).GetClsForTypeCode();                
