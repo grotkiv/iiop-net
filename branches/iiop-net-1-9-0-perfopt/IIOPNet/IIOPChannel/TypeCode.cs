@@ -295,7 +295,7 @@ namespace omg.org.CORBA {
         /// <returns>If overriden, the type created. Default is: Exception</returns>
         internal virtual Type CreateType(ModuleBuilder modBuilder, string fullTypeName) {
             throw new INTERNAL(129, CompletionStatus.Completed_MayBe);
-        }
+        }        
 
         #region Implementation of TypeCode
         public virtual bool equal(omg.org.CORBA.TypeCode tc) {
@@ -1975,8 +1975,7 @@ namespace omg.org.CORBA {
             attrs = attrs | TypeAttributes.Public;
             TypeBuilder result = modBuilder.DefineType(fullTypeName, attrs ,baseType);
             // add rep-id Attr
-            RepositoryIDAttribute repIdAttr = new RepositoryIDAttribute(m_id);
-            result.SetCustomAttribute(repIdAttr.CreateAttributeBuilder());
+            IlEmitHelper.GetSingleton().AddRepositoryIDAttribute(result, m_id);
             // define members
             foreach (ValueTypeMember member in m_members) {
                 Type memberType = ((TypeCodeImpl) (member.m_type)).GetClsForTypeCode();                
