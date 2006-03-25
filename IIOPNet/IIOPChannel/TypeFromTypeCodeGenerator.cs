@@ -332,6 +332,34 @@ namespace Ch.Elca.Iiop.Tests {
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     	}
     	
+    	[Test]
+    	public void TestGenerateSpecialVersionRepId() {
+    		string name = "TestStructGenForTypeCodeType2";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestStructGenForTypeCodeType2:2.0";
+    		StructTC tc = new StructTC(repId,
+    		                           name, new StructMember[] {
+    		                               new StructMember("M1", new LongTC()) });
+    		Type res = m_gen.CreateOrGetType(typeName, tc);
+    		Assertion.AssertNotNull(res);
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));    	    
+    	}
+    	
+    	[Test]
+    	public void TestGenerateSpecialNameRepId() {
+    		string name = "TestStructGenForTypeCodeType3";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/Special_TestStructGenForTypeCodeType3:1.0";
+    		StructTC tc = new StructTC(repId,
+    		                           name, new StructMember[] {
+    		                               new StructMember("M1", new LongTC()) });
+    		Type res = m_gen.CreateOrGetType(typeName, tc);
+    		Assertion.AssertNotNull(res);
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));    	    
+    	}
+    	
     	
     	
     }
