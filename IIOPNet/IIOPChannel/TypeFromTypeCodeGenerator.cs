@@ -303,6 +303,39 @@ namespace Ch.Elca.Iiop.Tests {
         
         
     }
+    
+    
+    /// <summary>
+    /// Unit-tests for testing type from typecode code generation for struct types.
+    /// </summary>
+    [TestFixture]
+    public class TypeFromTypeCodeGeneratorStructTypeTest {
+    	
+    	private TypeFromTypeCodeRuntimeGenerator m_gen;
+    	
+    	[SetUp]
+    	public void SetUp() {
+    		m_gen = TypeFromTypeCodeRuntimeGenerator.GetSingleton();
+    	}
+    	
+    	[Test]
+    	public void TestGenerateSimple() {
+    		string name = "TestStructGenForTypeCodeType";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestStructGenForTypeCodeType:1.0";
+    		StructTC tc = new StructTC(repId,
+    		                           name, new StructMember[] {
+    		                               new StructMember("M1", new LongTC()) });
+    		Type res = m_gen.CreateOrGetType(typeName, tc);
+    		Assertion.AssertNotNull(res);
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
+    	}
+    	
+    	
+    	
+    }
+    
 
     
 }
