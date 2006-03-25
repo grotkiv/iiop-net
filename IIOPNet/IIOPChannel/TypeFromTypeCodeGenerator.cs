@@ -142,12 +142,12 @@ namespace Ch.Elca.Iiop.Tests {
     		
     		Type res = m_gen.CreateOrGetType(typeName, vt);
     		Assertion.AssertNotNull(res);
-    		Assertion.AssertEquals(typeName, res.FullName);
-    		Assertion.AssertEquals(repId, Repository.GetRepositoryID(res));
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     	}
     	
     	[Test]
-    	public void TestGenerateSpecialRepId() {
+    	public void TestGenerateSpecialVersionRepId() {
     		string name = "TestGenForTypeCodeType2";
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
     		string repId = "IDL:Ch/Elca/Iiop/Tests/TestGenForTypeCodeType2:2.0";
@@ -157,8 +157,23 @@ namespace Ch.Elca.Iiop.Tests {
     		
     		Type res = m_gen.CreateOrGetType(typeName, vt);
     		Assertion.AssertNotNull(res);
-    		Assertion.AssertEquals(typeName, res.FullName);
-    		Assertion.AssertEquals(repId, Repository.GetRepositoryID(res));
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
+    	}
+    	
+    	[Test]
+    	public void TestGenerateSpecialNameRepId() {
+    	    string name = "TestGenForTypeCodeType3";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/Special_TestGenForTypeCodeType3:1.0";
+    		ValueTypeTC vt = new ValueTypeTC(repId,
+    		                                 name, new ValueTypeMember[0],
+    		                                 new NullTC(), 0);
+    		
+    		Type res = m_gen.CreateOrGetType(typeName, vt);
+    		Assertion.AssertNotNull(res);
+    		Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     	}
 
     	
