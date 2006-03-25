@@ -7,12 +7,12 @@ build: build-stubs compile
 
 build-stubs: Ch\Elca\Iiop\IntegrationTests\TestService.java Ch\Elca\Iiop\IntegrationTests\TestServiceOperations.java Ch\Elca\Iiop\IntegrationTests\TestServicePOA.java
 
-compile: Ch\Elca\Iiop\IntegrationTests\TestServiceImpl.class TestServer.class
+compile: Ch\Elca\Iiop\IntegrationTests\TestServiceImpl.class Ch\Elca\Iiop\IntegrationTests\TestServiceOperations.class TestServer.class
 
 Ch\Elca\Iiop\IntegrationTests\TestService.java Ch\Elca\Iiop\IntegrationTests\TestServiceOperations.java Ch\Elca\Iiop\IntegrationTests\TestServicePOA.java : TestService.idl
 	idlj -fAll TestService.idl
 
-Ch\Elca\Iiop\IntegrationTests\TestServiceImpl.class TestServer.class: Ch\Elca\Iiop\IntegrationTests\TestServiceImpl.java TestServer.java
+Ch\Elca\Iiop\IntegrationTests\TestServiceImpl.class Ch\Elca\Iiop\IntegrationTests\TestServiceOperations.class TestServer.class: Ch\Elca\Iiop\IntegrationTests\TestServiceImpl.java Ch\Elca\Iiop\IntegrationTests\TestServiceOperations.java TestServer.java 
 	javac Ch\Elca\Iiop\IntegrationTests\*.java TestServer.java
 
 
