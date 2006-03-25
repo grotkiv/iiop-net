@@ -2,3 +2,6 @@
 _TestServiceStub.java
 TestService.java
 TestServicePOA.java
+TestServiceOperations.java
+TestServiceHelper.java
+TestServiceHolder.java
