@@ -106,3 +106,67 @@ namespace Ch.Elca.Iiop.Idl {
     }
 
 }
+
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using System;
+    using System.Reflection;
+    using NUnit.Framework;
+    using omg.org.CORBA;
+    using Ch.Elca.Iiop.Idl;
+    
+    /// <summary>
+    /// Unit-tests for testing type from typecode code generation for value types.
+    /// </summary>
+    [TestFixture]
+    public class TypeFromTypeCodeGeneratorValueTypeTest {
+    	
+    	TypeFromTypeCodeRuntimeGenerator m_gen;
+    	
+    	[SetUp]
+    	public void SetUp() {
+    		m_gen = TypeFromTypeCodeRuntimeGenerator.GetSingleton();
+    	}
+    	
+    	[Test]
+    	public void TestGenerateSimple() {
+    		string name = "TestGenForTypeCodeType";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestGenForTypeCodeType:1.0";
+    		ValueTypeTC vt = new ValueTypeTC(repId,
+    		                                 name, new ValueTypeMember[0],
+    		                                 new NullTC(), 0);
+    		
+    		Type res = m_gen.CreateOrGetType(typeName, vt);
+    		Assertion.AssertNotNull(res);
+    		Assertion.AssertEquals(typeName, res.FullName);
+    		Assertion.AssertEquals(repId, Repository.GetRepositoryID(res));
+    	}
+    	
+    	[Test]
+    	public void TestGenerateSpecialRepId() {
+    		string name = "TestGenForTypeCodeType2";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestGenForTypeCodeType2:2.0";
+    		ValueTypeTC vt = new ValueTypeTC(repId,
+    		                                 name, new ValueTypeMember[0],
+    		                                 new NullTC(), 0);
+    		
+    		Type res = m_gen.CreateOrGetType(typeName, vt);
+    		Assertion.AssertNotNull(res);
+    		Assertion.AssertEquals(typeName, res.FullName);
+    		Assertion.AssertEquals(repId, Repository.GetRepositoryID(res));
+    	}
+
+    	
+    }
+    
+    public class TypeFromTypeCodeGeneratorBoxedValueTypeTest {
+    	
+    }
+}
+
+#endif
