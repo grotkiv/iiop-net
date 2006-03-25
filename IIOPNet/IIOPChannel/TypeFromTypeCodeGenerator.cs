@@ -228,7 +228,7 @@ namespace Ch.Elca.Iiop.Tests {
     	public void TestGenerateSpecialNameRepId() {
     		string name = "TestBoxedGenForTypeCodeType3";
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
-    		string repId = "IDL:Ch/Elca/Iiop/Tests/Special_TestBoxedGenForTypeCodeType:1.0";
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/Special_TestBoxedGenForTypeCodeType3:1.0";
     		LongTC boxedTC = new LongTC();
     		ValueBoxTC vt = new ValueBoxTC(repId,
     		                               name,
@@ -269,6 +269,37 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     	}        
+    	
+        [Test]
+    	public void TestGenerateSpecialVersionRepId() {
+    		string name = "TestEnumGenForTypeCodeType2";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestEnumGenForTypeCodeType2:2.0";    		
+    		EnumTC tc = new EnumTC(repId,
+    		                       name,
+    		                       new string[] { name + "_1", name + "_2" });
+    		
+    		Type res = m_gen.CreateOrGetType(typeName, tc);
+    		Assertion.AssertNotNull(res);
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));            
+        }
+        
+    	[Test]
+    	public void TestGenerateSpecialNameRepId() {
+    		string name = "TestEnumGenForTypeCodeType3";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/Special_TestEnumGenForTypeCodeType3:1.0";    		
+    		EnumTC tc = new EnumTC(repId,
+    		                       name,
+    		                       new string[] { name + "_1", name + "_2" });
+    		
+    		Type res = m_gen.CreateOrGetType(typeName, tc);
+    		Assertion.AssertNotNull(res);
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));    	    
+    	    
+    	}
         
         
     }
