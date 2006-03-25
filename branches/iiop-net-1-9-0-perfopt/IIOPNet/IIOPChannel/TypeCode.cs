@@ -1970,11 +1970,10 @@ namespace omg.org.CORBA {
             Type baseType = ReflectionHelper.ObjectType;
             if (!(m_baseClass is NullTC)) {
                 baseType = ((TypeCodeImpl)m_baseClass).GetClsForTypeCode();
-            }
-            string typeName = Repository.CreateTypeNameForId(m_id);
+            }            
             TypeAttributes attrs = TypeAttributes.Class | TypeAttributes.Serializable;
             attrs = attrs | TypeAttributes.Public;
-            TypeBuilder result = modBuilder.DefineType(typeName, attrs ,baseType);
+            TypeBuilder result = modBuilder.DefineType(fullTypeName, attrs ,baseType);
             // add rep-id Attr
             RepositoryIDAttribute repIdAttr = new RepositoryIDAttribute(m_id);
             result.SetCustomAttribute(repIdAttr.CreateAttributeBuilder());
