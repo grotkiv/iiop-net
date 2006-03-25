@@ -1143,6 +1143,8 @@ namespace omg.org.CORBA {
 
             // add IDLEnum attribute
             result.SetCustomAttribute(new IdlEnumAttribute().CreateAttributeBuilder());
+            // add rep-id Attr
+            IlEmitHelper.GetSingleton().AddRepositoryIDAttribute(result, m_id);
         
             // create the type
             return result.CreateType();            
