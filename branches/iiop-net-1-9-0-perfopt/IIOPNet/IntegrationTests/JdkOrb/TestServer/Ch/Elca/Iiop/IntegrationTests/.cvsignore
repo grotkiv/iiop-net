@@ -1,0 +1,4 @@
+*.class
+_TestServiceStub.java
+TestService.java
+TestServicePOA.java
