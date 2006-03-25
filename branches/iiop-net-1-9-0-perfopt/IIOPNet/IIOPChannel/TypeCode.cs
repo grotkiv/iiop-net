@@ -1224,6 +1224,8 @@ namespace omg.org.CORBA {
             // create the type
             BoxedValueTypeGenerator generator = new BoxedValueTypeGenerator();
             TypeBuilder result = generator.CreateBoxedType(boxedType, modBuilder, fullTypeName, attrs);
+            // add rep-id Attr
+            IlEmitHelper.GetSingleton().AddRepositoryIDAttribute(result, m_id);
             return result.CreateType();
         }
         
