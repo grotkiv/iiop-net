@@ -90,6 +90,10 @@ namespace omg.org.CORBA {
                                  [StringValue] [WideChar(false)] string name,
                                  [IdlSequence(0L)][StringValue] [WideChar(false)] string[] members);
                 
+        TypeCode create_struct_tc ([StringValue] [WideChar(false)] string id, 
+                                   [StringValue] [WideChar(false)] string name,
+                                   [IdlSequence(0L)] StructMember[] members);
+                
         #endregion TypeCode creation operations
         
     }
@@ -476,6 +480,13 @@ namespace omg.org.CORBA {
                 return null;
             }
         }
+        
+        public TypeCode create_struct_tc ([StringValue] [WideChar(false)] string id, 
+                                          [StringValue] [WideChar(false)] string name,
+                                          [IdlSequence(0L)] StructMember[] members) {
+            return new StructTC(id, name, members);
+        }
+        
                 
         #endregion TypeCode creation operations     
         
@@ -657,6 +668,23 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("sequence member type", seqMemberType.GetClsForTypeCode(),
                                    ((TypeCodeImpl)seqOfOctet_TC.content_type()).GetClsForTypeCode());
         }
+        
+        [Test]
+        public void TestStructTC() {
+            string name = "OrbServices_TestStruct";
+            string repId = "IDL:Ch/Elca/Iiop/Tests/" + name + ":1.0";
+            
+            StructMember m1 = new StructMember("M1", m_orb.create_long_tc());            
+            omg.org.CORBA.TypeCode tc = 
+                m_orb.create_struct_tc(repId, name,
+                                       new StructMember[] { m1 });
+            Assertion.AssertEquals("id", repId, tc.id());
+            Assertion.AssertEquals("king", TCKind.tk_struct, tc.kind());
+            Assertion.AssertEquals("nr of members", 1, tc.member_count());
+            Assertion.AssertEquals("member m1 name", m1.name, tc.member_name(0));
+            Assertion.AssertEquals("member m1 type", m1.type.kind(), tc.member_type(0).kind());
+        }
+
         
     }
 
