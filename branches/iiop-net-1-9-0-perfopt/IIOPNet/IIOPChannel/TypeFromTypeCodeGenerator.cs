@@ -229,9 +229,10 @@ namespace Ch.Elca.Iiop.Tests {
     		string name = "TestEnumGenForTypeCodeType";
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
     		string repId = "IDL:Ch/Elca/Iiop/Tests/TestEnumGenForTypeCodeType:1.0";    		
+    		string[] enumFields = new string[] { name + "_1", name + "_2" };
     		EnumTC tc = new EnumTC(repId,
     		                       name,
-    		                       new string[] { name + "_1", name + "_2" });
+    		                       enumFields);
     		
     		Type res = m_gen.CreateOrGetType(typeName, tc);
     		Assertion.AssertNotNull(res);
@@ -277,13 +278,17 @@ namespace Ch.Elca.Iiop.Tests {
     		string name = "TestStructGenForTypeCodeType";
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
     		string repId = "IDL:Ch/Elca/Iiop/Tests/TestStructGenForTypeCodeType:1.0";
+    		StructMember m1 = new StructMember("M1", new LongTC());
     		StructTC tc = new StructTC(repId,
     		                           name, new StructMember[] {
-    		                               new StructMember("M1", new LongTC()) });
+    		                               m1 });
     		Type res = m_gen.CreateOrGetType(typeName, tc);
     		Assertion.AssertNotNull(res);
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
+    		Assertion.AssertNotNull("field M1", 
+    		                        res.GetField(m1.m_name,
+    		                                     BindingFlags.Public | BindingFlags.Instance));
     	}
     	    	
     	[Test]
