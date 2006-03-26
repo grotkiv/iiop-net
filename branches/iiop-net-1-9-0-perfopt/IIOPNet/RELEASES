@@ -34,6 +34,9 @@ changes:
 - Integration tests / unit tests cleaned up: 
   now all tests should pass.
 
+improvements:
+- added project files for sharp develop 1.x / sharp develop 2
+
 new tests:
 - Integration tests with JDK ORB directly (not RMI/IIOP simplification)
 
