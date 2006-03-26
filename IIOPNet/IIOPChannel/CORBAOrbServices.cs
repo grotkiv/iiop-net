@@ -589,12 +589,12 @@ namespace Ch.Elca.Iiop.Tests {
     using Ch.Elca.Iiop.Services;
     
     /// <summary>
-    /// Unit-tests for orb services
+    /// Unit-tests for orb services code set
     /// </summary>
     [TestFixture]
-    public class OrbServicesTest {
+    public class OrbServicesCodeSetTest {
         
-        public OrbServicesTest() {
+        public OrbServicesCodeSetTest() {
         }
                        
         [Test]
@@ -612,6 +612,44 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
     }
+    
+    
+    /// <summary>
+    /// Unit-tests for type code creation using orb services
+    /// </summary>
+    [TestFixture]
+    public class OrbServicesTCTest {
+
+        private IOrbServices m_orb;
+        
+        [SetUp]
+        public void SetUp() {
+            m_orb = OrbServices.GetSingleton();            
+        }
+        
+        [Test]
+        public void TestCreateTCForLongType() {                   
+            int longArg = 1;            
+            omg.org.CORBA.TypeCode long_TC = m_orb.create_tc_for(longArg);
+            Assertion.AssertEquals("created tc kind", TCKind.tk_long,
+                                   long_TC.kind());
+        }
+        
+        [Test]
+        public void TestAliasTC() {
+            string name = "OrbServices_TestAlias";
+            string aliasRepId = "IDL:Ch/Elca/Iiop/Tests/" + name + ":1.0";
+            TypeCodeImpl aliasedTC = (TypeCodeImpl)m_orb.create_long_tc();
+            omg.org.CORBA.TypeCode alias_TC =
+                m_orb.create_alias_tc(aliasRepId, name, aliasedTC);
+            Assertion.AssertEquals("alias id", aliasRepId, alias_TC.id());
+            Assertion.AssertEquals("alias king", TCKind.tk_alias, alias_TC.kind());
+            Assertion.AssertEquals("alias cls type", aliasedTC.GetClsForTypeCode(),
+                                   ((TypeCodeImpl)alias_TC).GetClsForTypeCode());            
+        }
+        
+    }
+
 
 }
 
