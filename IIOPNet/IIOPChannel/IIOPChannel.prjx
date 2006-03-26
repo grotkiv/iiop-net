@@ -75,6 +75,7 @@
     <File name=".\ArgumentsSerializer.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
     <File name=".\Messages.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
     <File name=".\TestUtil.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
+    <File name=".\RepositoryTypes.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
   </Contents>
   <References>
     <Reference type="Gac" refto="nunit.framework, Version=2.0.6.0, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77" localcopy="True" />
