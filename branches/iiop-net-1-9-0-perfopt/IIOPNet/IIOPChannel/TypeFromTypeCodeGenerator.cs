@@ -136,15 +136,18 @@ namespace Ch.Elca.Iiop.Tests {
     		string name = "TestGenForTypeCodeType";
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
     		string repId = "IDL:Ch/Elca/Iiop/Tests/TestGenForTypeCodeType:1.0";
+    		ValueTypeMember m1 = new ValueTypeMember("M1", new LongTC(), 0);
     		ValueTypeTC vt = new ValueTypeTC(repId,
-    		                                 name, new ValueTypeMember[0],
+    		                                 name, new ValueTypeMember[] { m1 },
     		                                 new NullTC(), 0);
     		
     		Type res = m_gen.CreateOrGetType(typeName, vt);
     		Assertion.AssertNotNull(res);
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
-    		
+    		Assertion.AssertNotNull("field M1", 
+    		                        res.GetField(m1.m_name,
+    		                                     BindingFlags.Public | BindingFlags.Instance));
     		Assertion.Assert("Serializable", res.IsSerializable);
     	}
     	   	
