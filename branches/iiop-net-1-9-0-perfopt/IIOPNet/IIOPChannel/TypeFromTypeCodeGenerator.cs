@@ -343,7 +343,6 @@ namespace Ch.Elca.Iiop.Tests {
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
     		string repId = "IDL:Ch/Elca/Iiop/Tests/TestUnionGenForTypeCodeType:1.0";
     		
-    		StructMember m1 = new StructMember("M1", new LongTC());
     		UnionSwitchCase s1 = new UnionSwitchCase((int)0, "val_0", new LongTC());
     		UnionSwitchCase s2 = new UnionSwitchCase((int)1, "val_1", new FloatTC());
     		TypeCodeImpl discrTC = new LongTC();
@@ -375,6 +374,23 @@ namespace Ch.Elca.Iiop.Tests {
     		Assertion.AssertEquals("discr property type", discrTC.GetClsForTypeCode(),
     		                       discrProperty.PropertyType);
     		Assertion.Assert("Serializable", res.IsSerializable);
+    	}
+    	
+    	[Test]
+    	public void TestGenerateSpecialNameRepId() {
+    		string name = "TestUnionGenForTypeCodeType3";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/Special_TestUnionGenForTypeCodeType3:1.0";
+    		    		
+    		UnionSwitchCase s1 = new UnionSwitchCase((int)0, "val_0", new LongTC());
+    		UnionSwitchCase s2 = new UnionSwitchCase((int)1, "val_1", new FloatTC());
+    		TypeCodeImpl discrTC = new LongTC();
+    		UnionTC tc = new UnionTC(repId, name, discrTC, 0,
+    		                         new UnionSwitchCase[] { s1, s2 });
+    		Type res = m_gen.CreateOrGetType(typeName, tc);
+    		Assertion.AssertNotNull(res);
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     	}
     	
     }
