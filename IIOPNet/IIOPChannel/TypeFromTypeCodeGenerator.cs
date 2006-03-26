@@ -322,6 +322,63 @@ namespace Ch.Elca.Iiop.Tests {
     	
     }
     
+    
+    
+    /// <summary>
+    /// Unit-tests for testing type from typecode code generation for union types.
+    /// </summary>
+    [TestFixture]
+    public class TypeFromTypeCodeGeneratorUnionTypeTest {
+    	
+    	private TypeFromTypeCodeRuntimeGenerator m_gen;
+    	
+    	[SetUp]
+    	public void SetUp() {
+    		m_gen = TypeFromTypeCodeRuntimeGenerator.GetSingleton();
+    	}
+    	
+    	[Test]
+    	public void TestGenerate() {
+    		string name = "TestUnionGenForTypeCodeType";
+    		string typeName = "Ch.Elca.Iiop.Tests." + name;
+    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestUnionGenForTypeCodeType:1.0";
+    		
+    		StructMember m1 = new StructMember("M1", new LongTC());
+    		UnionSwitchCase s1 = new UnionSwitchCase((int)0, "val_0", new LongTC());
+    		UnionSwitchCase s2 = new UnionSwitchCase((int)1, "val_1", new FloatTC());
+    		TypeCodeImpl discrTC = new LongTC();
+    		UnionTC tc = new UnionTC(repId, name, discrTC, 0,
+    		                         new UnionSwitchCase[] { s1, s2 });
+    		Type res = m_gen.CreateOrGetType(typeName, tc);
+    		Assertion.AssertNotNull(res);
+            Assertion.AssertEquals("type name", typeName, res.FullName);
+    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
+    		
+    		MethodInfo getFieldForDiscrMethod = 
+    		    res.GetMethod(UnionGenerationHelper.GET_FIELD_FOR_DISCR_METHOD, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+    		Assertion.AssertNotNull("get field for Discr method", getFieldForDiscrMethod);
+    		FieldInfo fieldForDiscr1 = (FieldInfo)
+        		getFieldForDiscrMethod.Invoke(null, new object[] { s1.DiscriminatorValue });
+    		FieldInfo fieldForDiscr2 = (FieldInfo)
+        		getFieldForDiscrMethod.Invoke(null, new object[] { s2.DiscriminatorValue });
+    		Assertion.AssertNotNull("fieldForDiscr1", fieldForDiscr1);
+    		Assertion.AssertNotNull("fieldForDiscr2", fieldForDiscr2);
+    		Assertion.AssertEquals("fieldForDiscr1 Type", 
+    		                       ((TypeCodeImpl)s1.ElementType).GetClsForTypeCode(), 
+    		                       fieldForDiscr1.FieldType);
+    		Assertion.AssertEquals("fieldForDiscr2 Type", 
+    		                       ((TypeCodeImpl)s2.ElementType).GetClsForTypeCode(), 
+    		                       fieldForDiscr2.FieldType);
+    		PropertyInfo discrProperty = res.GetProperty(UnionGenerationHelper.DISCR_PROPERTY_NAME,
+    		                                             BindingFlags.Public | BindingFlags.Instance);
+    		Assertion.AssertNotNull("discr property", discrProperty);
+    		Assertion.AssertEquals("discr property type", discrTC.GetClsForTypeCode(),
+    		                       discrProperty.PropertyType);
+    		Assertion.Assert("Serializable", res.IsSerializable);
+    	}
+    	
+    }
+    
 
     
 }
