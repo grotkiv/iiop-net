@@ -42,6 +42,8 @@ namespace omg.org.CORBA {
     /// <summary>the type code enumeration</summary>
     /// <remarks>IDL enums are mapped to CLS with an int32 base type</remarks>
     [IdlEnumAttribute]
+    [Serializable]
+    [RepositoryID("IDL:omg.org/CORBA/TCKind:1.0")]    
     public enum TCKind : int {
         tk_null = 0, 
         tk_void = 1,
@@ -109,6 +111,8 @@ namespace omg.org.CORBA {
         [return:StringValueAttribute()]
         string member_name(int index);
 
+        TypeCode member_type (int index);
+        
         // for union:        
         object member_label (int index);        
         TypeCode discriminator_type();
@@ -126,26 +130,6 @@ namespace omg.org.CORBA {
         TypeCode concrete_base_type();
 
         #endregion IMethods
-
-    }
-
-
-    internal struct StructMember {
-        
-        #region IFields
-
-        internal string m_name;
-        internal TypeCode m_type;
-
-        #endregion IFileds
-        #region IConstructors
-        
-        public StructMember(string name, TypeCode type) {
-            m_name = name;
-            m_type = type;
-        }
-
-        #endregion IConstructors
 
     }
 
@@ -341,7 +325,7 @@ namespace omg.org.CORBA {
         public virtual int default_index() {
             throw new BAD_OPERATION(0, CompletionStatus.Completed_No);
         }
-        public virtual omg.org.CORBA.TypeCode member_type(int index)     {
+        public virtual omg.org.CORBA.TypeCode member_type(int index) {
             throw new BAD_OPERATION(0, CompletionStatus.Completed_No);
         }
         public virtual int length() {
@@ -1541,10 +1525,10 @@ namespace omg.org.CORBA {
         }
         [return:StringValueAttribute()]
         public override string member_name(int index) {
-            return m_members[index].m_name;
+            return m_members[index].name;
         }
         public override TypeCode member_type(int index)     {
-            return m_members[index].m_type;            
+            return m_members[index].type;            
         }
 
         internal override void ReadFromStream(CdrInputStream cdrStream) {
@@ -1570,8 +1554,8 @@ namespace omg.org.CORBA {
             encap.WriteULong((uint)m_members.Length);
             TypeCodeSerializer ser = new TypeCodeSerializer();            
             foreach(StructMember member in m_members) {
-                encap.WriteString(member.m_name);
-                ser.Serialize(member.m_type, encap);
+                encap.WriteString(member.name);
+                ser.Serialize(member.type, encap);
             }
             encap.WriteToTargetStream();
         }

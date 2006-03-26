@@ -299,7 +299,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     		Assertion.AssertNotNull("field M1", 
-    		                        res.GetField(m1.m_name,
+    		                        res.GetField(m1.name,
     		                                     BindingFlags.Public | BindingFlags.Instance));
     		Assertion.Assert("Serializable", res.IsSerializable);
     	}

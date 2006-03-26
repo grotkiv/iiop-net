@@ -35,14 +35,80 @@ using System.Reflection;
 using System.Diagnostics;
 using System.Collections;
 using Ch.Elca.Iiop.Util;
-using Corba;
+using Ch.Elca.Iiop.Idl;
 
 namespace omg.org.CORBA {
 
     // this file contains the corba mappings for interface repostiory
     
+    [Serializable]
+    [RepositoryID("IDL:omg.org/CORBA/DefinitionKind:1.0")]
+    [IdlEnum]
+    public enum DefinitionKind {
+        dk_none, dk_all,
+        dk_Attribute, dk_Constant, dk_Exception, dk_Interface,
+        dk_Module, dk_Operation, dk_Typedef,
+        dk_Alias, dk_Struct, dk_Union, dk_Enum,
+        dk_Primitive, dk_String, dk_Sequence, dk_Array,
+        dk_Repository,
+        dk_Wstring, dk_Fixed,
+        dk_Value, dk_ValueBox, dk_ValueMember,
+        dk_Native, dk_AbstractInterface,
+        dk_LocalInterface
+    };
+    
+    [InterfaceTypeAttribute(IdlTypeInterface.ConcreteInterface)]
+    [RepositoryID("IDL:omg.org/CORBA/IRObject:1.0")]
+    public interface IRObject : IIdlEntity {
+        
+        DefinitionKind def_kind {
+            get;
+        }                
+        
+        // not needed
+        // void destroy();
+        
+    }
+    
+    [InterfaceTypeAttribute(IdlTypeInterface.ConcreteInterface)]
+    [RepositoryID("IDL:omg.org/CORBA/IDLType:1.0")]
+    public interface IDLType : IIdlEntity, IRObject {
+        
+        omg.org.CORBA.TypeCode type {
+            get;
+        }
+    }
+    
+    [RepositoryID("IDL:omg.org/CORBA/StructMember:1.0")]
+    [Serializable]
+    [IdlStruct]
+    public struct StructMember : IIdlEntity {
+        
+        /// <summary>
+        /// constructor used for type code operations.
+        /// </summary>
+        /// <param name="name">the name of this member</param>
+        /// <param name="type">the typecode for this member</param>
+        public StructMember(string name, TypeCode type) {
+            this.name = name;
+            this.type = type;
+            this.type_def = null;
+        }
+        
+        [StringValue()]
+        [WideCharAttribute(false)]
+        public string name;
+        
+        public omg.org.CORBA.TypeCode type;
+        
+        /// <remarks>not used for typecode opertions</remarks>
+        public IDLType type_def;
+
+    }
+
     
     
-    
+
+
     
 }
