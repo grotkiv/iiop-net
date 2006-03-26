@@ -133,28 +133,6 @@ namespace omg.org.CORBA {
 
     }
 
-
-    internal struct ValueTypeMember {
-
-        #region IFields
-
-        internal string m_name;
-        internal TypeCode m_type;
-        internal short m_visibility;
-
-        #endregion IFields
-        #region IConstructors
-
-        public ValueTypeMember(string name, TypeCode type, short visibility) {
-            m_name = name;
-            m_type = type;
-            m_visibility = visibility;
-        }
-
-        #endregion IConstructors
-
-    }
-
     internal struct UnionSwitchCase {
         #region IFields
 
@@ -1879,7 +1857,7 @@ namespace omg.org.CORBA {
 
         private string m_id;
         private string m_name;
-        private ValueTypeMember[] m_members;
+        private ValueMember[] m_members;
         private short m_typeMod;
         private TypeCode m_baseClass;
 
@@ -1890,18 +1868,18 @@ namespace omg.org.CORBA {
         internal ValueTypeTC() : base(TCKind.tk_value) {
         }     
 
-        public ValueTypeTC(string repositoryID, string name, ValueTypeMember[] members, TypeCode baseClass, short typeMod) : base(TCKind.tk_value) {
+        public ValueTypeTC(string repositoryID, string name, ValueMember[] members, TypeCode baseClass, short typeMod) : base(TCKind.tk_value) {
             Initalize(repositoryID, name, members, baseClass, typeMod);
         }
 
         #endregion IConstructors
         #region IMethods
         
-        public void Initalize(string repositoryID, string name, ValueTypeMember[] members, TypeCode baseClass, short typeMod) {
+        public void Initalize(string repositoryID, string name, ValueMember[] members, TypeCode baseClass, short typeMod) {
             m_id = repositoryID;
             m_name = name;
             m_members = members;
-            if (m_members == null) { m_members = new ValueTypeMember[0]; }
+            if (m_members == null) { m_members = new ValueMember[0]; }
             m_baseClass = baseClass;
             m_typeMod = typeMod;            
         }
@@ -1922,14 +1900,14 @@ namespace omg.org.CORBA {
         }
         [return:StringValueAttribute()]
         public override string member_name(int index) {
-            return m_members[index].m_name;
+            return m_members[index].name;
         }
         public override TypeCode member_type(int index)     {
-            return m_members[index].m_type;            
+            return m_members[index].type;            
         }
 
         public override short member_visibility(int index) {
-            return m_members[index].m_visibility;
+            return m_members[index].access;
         }
         public override short type_modifier() {
             return m_typeMod;
@@ -1948,12 +1926,12 @@ namespace omg.org.CORBA {
             m_baseClass = (TypeCode)ser.Deserialize(encap);
             // deser members
             uint length = encap.ReadULong();
-            m_members = new ValueTypeMember[length];
+            m_members = new ValueMember[length];
             for (int i = 0; i < length; i++) {
                 string memberName = encap.ReadString();
                 TypeCode memberType = (TypeCode)ser.Deserialize(encap);
                 short visibility = encap.ReadShort();
-                ValueTypeMember member = new ValueTypeMember(memberName, memberType, visibility);
+                ValueMember member = new ValueMember(memberName, memberType, visibility);
                 m_members[i] = member;
             }
         }
@@ -1969,10 +1947,10 @@ namespace omg.org.CORBA {
             ser.Serialize(m_baseClass, encap);
             // ser members
             encap.WriteULong((uint)m_members.Length);
-            foreach(ValueTypeMember member in m_members) {
-                encap.WriteString(member.m_name);
-                ser.Serialize(member.m_type, encap);
-                encap.WriteShort(member.m_visibility);
+            foreach(ValueMember member in m_members) {
+                encap.WriteString(member.name);
+                ser.Serialize(member.type, encap);
+                encap.WriteShort(member.access);
             }
             encap.WriteToTargetStream();
         }
@@ -2000,11 +1978,11 @@ namespace omg.org.CORBA {
             // serializable attribute
             IlEmitHelper.GetSingleton().AddSerializableAttribute(result);
             // define members
-            foreach (ValueTypeMember member in m_members) {
-                Type memberType = ((TypeCodeImpl) (member.m_type)).GetClsForTypeCode();                
+            foreach (ValueMember member in m_members) {
+                Type memberType = ((TypeCodeImpl) (member.type)).GetClsForTypeCode();                
                 FieldAttributes fieldAttrs = FieldAttributes.Public;
-                FieldBuilder field = result.DefineField(member.m_name, memberType, fieldAttrs);
-                CustomAttributeBuilder[] cAttrs = ((TypeCodeImpl) (member.m_type)).GetAttributes();
+                FieldBuilder field = result.DefineField(member.name, memberType, fieldAttrs);
+                CustomAttributeBuilder[] cAttrs = ((TypeCodeImpl) (member.type)).GetAttributes();
                 foreach (CustomAttributeBuilder cAttr in cAttrs) {
                     field.SetCustomAttribute(cAttr);
                 }
@@ -2018,7 +1996,7 @@ namespace omg.org.CORBA {
         internal override object ConvertToExternalRepresentation(object val, bool useClsOnly) {
             if (val is BoxedValueBase) {
                 val = ((BoxedValueBase)val).Unbox(); // unboxing the boxed-value, because BoxedValueTypes are internal types, which should not be used by users
-                val = ((TypeCodeImpl)m_members[0].m_type).
+                val = ((TypeCodeImpl)m_members[0].type).
                     ConvertToExternalRepresentation(val, useClsOnly);
             }   
             return val;

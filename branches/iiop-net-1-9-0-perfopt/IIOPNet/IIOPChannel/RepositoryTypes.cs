@@ -105,9 +105,55 @@ namespace omg.org.CORBA {
         public IDLType type_def;
 
     }
+    
+    [RepositoryID("IDL:omg.org/CORBA/ValueMember:1.0")]
+    [Serializable]
+    [IdlStruct]
+    public struct ValueMember : IIdlEntity {
 
-    
-    
+        /// <summary>
+        /// constructor used for type code operations.
+        /// </summary>
+        public ValueMember(string name, TypeCode type, short access) {
+            this.name = name;
+            this.type = type;
+            this.access = access;
+            this.type_def = null;
+            this.version = null;
+            this.defined_in = null;
+            this.id = null;
+        }
+        
+        /// <summary>
+        /// the name of this member
+        /// </summary>
+        [StringValue()]
+        [WideCharAttribute(false)]
+        public string name;
+        
+        /// <summary>
+        /// the type of this member
+        /// </summary>
+        public omg.org.CORBA.TypeCode type;
+        
+        /// <summary>
+        /// the visibility of this value member
+        /// </summary>
+        public short access;
+        
+        /// <remarks>not used for typecode opertions</remarks>
+        public IDLType type_def;
+        
+        /// <remarks>not used for typecode opertions</remarks>
+        public string version;
+        
+        /// <remarks>not used for typecode opertions</remarks>
+        public string defined_in;
+        
+        /// <remarks>not used for typecode opertions</remarks>
+        public string id;                        
+        
+    }        
 
 
     
