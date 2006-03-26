@@ -1863,6 +1863,9 @@ namespace omg.org.CORBA {
                                              elemCase.GetDiscriminatorValues());                
             }                       
             
+            // add rep-id Attr
+            IlEmitHelper.GetSingleton().AddRepositoryIDAttribute(genHelper.Builder, m_id);
+            
             // create the resulting type
             return genHelper.FinalizeType();
         }
