@@ -93,6 +93,12 @@ namespace omg.org.CORBA {
         TypeCode create_struct_tc ([StringValue] [WideChar(false)] string id, 
                                    [StringValue] [WideChar(false)] string name,
                                    [IdlSequence(0L)] StructMember[] members);
+        
+        TypeCode create_value_tc ([StringValue] [WideChar(false)] string id, 
+                                  [StringValue] [WideChar(false)] string name,
+                                  short type_modifier,
+                                  omg.org.CORBA.TypeCode concrete_base,
+                                  [IdlSequence(0L)] ValueMember[] members);
                 
         #endregion TypeCode creation operations
         
@@ -487,6 +493,16 @@ namespace omg.org.CORBA {
             return new StructTC(id, name, members);
         }
         
+        public TypeCode create_value_tc ([StringValue] [WideChar(false)] string id, 
+                                         [StringValue] [WideChar(false)] string name,
+                                         short type_modifier,
+                                         omg.org.CORBA.TypeCode concrete_base,
+                                         [IdlSequence(0L)] ValueMember[] members) {
+            return new ValueTypeTC(id, name,
+                                   members, concrete_base, type_modifier);
+        }
+
+        
                 
         #endregion TypeCode creation operations     
         
@@ -684,6 +700,23 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("member m1 name", m1.name, tc.member_name(0));
             Assertion.AssertEquals("member m1 type", m1.type.kind(), tc.member_type(0).kind());
         }
+        
+        [Test]
+        public void TestValueTypeTC() {
+            string name = "OrbServices_TestValueType";
+            string repId = "IDL:Ch/Elca/Iiop/Tests/" + name + ":1.0";
+            
+            ValueMember m1 = new ValueMember("M1", m_orb.create_long_tc(), 0);
+            omg.org.CORBA.TypeCode tc = 
+                m_orb.create_value_tc(repId, name, 0, m_orb.create_null_tc(),
+                                      new ValueMember[] { m1 });
+            Assertion.AssertEquals("id", repId, tc.id());
+            Assertion.AssertEquals("king", TCKind.tk_value, tc.kind());
+            Assertion.AssertEquals("nr of members", 1, tc.member_count());
+            Assertion.AssertEquals("member m1 name", m1.name, tc.member_name(0));
+            Assertion.AssertEquals("member m1 type", m1.type.kind(), tc.member_type(0).kind());
+        }
+        
 
         
     }
