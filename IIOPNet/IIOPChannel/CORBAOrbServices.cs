@@ -99,6 +99,31 @@ namespace omg.org.CORBA {
                                   short type_modifier,
                                   omg.org.CORBA.TypeCode concrete_base,
                                   [IdlSequence(0L)] ValueMember[] members);
+        
+        // TypeCode create_native_tc (
+        //    [StringValue] [WideChar(false)] string id, 
+        //    [StringValue] [WideChar(false)] string name);
+
+        // TypeCode create_recursive_tc(
+        //    [StringValue] [WideChar(false)] string id);
+        
+        // TypeCode create_recursive_sequence_tc (// deprecated
+        // long bound, long offset
+        // );
+        
+        // TypeCode create_fixed_tc (
+        // short digits,
+        // short scale);
+        
+        TypeCode create_exception_tc([StringValue] [WideChar(false)] string id, 
+                                     [StringValue] [WideChar(false)] string name,
+                                     [IdlSequence(0L)] StructMember[] members);
+        
+        // TypeCode create_union_tc (
+        //    [StringValue] [WideChar(false)] string id, 
+        //    [StringValue] [WideChar(false)] string name,        
+        //    omg.org.CORBA.TypeCode discriminator_type,
+        //    [IdlSequence(0L)] UnionMember[] members);
                 
         #endregion TypeCode creation operations
         
@@ -501,8 +526,12 @@ namespace omg.org.CORBA {
             return new ValueTypeTC(id, name,
                                    members, concrete_base, type_modifier);
         }
-
         
+        public TypeCode create_exception_tc([StringValue] [WideChar(false)] string id, 
+                                            [StringValue] [WideChar(false)] string name,
+                                            [IdlSequence(0L)] StructMember[] members) {
+            return new ExceptTC(id, name, members);
+        }                
                 
         #endregion TypeCode creation operations     
         
@@ -717,7 +746,21 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("member m1 type", m1.type.kind(), tc.member_type(0).kind());
         }
         
-
+        [Test]
+        public void TestExceptTC() {
+            string name = "OrbServices_TestException";
+            string repId = "IDL:Ch/Elca/Iiop/Tests/" + name + ":1.0";
+            
+            StructMember m1 = new StructMember("M1", m_orb.create_long_tc());            
+            omg.org.CORBA.TypeCode tc = 
+                m_orb.create_exception_tc(repId, name,
+                                       new StructMember[] { m1 });
+            Assertion.AssertEquals("id", repId, tc.id());
+            Assertion.AssertEquals("king", TCKind.tk_except, tc.kind());
+            Assertion.AssertEquals("nr of members", 1, tc.member_count());
+            Assertion.AssertEquals("member m1 name", m1.name, tc.member_name(0));
+            Assertion.AssertEquals("member m1 type", m1.type.kind(), tc.member_type(0).kind());
+        }
         
     }
 
