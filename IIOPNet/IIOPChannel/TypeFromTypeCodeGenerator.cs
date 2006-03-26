@@ -245,7 +245,10 @@ namespace Ch.Elca.Iiop.Tests {
     		Assertion.AssertNotNull(res);
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
-    		
+    		string[] genEnumNames = Enum.GetNames(res);
+    		Assertion.AssertEquals("nr of enum entries", enumFields.Length, genEnumNames.Length);
+    		Assertion.AssertEquals("enum entry 1", enumFields[0], genEnumNames[0]);
+    		Assertion.AssertEquals("enum entry 2", enumFields[1], genEnumNames[1]);
     		Assertion.Assert("Serializable", res.IsSerializable);
     	}        
     	        
