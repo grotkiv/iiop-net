@@ -144,6 +144,8 @@ namespace Ch.Elca.Iiop.Tests {
     		Assertion.AssertNotNull(res);
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
+    		
+    		Assertion.Assert("Serializable", res.IsSerializable);
     	}
     	   	
     	[Test]
@@ -191,6 +193,8 @@ namespace Ch.Elca.Iiop.Tests {
     		Assertion.AssertNotNull(res);
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
+    		
+    		Assertion.Assert("Serializable", res.IsSerializable);
     	}    	
     	    	
     	[Test]
@@ -238,6 +242,8 @@ namespace Ch.Elca.Iiop.Tests {
     		Assertion.AssertNotNull(res);
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
+    		
+    		Assertion.Assert("Serializable", res.IsSerializable);
     	}        
     	        
     	[Test]
@@ -289,6 +295,7 @@ namespace Ch.Elca.Iiop.Tests {
     		Assertion.AssertNotNull("field M1", 
     		                        res.GetField(m1.m_name,
     		                                     BindingFlags.Public | BindingFlags.Instance));
+    		Assertion.Assert("Serializable", res.IsSerializable);
     	}
     	    	
     	[Test]
