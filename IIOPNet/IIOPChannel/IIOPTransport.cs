@@ -208,20 +208,17 @@ namespace Ch.Elca.Iiop {
         #endregion IProperties
         #region IMethods
         
-        /// <summary>
-        /// process a giop request
-        /// </summary>
-        /// <param name="requestStream">the request stream</param>
-        /// <remarks>is called by GiopTransportMessageHandler</remarks>
-        public void ProcessRequest(Stream requestStream, GiopServerConnection serverCon) {
-            Trace.WriteLine("Process request");
+        private void LogStream(Stream stream) {
+            stream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
+            byte[] data = new byte[stream.Length];
+            stream.Read(data, 0, (int)stream.Length);
+            OutputHelper.DebugBuffer(data);            
+        }
+        
+        private void ProcessRequestInternal(Stream requestStream, GiopServerConnection serverCon) {
 #if DEBUG
-            requestStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
-            byte[] data = new byte[requestStream.Length];
-            requestStream.Read(data, 0, (int)requestStream.Length);
-            OutputHelper.DebugBuffer(data);
+            LogStream(requestStream);
 #endif
-
             requestStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
             // the out params returned form later sinks
             IMessage responseMsg;
@@ -247,6 +244,10 @@ namespace Ch.Elca.Iiop {
                     try { 
                         sinkStack.Pop(this); 
                     } catch (Exception) { }                    
+#if DEBUG
+                    Debug.WriteLine("Send response sync");
+                    LogStream(responseStream);
+#endif                    
                     serverCon.TransportHandler.SendResponse(responseStream);
                     break;                    
                 case ServerProcessing.Async : 
@@ -263,7 +264,18 @@ namespace Ch.Elca.Iiop {
                     // should not arrive here
                     Trace.WriteLine("internal problem, invalid processing state: " + result);
                     throw new omg.org.CORBA.INTERNAL(568, omg.org.CORBA.CompletionStatus.Completed_MayBe);
-            }                        
+            }            
+        }
+        
+        /// <summary>
+        /// process a giop request
+        /// </summary>
+        /// <param name="requestStream">the request stream</param>
+        /// <remarks>is called by GiopTransportMessageHandler</remarks>
+        public void ProcessRequest(Stream requestStream, GiopServerConnection serverCon) {
+            Trace.WriteLine("Process request");
+            ProcessRequestInternal(requestStream, serverCon);
+            Trace.WriteLine("Request processed");
         }
         
         /// <summary>
@@ -273,19 +285,8 @@ namespace Ch.Elca.Iiop {
         /// <remarks>is called by GiopTransportMessageHandler</remarks>
         public void ProcessLocateRequest(Stream requestStream, GiopServerConnection serverCon) {
             Trace.WriteLine("Process Locate request");
-#if DEBUG
-            requestStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
-            byte[] data = new byte[requestStream.Length];
-            requestStream.Read(data, 0, (int)requestStream.Length);
-            OutputHelper.DebugBuffer(data);            
-#endif            
-            requestStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in GiopMessageHandler
-
-            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            Stream resultMsgStream = handler.HandleIncomingLocateRequestMessage(requestStream);            
-            serverCon.TransportHandler.SendResponse(resultMsgStream);
-            
-            Trace.WriteLine("Locate request processed");            
+            ProcessRequestInternal(requestStream, serverCon);
+            Trace.WriteLine("Locate request processed");
         }                                        
         
         #region Implementation of IServerChannelSink
@@ -302,7 +303,11 @@ namespace Ch.Elca.Iiop {
         }
 
         public void AsyncProcessResponse(IServerResponseChannelSinkStack sinkStack, object state, 
-                                         IMessage msg, ITransportHeaders headers, Stream stream) {
+                                         IMessage msg, ITransportHeaders headers, Stream stream) {            
+#if DEBUG
+            Debug.WriteLine("Send response async");
+            LogStream(stream);
+#endif
             GiopTransportMessageHandler giopTransportMsgHandler =
                 ((GiopServerConnection) state).TransportHandler;
             giopTransportMsgHandler.SendResponse(stream); // send the response

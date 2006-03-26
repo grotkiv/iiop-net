@@ -706,13 +706,35 @@ namespace Ch.Elca.Iiop {
             SendMessage(responseStream);
         }
         
+        private Stream PrepareMessageErrorMessage(GiopVersion version) {
+            Debug.WriteLine("create a message error message");
+            Stream targetStream = new MemoryStream();            
+            GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.MessageError);
+            header.WriteToStream(targetStream, 0);
+            targetStream.Seek(0, SeekOrigin.Begin);
+            return targetStream;
+        }
+        
+        /// <summary>
+        /// create a close connection message
+        /// </summary>
+        /// <param name="version"></param>
+        /// <returns></returns>
+        private Stream PrepareMessageCloseMessage(GiopVersion version) {
+            Debug.WriteLine("create a close connection message");
+            Stream targetStream = new MemoryStream();            
+            GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.CloseConnection);
+            header.WriteToStream(targetStream, 0);
+            targetStream.Seek(0, SeekOrigin.Begin);
+            return targetStream;            
+        }        
+        
         /// <summary>
         /// sends a giop error message as result of a problematic message
         /// </summary>
         internal void SendErrorResponseMessage() {
             GiopVersion version = new GiopVersion(1, 2); // use highest number supported
-            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            Stream messageErrorStream = handler.PrepareMessageErrorMessage(version);
+            Stream messageErrorStream = PrepareMessageErrorMessage(version);
             SendResponse(messageErrorStream);
         }
         
@@ -720,9 +742,8 @@ namespace Ch.Elca.Iiop {
         /// send a close connection message to the peer.
         /// </summary>
         internal void SendConnectionCloseMessage() {
-            GiopVersion version = new GiopVersion(1, 0);
-            GiopMessageHandler handler = GiopMessageHandler.GetSingleton();
-            Stream messageCloseStream = handler.PrepareMessageCloseMessage(version);
+            GiopVersion version = new GiopVersion(1, 0);            
+            Stream messageCloseStream = PrepareMessageCloseMessage(version);
             SendMessage(messageCloseStream);
         }
                 

@@ -75,21 +75,24 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         
         private AssemblyName GetAssemblyName() {
             AssemblyName result = new AssemblyName();
-            result.Name = "testAsm";            
+            result.Name = "testAsm";
             return result;
         }
         
         public Assembly CreateIdl(Stream source) {            
-            return CreateIdl(source, false);
+            return CreateIdl(source, false, false);
         }                
         
-        public Assembly CreateIdl(Stream source, bool anyToAnyContainerMapping) {            
+        public Assembly CreateIdl(Stream source, bool anyToAnyContainerMapping, bool makeInterfaceDisposable) {
             IDLParser parser = new IDLParser(source);
             ASTspecification spec = parser.specification();
             // now parsed representation can be visited with the visitors
             MetaDataGenerator generator = new MetaDataGenerator(GetAssemblyName(), ".", 
                                                                 new ArrayList());
             generator.MapAnyToAnyContainer = anyToAnyContainerMapping;
+            if(makeInterfaceDisposable) {
+                generator.InheritedInterface = typeof(System.IDisposable);
+            }
             generator.InitalizeForSource(parser.getSymbolTable());
             spec.jjtAccept(generator, null);
             Assembly result = generator.ResultAssembly;
@@ -215,36 +218,56 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assertion.AssertEquals("wrong enum val field name",
                                    idlEnumValName, field.Name);
         }
-        
+
+        private void WriteIdlTestInterfaceToStream(StreamWriter aWriter, String ifModifier) {
+            // idl:
+            aWriter.WriteLine("module testmod {");
+            aWriter.WriteLine("    " + ifModifier + " interface Test {");
+            aWriter.WriteLine("        octet EchoOctet(in octet arg);");
+            aWriter.WriteLine("    };");
+            aWriter.WriteLine("    #pragma ID Test \"IDL:testmod/Test:1.0\"");
+            aWriter.WriteLine("};");
+            
+            aWriter.Flush();
+        }        
+
         private void CheckInterfaceDefinitions(string ifModifier, 
                                                IdlTypeInterface ifAttrVal) {
             MemoryStream testSource = new MemoryStream();
             StreamWriter writer = new StreamWriter(testSource, s_latin1);
-            
-            // idl:
-            writer.WriteLine("module testmod {");
-            writer.WriteLine("    " + ifModifier + " interface Test {");
-            writer.WriteLine("        octet EchoOctet(in octet arg);");
-            writer.WriteLine("    };");
-            writer.WriteLine("    #pragma ID Test \"IDL:testmod/Test:1.0\"");
-            writer.WriteLine("};");
-            
-            writer.Flush();
-            testSource.Seek(0, SeekOrigin.Begin);
-            Assembly result = CreateIdl(testSource);
-                       
-            // check if interface is correctly created
-            Type ifType = result.GetType("testmod.Test", true);
-            CheckPublicInstanceMethodPresent(ifType, "EchoOctet", 
-                                             typeof(System.Byte), new Type[] { typeof(System.Byte) });
-            CheckRepId(ifType, "IDL:testmod/Test:1.0");
-            CheckInterfaceAttr(ifType, ifAttrVal);
-            CheckIIdlEntityInheritance(ifType);            
-            
-            writer.Close();
+            try {
+                WriteIdlTestInterfaceToStream(writer, ifModifier);
+                testSource.Seek(0, SeekOrigin.Begin);
+                Assembly result = CreateIdl(testSource);
+                           
+                // check if interface is correctly created
+                Type ifType = result.GetType("testmod.Test", true);
+                CheckPublicInstanceMethodPresent(ifType, "EchoOctet", 
+                                                 typeof(System.Byte), new Type[] { typeof(System.Byte) });
+                CheckRepId(ifType, "IDL:testmod/Test:1.0");
+                CheckInterfaceAttr(ifType, ifAttrVal);
+                CheckIIdlEntityInheritance(ifType);            
+            } finally {
+                writer.Close();
+            }
         }
-        
-        
+
+        private void CheckAdditionalBaseInterface(string ifModifier, bool setFlag, bool expectBase) {
+            MemoryStream testSource = new MemoryStream();
+            StreamWriter writer = new StreamWriter(testSource, s_latin1);
+            try {
+                WriteIdlTestInterfaceToStream(writer, ifModifier);
+                testSource.Seek(0, SeekOrigin.Begin);
+                Assembly result = CreateIdl(testSource, false, setFlag);
+                           
+                Type ifType = result.GetType("testmod.Test", true);
+                Assertion.AssertEquals("Additional Interface not correctly handled for " + ifModifier + " Interfaces.",
+                        expectBase, typeof(IDisposable).IsAssignableFrom(ifType));
+            } finally {
+                writer.Close();
+            }
+        }
+
         [Test]
         public void TestConcreteInterfaces() {
             CheckInterfaceDefinitions("", IdlTypeInterface.ConcreteInterface);
@@ -258,7 +281,27 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         [Test]
         public void TestLocalInterfaces() {
             CheckInterfaceDefinitions("local", IdlTypeInterface.LocalInterface);
-        } 
+        }
+
+        [Test]
+        public void TestConcreteInterfaceAdditionalBaseInterface() {
+            CheckAdditionalBaseInterface(string.Empty, true, true);
+            CheckAdditionalBaseInterface(string.Empty, false, false);
+        }
+
+
+        [Test]
+        public void TestAbstractInterfaceAdditionalBaseInterface() {
+            CheckAdditionalBaseInterface("abstract", true, true);
+            CheckAdditionalBaseInterface("abstract", false, false);
+        }
+
+        [Test]
+        public void TestLocalInterfaceAdditionalBaseInterface() {
+            CheckAdditionalBaseInterface("local", true, false);
+            CheckAdditionalBaseInterface("local", false, false);
+        }   
+
         
         [Test]
         public void TestEnum() {
@@ -986,7 +1029,7 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             
             writer.Flush();
             testSource.Seek(0, SeekOrigin.Begin);
-            Assembly result = CreateIdl(testSource, true);
+            Assembly result = CreateIdl(testSource, true, false);
             writer.Close();
                        
             // check if interface is correctly created
@@ -1010,14 +1053,14 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             
             writer.Flush();
             testSource.Seek(0, SeekOrigin.Begin);
-            Assembly result = CreateIdl(testSource, false);
+            Assembly result = CreateIdl(testSource, false, false);
             writer.Close();
                        
             // check if interface is correctly created
             Type ifType = result.GetType("testmod.Test", true);
             CheckPublicInstanceMethodPresent(ifType, "EchoAnyToContainer", 
                                              typeof(object), new Type[] { typeof(object) });
-        }               
+        }
 
         #endregion
         

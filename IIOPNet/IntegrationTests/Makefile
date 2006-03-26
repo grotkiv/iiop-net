@@ -1,10 +1,7 @@
-PRCURRENTTIME = Utils\currenttime.exe
+PRCURRENTTIME = ..\Utils\currenttime.exe
 
 
 build: nunit-var junit-var
-    cd Utils
-    $(MAKE) build
-    cd ..
     cd Basic
     $(MAKE) build
     cd ..
@@ -32,6 +29,9 @@ build: nunit-var junit-var
     cd JavaRMIIIOP
     $(MAKE) build
     cd ..
+    cd JdkOrb
+    $(MAKE) build
+    cd ..
     cd JavaRMIIIOPAsClient
     $(MAKE) build
     cd ..
@@ -48,13 +48,9 @@ build: nunit-var junit-var
     @if not defined JBOSS_HOME echo JBOSS_HOME not set, skipping JBOSS integration test
     @if defined JBOSS_HOME $(MAKE) build
     cd ..
-    cd WAS5
-    @if not defined WAS_HOME echo WAS_HOME not set, skipping WAS5 integration test
-    @if defined WAS_HOME $(MAKE) build
-    cd ..
-    cd WAS5_1
-    @if not defined WAS5_1_HOME echo WAS5_1_HOME not set, skipping WAS5_1 integration test
-    @if defined WAS5_1_HOME $(MAKE) build
+    cd Jboss4.0
+    @if not defined JBOSS_HOME_4 echo JBOSS_HOME_4 not set, skipping JBOSS 4 integration test
+    @if defined JBOSS_HOME_4 $(MAKE) build
     cd ..
     cd MICO
     @if not defined MICO_HOME echo MICO_HOME not set, skipping MICO integration test
@@ -68,6 +64,17 @@ build: nunit-var junit-var
 #   @if not defined JACORB_HOME echo JACORB_HOME not set, skipping JACORB integration test
 #   @if defined JACORB_HOME $(MAKE) /C build
 #   cd ..
+    cd GacTest
+    $(MAKE) build
+    cd ..
+    cd WAS5
+    @if not defined WAS_HOME echo WAS_HOME not set, skipping WAS5 integration test
+    @if defined WAS_HOME $(MAKE) build
+    cd ..
+    cd WAS5_1
+    @if not defined WAS5_1_HOME echo WAS5_1_HOME not set, skipping WAS5_1 integration test
+    @if defined WAS5_1_HOME $(MAKE) build
+    cd ..
 
 build-ssl:
     cd JBossSsl3.2.5
@@ -116,6 +123,9 @@ test: nunit-var junit-var
     cd JavaRMIIIOP
     $(MAKE) test
     cd ..
+    cd JdkOrb
+    $(MAKE) test
+    cd ..
     cd JavaRMIIIOPAsClient
     $(MAKE) test
     cd ..
@@ -132,13 +142,9 @@ test: nunit-var junit-var
     @if not defined JBOSS_HOME echo JBOSS_HOME not set, skipping JBOSS integration test
     @if defined JBOSS_HOME $(MAKE) test
     cd ..
-    cd WAS5
-    @if not defined WAS_HOME echo WAS_HOME not set, skipping WAS5 integration test
-    @if defined WAS_HOME $(MAKE) test
-    cd ..
-    cd WAS5_1
-    @if not defined WAS5_1_HOME echo WAS5_1_HOME not set, skipping WAS5_1 integration test
-    @if defined WAS5_1_HOME $(MAKE) test
+    cd Jboss4.0
+    @if not defined JBOSS_HOME_4 echo JBOSS_HOME_4 not set, skipping JBOSS 4 integration test
+    @if defined JBOSS_HOME_4 $(MAKE) test
     cd ..
     cd MICO
     @if not defined MICO_HOME echo MICO_HOME not set, skipping MICO integration test
@@ -147,6 +153,17 @@ test: nunit-var junit-var
     cd OmniORB
     @if not defined OMNIORB_HOME echo OMNIORB_HOME not set, skipping OmniORB integration test
     @if defined OMNIORB_HOME $(MAKE) /C test
+    cd ..
+    cd GacTest
+    $(MAKE) test
+    cd ..
+    cd WAS5
+    @if not defined WAS_HOME echo WAS_HOME not set, skipping WAS5 integration test
+    @if defined WAS_HOME $(MAKE) test
+    cd ..
+    cd WAS5_1
+    @if not defined WAS5_1_HOME echo WAS5_1_HOME not set, skipping WAS5_1 integration test
+    @if defined WAS5_1_HOME $(MAKE) test
     cd ..
 
 test-ssl:
@@ -158,9 +175,6 @@ test-ssl:
     
 
 clean:
-    cd Utils
-    $(MAKE) clean
-    cd ..
     cd Basic
     $(MAKE) clean
     cd ..
@@ -185,6 +199,9 @@ clean:
     cd JavaRMIIIOP
     $(MAKE) clean
     cd ..
+    cd JdkOrb
+    $(MAKE) clean
+    cd ..
     cd JavaRMIIIOPAsClient
     $(MAKE) clean
     cd ..
@@ -198,6 +215,9 @@ clean:
     $(MAKE) clean
     cd ..
     cd Jboss3.2.1
+    $(MAKE) clean
+    cd ..
+    cd Jboss4.0
     $(MAKE) clean
     cd ..
     cd WAS5
@@ -217,4 +237,7 @@ clean:
 #   cd ..
     cd JBossSsl3.2.5
     $(MAKE) /C clean
+    cd ..
+    cd GacTest
+    $(MAKE) clean
     cd ..

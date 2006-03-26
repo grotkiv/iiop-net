@@ -635,6 +635,28 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         #endregion IConstructors
+        #region IProperties
+        
+        /// <summary>
+        /// the stream, this message output stream writes to, i.e. the stream
+        /// passed in as argument.
+        /// </summary>
+        internal Stream BackingStream {
+            get {
+                return m_stream.BackingStream;
+            }
+        }
+        
+        /// <summary>
+        /// The giop header used for this stream.
+        /// </summary>
+        internal GiopHeader Header {
+            get {
+                return m_header;
+            }
+        }
+        
+        #endregion IProperties
         #region IMethods
 
         /// <summary>get a CDROutputStream for writing the content of the message</summary>
@@ -682,12 +704,22 @@ namespace Ch.Elca.Iiop.Cdr {
 
         #endregion IConstructors
         #region IProperties
+
+        /// <summary>
+        /// the stream, this message output stream writes to, i.e. the stream
+        /// passed in as argument.
+        /// </summary>
+        internal Stream BackingStream {
+            get {
+                return m_inputStream.BackingStream;
+            }
+        }        
         
         internal GiopHeader Header {
             get { 
                 return m_header; 
             }
-        }
+        }               
         
         #endregion IProperties
         #region IMethods
@@ -1218,6 +1250,11 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         private string ReadStringData(uint length) {
+            if (length == 0) {
+                // not valid accoring to CORBA 2.6 standard 15.3.2.7, but used by some orbs.
+                // -> therefore, return the zero length string too, instead of an exception
+                return String.Empty;
+            }
             byte[] charData = ReadOpaque((int)length - 1); // read string data
             ReadOctet(); // read terminating 0
             Encoding encoding = CodeSetService.GetCharEncoding(CharSet, false);

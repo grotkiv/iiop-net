@@ -1,4 +1,4 @@
-DELAY = ..\..\Utils\delay.exe
+DELAY = ..\..\..\Utils\delay.exe
 
 build: build-server build-client
 
