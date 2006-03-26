@@ -145,22 +145,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     	}
-    	
-    	[Test]
-    	public void TestGenerateSpecialVersionRepId() {
-    		string name = "TestGenForTypeCodeType2";
-    		string typeName = "Ch.Elca.Iiop.Tests." + name;
-    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestGenForTypeCodeType2:2.0";
-    		ValueTypeTC vt = new ValueTypeTC(repId,
-    		                                 name, new ValueTypeMember[0],
-    		                                 new NullTC(), 0);
-    		
-    		Type res = m_gen.CreateOrGetType(typeName, vt);
-    		Assertion.AssertNotNull(res);
-            Assertion.AssertEquals("type name", typeName, res.FullName);
-    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
-    	}
-    	
+    	   	
     	[Test]
     	public void TestGenerateSpecialNameRepId() {
     	    string name = "TestGenForTypeCodeType3";
@@ -207,23 +192,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     	}    	
-    	
-    	[Test]
-    	public void TestGenerateSpecialVersionRepId() {
-    		string name = "TestBoxedGenForTypeCodeType2";
-    		string typeName = "Ch.Elca.Iiop.Tests." + name;
-    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestBoxedGenForTypeCodeType:2.0";
-    		LongTC boxedTC = new LongTC();
-    		ValueBoxTC vt = new ValueBoxTC(repId,
-    		                               name,
-    		                               boxedTC);
-    		
-    		Type res = m_gen.CreateOrGetType(typeName, vt);
-    		Assertion.AssertNotNull(res);
-            Assertion.AssertEquals("type name", typeName, res.FullName);
-    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
-    	}
-    	
+    	    	
     	[Test]
     	public void TestGenerateSpecialNameRepId() {
     		string name = "TestBoxedGenForTypeCodeType3";
@@ -269,22 +238,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     	}        
-    	
-        [Test]
-    	public void TestGenerateSpecialVersionRepId() {
-    		string name = "TestEnumGenForTypeCodeType2";
-    		string typeName = "Ch.Elca.Iiop.Tests." + name;
-    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestEnumGenForTypeCodeType2:2.0";    		
-    		EnumTC tc = new EnumTC(repId,
-    		                       name,
-    		                       new string[] { name + "_1", name + "_2" });
-    		
-    		Type res = m_gen.CreateOrGetType(typeName, tc);
-    		Assertion.AssertNotNull(res);
-            Assertion.AssertEquals("type name", typeName, res.FullName);
-    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));            
-        }
-        
+    	        
     	[Test]
     	public void TestGenerateSpecialNameRepId() {
     		string name = "TestEnumGenForTypeCodeType3";
@@ -331,21 +285,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("type name", typeName, res.FullName);
     		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));
     	}
-    	
-    	[Test]
-    	public void TestGenerateSpecialVersionRepId() {
-    		string name = "TestStructGenForTypeCodeType2";
-    		string typeName = "Ch.Elca.Iiop.Tests." + name;
-    		string repId = "IDL:Ch/Elca/Iiop/Tests/TestStructGenForTypeCodeType2:2.0";
-    		StructTC tc = new StructTC(repId,
-    		                           name, new StructMember[] {
-    		                               new StructMember("M1", new LongTC()) });
-    		Type res = m_gen.CreateOrGetType(typeName, tc);
-    		Assertion.AssertNotNull(res);
-            Assertion.AssertEquals("type name", typeName, res.FullName);
-    		Assertion.AssertEquals("rep id", repId, Repository.GetRepositoryID(res));    	    
-    	}
-    	
+    	    	
     	[Test]
     	public void TestGenerateSpecialNameRepId() {
     		string name = "TestStructGenForTypeCodeType3";
