@@ -84,6 +84,7 @@
     <Compile Include="PeekSupportingStream.cs" />
     <Compile Include="ReflectUtil.cs" />
     <Compile Include="Repository.cs" />
+    <Compile Include="RepositoryTypes.cs" />
     <Compile Include="Serializer.cs" />
     <Compile Include="Services.cs" />
     <Compile Include="StandardCorbaOps.cs" />
