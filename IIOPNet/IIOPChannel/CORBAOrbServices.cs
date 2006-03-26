@@ -643,9 +643,19 @@ namespace Ch.Elca.Iiop.Tests {
             omg.org.CORBA.TypeCode alias_TC =
                 m_orb.create_alias_tc(aliasRepId, name, aliasedTC);
             Assertion.AssertEquals("alias id", aliasRepId, alias_TC.id());
-            Assertion.AssertEquals("alias king", TCKind.tk_alias, alias_TC.kind());
+            Assertion.AssertEquals("alias kind", TCKind.tk_alias, alias_TC.kind());
             Assertion.AssertEquals("alias cls type", aliasedTC.GetClsForTypeCode(),
                                    ((TypeCodeImpl)alias_TC).GetClsForTypeCode());            
+        }
+        
+        [Test]
+        public void TestSequenceTC() {
+            TypeCodeImpl seqMemberType = (TypeCodeImpl)m_orb.create_octet_tc();            
+            omg.org.CORBA.TypeCode seqOfOctet_TC = 
+                m_orb.create_sequence_tc(0, seqMemberType);
+            Assertion.AssertEquals("sequence kind", TCKind.tk_sequence, seqOfOctet_TC.kind());
+            Assertion.AssertEquals("sequence member type", seqMemberType.GetClsForTypeCode(),
+                                   ((TypeCodeImpl)seqOfOctet_TC.content_type()).GetClsForTypeCode());
         }
         
     }
