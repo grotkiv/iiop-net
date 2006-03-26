@@ -132,7 +132,7 @@ namespace Ch.Elca.Iiop.Tests {
     	}
     	
     	[Test]
-    	public void TestGenerateSimple() {
+    	public void TestGenerate() {
     		string name = "TestGenForTypeCodeType";
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
     		string repId = "IDL:Ch/Elca/Iiop/Tests/TestGenForTypeCodeType:1.0";
@@ -180,7 +180,7 @@ namespace Ch.Elca.Iiop.Tests {
     	}
     	
     	[Test]
-    	public void TestGenerateSimple() {
+    	public void TestGenerate() {
     		string name = "TestBoxedGenForTypeCodeType";
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
     		string repId = "IDL:Ch/Elca/Iiop/Tests/TestBoxedGenForTypeCodeType:1.0";
@@ -229,7 +229,7 @@ namespace Ch.Elca.Iiop.Tests {
     	}
     	
     	[Test]
-    	public void TestGenerateSimple() {
+    	public void TestGenerate() {
     		string name = "TestEnumGenForTypeCodeType";
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
     		string repId = "IDL:Ch/Elca/Iiop/Tests/TestEnumGenForTypeCodeType:1.0";    		
@@ -280,7 +280,7 @@ namespace Ch.Elca.Iiop.Tests {
     	}
     	
     	[Test]
-    	public void TestGenerateSimple() {
+    	public void TestGenerate() {
     		string name = "TestStructGenForTypeCodeType";
     		string typeName = "Ch.Elca.Iiop.Tests." + name;
     		string repId = "IDL:Ch/Elca/Iiop/Tests/TestStructGenForTypeCodeType:1.0";
