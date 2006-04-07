@@ -235,11 +235,11 @@ namespace omg.org.CORBA {
         #region IConstructors
         
         private OrbServices() {         
-            m_orbInitalizers = new ArrayList();
-            m_codecFactory = new CodecFactoryImpl();
-            m_piCurrentManager = new PICurrentManager();
-            m_interceptorManager = new InterceptorManager(this);
             m_serializerFactory = new Ch.Elca.Iiop.Marshalling.SerializerFactory();
+            m_orbInitalizers = new ArrayList();
+            m_codecFactory = new CodecFactoryImpl(m_serializerFactory);
+            m_piCurrentManager = new PICurrentManager();
+            m_interceptorManager = new InterceptorManager(this);            
             m_argSerializerFactory = 
                 new Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory(m_serializerFactory);
         }
