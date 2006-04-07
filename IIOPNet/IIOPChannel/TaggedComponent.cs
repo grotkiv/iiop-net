@@ -138,17 +138,19 @@ namespace omg.org.IOP {
         /// <summary>
         /// serialise the component data as cdr encapsulation.
         /// </summary>
-        private static byte[] SerialiseComponentData(object data) {
+        private static byte[] SerialiseComponentData(object data,
+                                                     SerializerFactory serFactory) {
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0);
             Serializer ser =
-                OrbServices.GetSingleton().SerializerFactory.Create(data.GetType(), 
-                                                                    AttributeExtCollection.EmptyCollection); 
+                serFactory.Create(data.GetType(), 
+                                  AttributeExtCollection.EmptyCollection); 
             ser.Serialize(data, encap);
             return encap.GetEncapsulationData();
         }                
         
         public static TaggedComponent CreateTaggedComponent(int tag, object componentData) {
-            return new TaggedComponent(tag, SerialiseComponentData(componentData));
+            return new TaggedComponent(tag, SerialiseComponentData(componentData,
+                                                                   OrbServices.GetSingleton().SerializerFactory));
         }
         
         /// <summary>deserialise the component data of the given type; encoded as cdr encapsulation.</summary>        
