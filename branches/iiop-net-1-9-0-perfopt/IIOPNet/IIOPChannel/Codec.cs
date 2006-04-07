@@ -229,12 +229,18 @@ namespace Ch.Elca.Iiop.Interception {
     /// <summary>
     /// implementation of <see cref="omg.org.IOP.CodecFactory"></see>
     /// </summary>
-    public class CodecFactoryImpl : CodecFactory {
+    internal class CodecFactoryImpl : CodecFactory {
+        
+        private SerializerFactory m_serFactory;
+        
+        public CodecFactoryImpl(SerializerFactory serFactory) {
+            m_serFactory = serFactory;
+        }
         
         public Codec create_codec (Encoding enc) {
             GiopVersion version = new GiopVersion(enc.major_version, enc.minor_version);
             if (enc.format == omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal) {
-                Codec impl = new CodecImplEncap(version);
+                Codec impl = new CodecImplEncap(version, m_serFactory);
                 return impl;
             } else {
                 throw new omg.org.IOP.CodecFactory_package.UnknownEncoding();
@@ -248,22 +254,23 @@ namespace Ch.Elca.Iiop.Interception {
     /// <summary>
     /// implementation of <see cref="omg.org.IOP.Codec"> for format ENCODING_CDR_ENCAPS.</see>
     /// </summary>
-    public class CodecImplEncap : Codec {
+    internal class CodecImplEncap : Codec {
         
         #region IFields
         
         private GiopVersion m_version;
         private Serializer m_serializerForAnyType;
+        private SerializerFactory m_serFactory;
         
         #endregion IFields
         #region IConstructors
         
-        public CodecImplEncap(GiopVersion version) {
+        internal CodecImplEncap(GiopVersion version, SerializerFactory serFactory) {
             m_version = version;
+            m_serFactory = serFactory;
             m_serializerForAnyType = 
-                OrbServices.GetSingleton().SerializerFactory.Create(
-                                                                 ReflectionHelper.ObjectType, 
-                                                                 AttributeExtCollection.EmptyCollection);
+                m_serFactory.Create(ReflectionHelper.ObjectType,
+                                    AttributeExtCollection.EmptyCollection);
         }
         
         #endregion IConstructors
@@ -298,16 +305,16 @@ namespace Ch.Elca.Iiop.Interception {
             CdrEncapsulationOutputStream outputStream = new CdrEncapsulationOutputStream(0, m_version);
             if (!(data is Any)) {
                 Serializer ser =
-                    OrbServices.GetSingleton().SerializerFactory.Create(data.GetType(), 
-                                                                        AttributeExtCollection.EmptyCollection);
+                    m_serFactory.Create(data.GetType(), 
+                                        AttributeExtCollection.EmptyCollection);
                 ser.Serialize(data, outputStream);                                   
             } else {
                 Type marshalAs = ((TypeCodeImpl)((Any)data).Type).GetClsForTypeCode();
                 AttributeExtCollection marshalAsAttrs = 
                     ((TypeCodeImpl)((Any)data).Type).GetClsAttributesForTypeCode();
                 Serializer ser =
-                    OrbServices.GetSingleton().SerializerFactory.Create(marshalAs, 
-                                                                        marshalAsAttrs);                    
+                    m_serFactory.Create(marshalAs, 
+                                        marshalAsAttrs);
                 ser.Serialize(data, outputStream);
             }
             return outputStream.GetEncapsulationData();
@@ -325,8 +332,8 @@ namespace Ch.Elca.Iiop.Interception {
             AttributeExtCollection marshalAsAttrs = 
                     ((TypeCodeImpl)tc).GetClsAttributesForTypeCode();            
             Serializer ser =
-                    OrbServices.GetSingleton().SerializerFactory.Create(marshalAs, 
-                                                                        marshalAsAttrs);                    
+                    m_serFactory.Create(marshalAs, 
+                                        marshalAsAttrs);                    
             return ser.Deserialize(inputStream);
         }
 
