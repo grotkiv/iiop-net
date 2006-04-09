@@ -595,14 +595,22 @@ namespace Ch.Elca.Iiop {
         #region ConnectionClose
         
         /// <summary>
-        /// close a connection, make sure, that no read task is pending.
+        /// closes the connection.
         /// </summary>
-        internal void ForceCloseConnection() {
+        /// <remarks>Catches all exceptions during close.</remarks>
+        private void CloseConnection() {
             try {
-                m_transport.CloseConnection();                
+                m_transport.CloseConnection();
             } catch (Exception ex) {
                 Trace.WriteLine("problem to close connection: " + ex);
             }
+        }
+        
+        /// <summary>
+        /// close a connection, make sure, that no read task is pending.
+        /// </summary>
+        internal void ForceCloseConnection() {
+            CloseConnection();
             try {
                 StopMessageReception();
             } catch (Exception ex) {
@@ -890,7 +898,7 @@ namespace Ch.Elca.Iiop {
                     messageReceived.StartReceiveMessage(); // receive next message
                     break;
                 case GiopMsgTypes.CloseConnection:
-                    m_transport.CloseConnection();
+                    CloseConnection();
                     AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
                     break;
                 case GiopMsgTypes.CancelRequest:
@@ -934,10 +942,7 @@ namespace Ch.Elca.Iiop {
         /// </summary>        
         internal void MsgReceivedConnectionClosedException() {
             Trace.WriteLine("connection closed while trying to read a message");
-            try {
-                m_transport.CloseConnection();
-            } catch (Exception) {                
-            }
+            CloseConnection();
             AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
         }
         
