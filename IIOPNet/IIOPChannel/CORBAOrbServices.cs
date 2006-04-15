@@ -337,8 +337,11 @@ namespace omg.org.CORBA {
             if (!IiopUrlUtil.IsIorString(uri)) {
                 iorString = ior.ToString();
             }
-                
-            return RemotingServices.Connect(ior.Type, iorString);
+            Type type = ReflectionHelper.MarshalByRefObjectType;
+            if (ior.Type != null) { // type is known
+                type = ior.Type;
+            } // if not known, use MarshalByRefObject
+            return RemotingServices.Connect(type, iorString);
         }
         
         /// <summary>takes a proxy and returns the IOR / corbaloc / ...</summary>
