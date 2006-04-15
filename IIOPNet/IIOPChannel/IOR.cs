@@ -111,7 +111,8 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             }
         }
         
-        /// <summary>the type represented by typeid</summary>
+        /// <summary>the type represented by typeid, or null, if no type is known for
+        /// the type id.</summary>
         public Type Type {
             get {
                 return Repository.GetTypeForId(m_typId);
