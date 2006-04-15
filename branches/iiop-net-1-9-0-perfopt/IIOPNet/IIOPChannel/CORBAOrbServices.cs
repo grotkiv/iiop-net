@@ -640,9 +640,11 @@ namespace omg.org.CORBA.ORB_package {
 namespace Ch.Elca.Iiop.Tests {
     
     using System.IO;    
+    using System.Runtime.Remoting.Channels;
     using NUnit.Framework;    
     using omg.org.CORBA;
     using Ch.Elca.Iiop.Services;
+    using Ch.Elca.Iiop;    
     
     /// <summary>
     /// Unit-tests for orb services code set
@@ -764,6 +766,65 @@ namespace Ch.Elca.Iiop.Tests {
         
     }
 
+    /// <summary>
+    /// Unit-tests for methods related to object / string coneversions and
+    /// object type tests.
+    /// </summary>
+    [TestFixture]
+    public class OrbServicesObjectOpsTest {
+
+        private IorProfile m_profile;
+        private IOrbServices m_orb;              
+        private IiopClientChannel m_clientChannel;
+        
+        [SetUp]
+        public void SetUp() {
+            m_orb = OrbServices.GetSingleton();
+            
+            m_profile =
+                new InternetIiopProfile(new GiopVersion(1,2),
+                                        "localhost",
+                                        1001,
+                                        new byte[] { 1, 0, 0, 0 });
+                        
+            m_clientChannel = new IiopClientChannel();
+            ChannelServices.RegisterChannel(m_clientChannel);
+        }
+        
+        [TearDown]
+        public void TearDown() {            
+            if (m_clientChannel != null) {
+                ChannelServices.UnregisterChannel(m_clientChannel);
+            }
+            m_clientChannel = null;
+        }
+        
+        [Test]
+        public void TestStringToObjectIORNormal() {
+            Ior ior = new Ior("IDL:omg.org/CORBA/Object:1.0",
+                              new IorProfile[] { m_profile });
+            string iorString = ior.ToString();
+            object objToString = m_orb.string_to_object(iorString);
+            Assertion.AssertNotNull("obj to string not created", objToString);
+            Assertion.Assert("obj not a proxy", 
+                             RemotingServices.IsTransparentProxy(objToString));                              
+        }
+        
+        [Test]
+        public void TestStringToObjectIORUnknownType() {                                                              
+            Ior ior = new Ior("IDL:Ch/Elca/Iiop/Tests/TestClientUnknownIf1:1.0",
+                              new IorProfile[] { m_profile });
+            string iorString = ior.ToString();
+            object objToString = m_orb.string_to_object(iorString);
+            Assertion.AssertNotNull("obj to string not created", objToString);
+            Assertion.Assert("obj not a proxy", 
+                             RemotingServices.IsTransparentProxy(objToString));
+        }
+        
+    }
+    
+    
+    
 
 }
 
