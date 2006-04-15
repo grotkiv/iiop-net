@@ -648,6 +648,7 @@ namespace Ch.Elca.Iiop.Tests {
     using omg.org.CORBA;
     using Ch.Elca.Iiop.Services;
     using Ch.Elca.Iiop;    
+    using Ch.Elca.Iiop.Idl;
     
     /// <summary>
     /// Unit-tests for orb services code set
@@ -769,6 +770,15 @@ namespace Ch.Elca.Iiop.Tests {
         
     }
 
+    [RepositoryID("IDL:Ch/Elca/Iiop/Tests/IsALocalIfTestInterface:1.0")]
+    [InterfaceTypeAttribute(IdlTypeInterface.LocalInterface)]
+    public interface IsALocalIfTestInterface {
+    }
+    
+    public class IsALocalIfTestImpl : IsALocalIfTestInterface {        
+    }
+    
+    
     /// <summary>
     /// Unit-tests for methods related to object / string coneversions and
     /// object type tests.
@@ -823,6 +833,14 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.Assert("obj not a proxy", 
                              RemotingServices.IsTransparentProxy(objToString));
         }
+        
+        [Test]
+        public void TestIsAForNonProxy() {
+            IsALocalIfTestImpl impl = new IsALocalIfTestImpl();
+            Assertion.Assert("is_a result for interface IsALocalIfTestInterface wrong", 
+                             m_orb.is_a(impl, "IDL:Ch/Elca/Iiop/Tests/IsALocalIfTestInterface:1.0"));
+        }
+                
         
     }
     
