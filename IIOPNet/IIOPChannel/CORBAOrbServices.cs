@@ -319,7 +319,8 @@ namespace omg.org.CORBA {
             }
         }
         
-        private void CheckIsProxy(MarshalByRefObject mbrProxy) {
+        private void CheckIsProxy(object obj) {
+            MarshalByRefObject mbrProxy = obj as MarshalByRefObject;
             if ((mbrProxy == null) || (!RemotingServices.IsTransparentProxy(mbrProxy))) {
                 // argument is not a proxy
                 throw new BAD_PARAM(265, CompletionStatus.Completed_Yes);
@@ -555,7 +556,7 @@ namespace omg.org.CORBA {
             if (obj == null) {
                 throw new ArgumentException("proxy must be != null");
             } 
-            CheckIsProxy(obj as MarshalByRefObject);
+            CheckIsProxy(obj);
             if (repId == null) {
                 throw new ArgumentException("repId must be != null");
             }           
@@ -571,7 +572,7 @@ namespace omg.org.CORBA {
         }
         
         public bool non_existent(object proxy) {
-            CheckIsProxy(proxy as MarshalByRefObject);
+            CheckIsProxy(proxy);
             
             return ((IObject)proxy)._non_existent();
         }
