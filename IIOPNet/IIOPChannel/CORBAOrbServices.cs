@@ -855,6 +855,8 @@ namespace Ch.Elca.Iiop.Tests {
     [TestFixture]
     public class OrbServicesPseudoObjectOperationTests {
 
+        private const int TEST_PORT = 8090;
+        
         private IOrbServices m_orb;              
         private IiopChannel m_channel;
         
@@ -862,7 +864,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void SetUp() {
             m_orb = OrbServices.GetSingleton();                        
                         
-            m_channel = new IiopChannel(8090);
+            m_channel = new IiopChannel(TEST_PORT);
             ChannelServices.RegisterChannel(m_channel);
         }
         
@@ -882,10 +884,32 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
         [Test]
-        public void TestIsAForProxy() {
+        public void TestIsAForProxySupIf() {
+            MarshalByRefObject mbr = new IsARemoteIfTestImpl1();
+            string uri = "TestIsAForProxySupIf";
+            Type type = typeof(IsARemoteIfTestImpl1);
+            string repId = "IDL:Ch/Elca/Iiop/Tests/IsARemoteIfTestInterface:1.0";            
+            try {
+                RemotingServices.Marshal(mbr, uri);
+                IsARemoteIfTestInterface proxy = (IsARemoteIfTestInterface)
+                    RemotingServices.Connect(type, "iiop://localhost:" + TEST_PORT + "/" + uri);
+                Assertion.Assert("is_a check for proxy rep-id",
+                                 m_orb.is_a(proxy, 
+                                            repId));
+                Assertion.Assert("is_a check for proxy type based",
+                                 m_orb.is_a(proxy, 
+                                            type));
+                
+            } finally {
+                RemotingServices.Disconnect(mbr);
+            }
+        }
+        
+        [Test]
+        public void TestIsAForProxyNonSupIf() {
             
         }
-    
+        
     }
     
 
