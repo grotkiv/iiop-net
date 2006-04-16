@@ -887,7 +887,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestIsAForProxySupIf() {
             MarshalByRefObject mbr = new IsARemoteIfTestImpl1();
             string uri = "TestIsAForProxySupIf";
-            Type type = typeof(IsARemoteIfTestImpl1);
+            Type type = typeof(IsARemoteIfTestInterface);
             string repId = "IDL:Ch/Elca/Iiop/Tests/IsARemoteIfTestInterface:1.0";            
             try {
                 RemotingServices.Marshal(mbr, uri);
@@ -907,7 +907,24 @@ namespace Ch.Elca.Iiop.Tests {
         
         [Test]
         public void TestIsAForProxyNonSupIf() {
-            
+            MarshalByRefObject mbr = new IsARemoteIfTestImpl2();
+            string uri = "TestIsAForProxyNonSupIf";
+            Type type = typeof(IsARemoteIfTestInterface);
+            string repId = "IDL:Ch/Elca/Iiop/Tests/IsARemoteIfTestInterface:1.0";            
+            try {
+                RemotingServices.Marshal(mbr, uri);
+                IsARemoteIfTestInterface proxy = (IsARemoteIfTestInterface)
+                    RemotingServices.Connect(type, "iiop://localhost:" + TEST_PORT + "/" + uri);
+                Assertion.Assert("is_a check for proxy rep-id",
+                                 m_orb.is_a(proxy, 
+                                            repId));
+                Assertion.Assert("is_a check for proxy type based",
+                                 m_orb.is_a(proxy, 
+                                            type));
+                
+            } finally {
+                RemotingServices.Disconnect(mbr);
+            }            
         }
         
     }
