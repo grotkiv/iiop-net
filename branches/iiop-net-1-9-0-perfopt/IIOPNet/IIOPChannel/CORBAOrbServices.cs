@@ -179,10 +179,10 @@ namespace omg.org.CORBA {
         #region Pseudo object operation helpers
                 
         /// <summary>checks, if object supports the specified interface</summary>
-        bool is_a(object proxy, Type type);
+        bool is_a(object obj, Type type);
       
         /// <summary>checks, if object supports the specified interface</summary>
-        bool is_a(object proxy, string repId);
+        bool is_a(object obj, string repId);
         
         /// <summary>checks, if the object is existing</summary>
         bool non_existent(object proxy);
@@ -540,20 +540,22 @@ namespace omg.org.CORBA {
         
         #region Pseudo object operation helpers
                 
-        public bool is_a(object proxy, Type type) {
+        /// <summary>see <see cref="omg.org.CORBA.IOrbServices.is_a(object, type)"</summary>
+        public bool is_a(object obj, Type type) {
             if (type == null) {
                 throw new ArgumentException("type must be != null");
             }
             string repId = Repository.GetRepositoryID(type);
-            return is_a(proxy, repId);
+            return is_a(obj, repId);
             
         }
         
-        public bool is_a(object proxy, string repId) {
-            if (proxy == null) {
+        /// <summary>see <see cref="omg.org.CORBA.IOrbServices.is_a(object, string)"</summary>
+        public bool is_a(object obj, string repId) {
+            if (obj == null) {
                 throw new ArgumentException("proxy must be != null");
             } 
-            CheckIsProxy(proxy as MarshalByRefObject);
+            CheckIsProxy(obj as MarshalByRefObject);
             if (repId == null) {
                 throw new ArgumentException("repId must be != null");
             }           
@@ -565,7 +567,7 @@ namespace omg.org.CORBA {
             }
             
             // perform remote call to check for is_a
-            return ((IObject)proxy)._is_a(repId);           
+            return ((IObject)obj)._is_a(repId);           
         }
         
         public bool non_existent(object proxy) {
