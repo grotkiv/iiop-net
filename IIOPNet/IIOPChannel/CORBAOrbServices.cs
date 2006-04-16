@@ -779,12 +779,24 @@ namespace Ch.Elca.Iiop.Tests {
     }
     
     
+    [RepositoryID("IDL:Ch/Elca/Iiop/Tests/IsARemoteIfTestInterface:1.0")]
+    [InterfaceTypeAttribute(IdlTypeInterface.ConcreteInterface)]    
+    public interface IsARemoteIfTestInterface {
+        
+    }
+    
+    [SupportedInterface(typeof(IsARemoteIfTestInterface))]
+    public class IsARemoteIfTestImpl1 : MarshalByRefObject, IsARemoteIfTestInterface {
+    }
+    
+    public class IsARemoteIfTestImpl2 : MarshalByRefObject, IsARemoteIfTestInterface {
+    }
+    
     /// <summary>
-    /// Unit-tests for methods related to object / string coneversions and
-    /// object type tests.
+    /// Unit-tests for methods related to object / string coneversions.
     /// </summary>
     [TestFixture]
-    public class OrbServicesObjectOpsTest {
+    public class OrbServicesStringObjectConversionTest {
 
         private IorProfile m_profile;
         private IOrbServices m_orb;              
@@ -832,19 +844,49 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertNotNull("obj to string not created", objToString);
             Assertion.Assert("obj not a proxy", 
                              RemotingServices.IsTransparentProxy(objToString));
+        }                        
+        
+    }
+    
+    
+    /// <summary>
+    /// Unit-tests for methods related to pseudo object operations (is_a, ...).
+    /// </summary>
+    [TestFixture]
+    public class OrbServicesPseudoObjectOperationTests {
+
+        private IOrbServices m_orb;              
+        private IiopChannel m_channel;
+        
+        [SetUp]
+        public void SetUp() {
+            m_orb = OrbServices.GetSingleton();                        
+                        
+            m_channel = new IiopChannel(8090);
+            ChannelServices.RegisterChannel(m_channel);
         }
         
+        [TearDown]
+        public void TearDown() {            
+            if (m_channel != null) {
+                ChannelServices.UnregisterChannel(m_channel);
+            }
+            m_channel = null;
+        }
+    
         [Test]
         public void TestIsAForNonProxy() {
             IsALocalIfTestImpl impl = new IsALocalIfTestImpl();
             Assertion.Assert("is_a result for interface IsALocalIfTestInterface wrong", 
                              m_orb.is_a(impl, "IDL:Ch/Elca/Iiop/Tests/IsALocalIfTestInterface:1.0"));
         }
-                
         
+        [Test]
+        public void TestIsAForProxy() {
+            
+        }
+    
     }
-    
-    
     
 
 }
