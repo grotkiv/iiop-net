@@ -319,9 +319,13 @@ namespace omg.org.CORBA {
             }
         }
         
-        private void CheckIsProxy(object obj) {
+        private bool IsProxy(object obj) {
             MarshalByRefObject mbrProxy = obj as MarshalByRefObject;
-            if ((mbrProxy == null) || (!RemotingServices.IsTransparentProxy(mbrProxy))) {
+            return ((mbrProxy != null) && (RemotingServices.IsTransparentProxy(mbrProxy)));
+        }
+        
+        private void CheckIsProxy(object obj) {
+            if (!IsProxy(obj)) {
                 // argument is not a proxy
                 throw new BAD_PARAM(265, CompletionStatus.Completed_Yes);
             }
