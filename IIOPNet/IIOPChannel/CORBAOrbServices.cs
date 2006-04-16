@@ -558,18 +558,17 @@ namespace omg.org.CORBA {
         /// <summary>see <see cref="omg.org.CORBA.IOrbServices.is_a(object, string)"</summary>
         public bool is_a(object obj, string repId) {
             if (obj == null) {
-                throw new ArgumentException("proxy must be != null");
+                throw new ArgumentException("obj must be != null");
             } 
-            CheckIsProxy(obj);
             if (repId == null) {
                 throw new ArgumentException("repId must be != null");
-            }           
-            
+            }                                
             if (repId.Equals("IDL:omg.org/CORBA/Object:1.0") ||
                 repId.Equals(String.Empty)) {
                 // always true
                 return true;
             }
+            CheckIsProxy(obj);
             
             // perform remote call to check for is_a
             return ((IObject)obj)._is_a(repId);           
