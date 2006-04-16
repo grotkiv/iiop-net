@@ -927,6 +927,35 @@ namespace Ch.Elca.Iiop.Tests {
             }            
         }
         
+        [Test]
+        public void TestIsAForImplSupIf() {
+            MarshalByRefObject mbr = new IsARemoteIfTestImpl1();
+            Type type = typeof(IsARemoteIfTestInterface);
+            string repId = "IDL:Ch/Elca/Iiop/Tests/IsARemoteIfTestInterface:1.0";            
+            
+            Assertion.Assert("is_a check for proxy rep-id",
+                             m_orb.is_a(mbr, 
+                                        repId));
+            Assertion.Assert("is_a check for proxy type based",
+                             m_orb.is_a(mbr, 
+                                        type));            
+        }
+        
+        [Test]
+        public void TestIsAForImplNonSupIf() {
+            MarshalByRefObject mbr = new IsARemoteIfTestImpl2();
+            Type type = typeof(IsARemoteIfTestInterface);
+            string repId = "IDL:Ch/Elca/Iiop/Tests/IsARemoteIfTestInterface:1.0";            
+            
+            Assertion.Assert("is_a check for proxy rep-id",
+                             m_orb.is_a(mbr, 
+                                        repId));
+            Assertion.Assert("is_a check for proxy type based",
+                             m_orb.is_a(mbr, 
+                                        type));                        
+        }
+        
+        
     }
     
 
