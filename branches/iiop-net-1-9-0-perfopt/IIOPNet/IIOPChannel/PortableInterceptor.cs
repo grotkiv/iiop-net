@@ -727,7 +727,7 @@ namespace omg.org.PortableInterceptor {
     /// </summary>
     [RepositoryID("IDL:omg.org/PortableInterceptor/OrbInitalizer:1.0")]
     [InterfaceType(IdlTypeInterface.LocalInterface)]    
-    public interface ORBInitalizer {
+    public interface ORBInitializer {
         
         void pre_init(ORBInitInfo info);
         

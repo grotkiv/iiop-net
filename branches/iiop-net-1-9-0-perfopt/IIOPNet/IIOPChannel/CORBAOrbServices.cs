@@ -192,7 +192,7 @@ namespace omg.org.CORBA {
 	    
         /// <summary>registers an initalizer for portable interceptors. The interceptors are
         /// enabled by calling CompleteInterceptorRegistration.</summary>
-        void RegisterPortableInterceptorInitalizer(ORBInitalizer initalizer);
+        void RegisterPortableInterceptorInitalizer(ORBInitializer initalizer);
 	    
         /// <summary>
         /// completes registration of interceptors. 
@@ -578,7 +578,7 @@ namespace omg.org.CORBA {
         #region Portable Interceptors
 	    
         /// <summary>see <see cref="omg.org.CORBA.IOrbServices.RegisterPortableInterceptorInitalizer"</summary>
-        public void RegisterPortableInterceptorInitalizer(ORBInitalizer initalizer) {
+        public void RegisterPortableInterceptorInitalizer(ORBInitializer initalizer) {
             lock(m_orbInitalizers.SyncRoot) {
                 m_orbInitalizers.Add(initalizer);
             }
