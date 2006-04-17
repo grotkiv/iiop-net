@@ -555,6 +555,18 @@ namespace omg.org.CORBA {
             
         }
         
+        /// <summary>
+        /// checks by calling is_a on the remote object, if the
+        /// proxy supports an interface with type repId.
+        /// </summary>
+        private bool IsAssignableRemote(object proxy, string repId) {
+            // create a new proxy to the same url to prevent issues with type compatibility to IObject.
+            string proxyUrl = RemotingServices.GetObjectUri((MarshalByRefObject)proxy);
+            IObject objProxy =
+                (IObject)RemotingServices.Connect(ReflectionHelper.IObjectType, proxyUrl);
+            return objProxy._is_a(repId);
+        }                        
+        
         /// <summary>see <see cref="omg.org.CORBA.IOrbServices.is_a(object, string)"</summary>
         public bool is_a(object obj, string repId) {
             if (obj == null) {
@@ -570,7 +582,7 @@ namespace omg.org.CORBA {
             }
             if (IsProxy(obj)) {      
                 // perform remote call to check for is_a
-                return ((IObject)obj)._is_a(repId);
+                return IsAssignableRemote(obj, repId);
             } else {
                 Type assignableTo = Repository.GetTypeForId(repId); 
                 // do a local check
