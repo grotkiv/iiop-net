@@ -29,9 +29,6 @@ build: nunit-var junit-var
     cd JavaRMIIIOP
     $(MAKE) build
     cd ..
-    cd JdkOrb
-    $(MAKE) build
-    cd ..
     cd JavaRMIIIOPAsClient
     $(MAKE) build
     cd ..
@@ -39,6 +36,9 @@ build: nunit-var junit-var
     $(MAKE) build
     cd ..
     cd MappingPluginJavaAsClient
+    $(MAKE) build
+    cd ..
+    cd JdkOrb
     $(MAKE) build
     cd ..
     cd MappingOptions
@@ -123,9 +123,6 @@ test: nunit-var junit-var
     cd JavaRMIIIOP
     $(MAKE) test
     cd ..
-    cd JdkOrb
-    $(MAKE) test
-    cd ..
     cd JavaRMIIIOPAsClient
     $(MAKE) test
     cd ..
@@ -133,6 +130,9 @@ test: nunit-var junit-var
     $(MAKE) test
     cd ..
     cd MappingPluginJavaAsClient
+    $(MAKE) test
+    cd ..
+    cd JdkOrb
     $(MAKE) test
     cd ..
     cd MappingOptions
@@ -199,9 +199,6 @@ clean:
     cd JavaRMIIIOP
     $(MAKE) clean
     cd ..
-    cd JdkOrb
-    $(MAKE) clean
-    cd ..
     cd JavaRMIIIOPAsClient
     $(MAKE) clean
     cd ..
@@ -209,6 +206,9 @@ clean:
     $(MAKE) clean
     cd ..
     cd MappingPluginJavaAsClient
+    $(MAKE) clean
+    cd ..
+    cd JdkOrb
     $(MAKE) clean
     cd ..
     cd MappingOptions
