@@ -568,10 +568,15 @@ namespace omg.org.CORBA {
                 // always true
                 return true;
             }
-            CheckIsProxy(obj);
-            
-            // perform remote call to check for is_a
-            return ((IObject)obj)._is_a(repId);           
+            if (IsProxy(obj)) {      
+                // perform remote call to check for is_a
+                return ((IObject)obj)._is_a(repId);
+            } else {
+                Type assignableTo = Repository.GetTypeForId(repId); 
+                // do a local check
+                return Repository.IsCompatible(assignableTo,
+                                               obj.GetType());
+            }
         }
         
         public bool non_existent(object proxy) {
