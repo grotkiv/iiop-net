@@ -796,6 +796,12 @@ namespace Ch.Elca.Iiop.Tests {
         
     }
     
+    [RepositoryID("IDL:Ch/Elca/Iiop/Tests/IsARemoteIfTestInterfaceNotImpl:1.0")]
+    [InterfaceTypeAttribute(IdlTypeInterface.ConcreteInterface)]    
+    public interface IsARemoteIfTestInterfaceNotImpl {
+        
+    }    
+    
     [SupportedInterface(typeof(IsARemoteIfTestInterface))]
     public class IsARemoteIfTestImpl1 : MarshalByRefObject, IsARemoteIfTestInterface {
     }
@@ -892,6 +898,10 @@ namespace Ch.Elca.Iiop.Tests {
             IsALocalIfTestImpl impl = new IsALocalIfTestImpl();
             Assertion.Assert("is_a result for interface IsALocalIfTestInterface wrong", 
                              m_orb.is_a(impl, "IDL:Ch/Elca/Iiop/Tests/IsALocalIfTestInterface:1.0"));
+            
+            Assertion.Assert("is_a check for incompatible type",
+                             !m_orb.is_a(impl,
+                                         "IDL:Ch/Elca/Iiop/Tests/IsARemoteIfTestInterfaceNotImpl:1.0"));            
         }
         
         [Test]
@@ -910,7 +920,9 @@ namespace Ch.Elca.Iiop.Tests {
                 Assertion.Assert("is_a check for proxy type based",
                                  m_orb.is_a(proxy, 
                                             type));
-                
+                Assertion.Assert("is_a check for incompatible type",
+                                 !m_orb.is_a(proxy,
+                                             typeof(IsARemoteIfTestInterfaceNotImpl)));
             } finally {
                 RemotingServices.Disconnect(mbr);
             }
@@ -932,7 +944,9 @@ namespace Ch.Elca.Iiop.Tests {
                 Assertion.Assert("is_a check for proxy type based",
                                  m_orb.is_a(proxy, 
                                             type));
-                
+                Assertion.Assert("is_a check for incompatible type",
+                                 !m_orb.is_a(proxy,
+                                             typeof(IsARemoteIfTestInterfaceNotImpl)));
             } finally {
                 RemotingServices.Disconnect(mbr);
             }            
@@ -949,7 +963,10 @@ namespace Ch.Elca.Iiop.Tests {
                                         repId));
             Assertion.Assert("is_a check for proxy type based",
                              m_orb.is_a(mbr, 
-                                        type));            
+                                        type));      
+            Assertion.Assert("is_a check for incompatible type",
+                             !m_orb.is_a(mbr,
+                                         typeof(IsARemoteIfTestInterfaceNotImpl)));
         }
         
         [Test]
@@ -964,6 +981,9 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.Assert("is_a check for proxy type based",
                              m_orb.is_a(mbr, 
                                         type));                        
+            Assertion.Assert("is_a check for incompatible type",
+                             !m_orb.is_a(mbr,
+                                         typeof(IsARemoteIfTestInterfaceNotImpl)));            
         }
         
         
