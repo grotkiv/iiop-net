@@ -1045,9 +1045,12 @@ namespace Ch.Elca.Iiop {
 
 namespace Ch.Elca.Iiop.Tests {
     
+    using System.Runtime.Remoting.Channels;
+    using System.Runtime.Remoting;
     using NUnit.Framework;
     using Ch.Elca.Iiop.Services;
     using Ch.Elca.Iiop;
+    using Ch.Elca.Iiop.Idl;
     
     /// <summary>
     /// Unit-test for class IiopChannelData
@@ -1093,6 +1096,68 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
     }
+    
+    public interface ISimpleCallTestOnChannel {
+        
+        byte EchoByte(byte arg);
+        
+    }
+    
+    [SupportedInterface(typeof(ISimpleCallTestOnChannel))]
+    public class SimpleCallTestOnChannelImpl : MarshalByRefObject, ISimpleCallTestOnChannel {
+        
+        public byte EchoByte(byte arg) {
+            return arg;
+        }
+        
+        public override object InitializeLifetimeService() {
+            return null;
+        }
+        
+    }
+    
+    
+    /// <summary>
+    /// Simple Unit-test for whole Channel functionality.
+    /// </summary>
+    [TestFixture]
+    public class SimpleCallTests {
+
+        private const int TEST_PORT = 8090;
+        
+        private IiopChannel m_channel;
+        
+        [SetUp]
+        public void SetUp() {                       
+            m_channel = new IiopChannel(TEST_PORT);
+            ChannelServices.RegisterChannel(m_channel);
+        }
+        
+        [TearDown]
+        public void TearDown() {            
+            if (m_channel != null) {
+                ChannelServices.UnregisterChannel(m_channel);
+            }
+            m_channel = null;
+        }
+    
+        [Test]
+        public void TestSimpleCall() {
+            MarshalByRefObject mbr = new SimpleCallTestOnChannelImpl();
+            string uri = "TestSimpleCallOnChannel";
+            try {
+                RemotingServices.Marshal(mbr, uri);
+                ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+                    RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                             "iiop://localhost:" + TEST_PORT + "/" + uri);
+                byte arg = 1;
+                Assertion.AssertEquals(1, proxy.EchoByte(arg));
+            } finally {
+                RemotingServices.Disconnect(mbr);
+            }
+        }
+    }
+    
     
 }
 
