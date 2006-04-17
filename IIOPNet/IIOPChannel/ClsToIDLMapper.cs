@@ -517,13 +517,9 @@ namespace Ch.Elca.Iiop.Idl {
                 if (HasEnumFlagsAttributes(clsType)) {
                     return action.MapToIdlFlagsEquivalent(clsType);
                 } else {
-                    if (Enum.GetValues(clsType).LongLength - 1 <= UInt32.MaxValue) {
-                        return action.MapToIdlEnum(clsType);
-                    } else {
-                        // this one is very unlikely, i.e. values can't be mapped to idl enum range
-                        throw new BAD_PARAM(18805, CompletionStatus.Completed_MayBe, "The enum " + clsType.AssemblyQualifiedName +
-                                            " is not mappable to idl, because too many enum values");
-                    }
+                    // enums with more than Int32.MaxValue elements can't be mapped to idl.
+                    // but not possibly to check this, because in .NET 1.0, no support for Array.LongLength.
+                    return action.MapToIdlEnum(clsType);
                 }
             } else if (IsArray(clsType)) { 
                 return CallActionForDNArray(ref clsType, ref attributes, originalAttributes, action);
