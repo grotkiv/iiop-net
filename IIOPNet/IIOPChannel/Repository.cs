@@ -443,6 +443,16 @@ namespace Ch.Elca.Iiop.Idl {
         #region verifying types
         
         /// <summary>
+        /// returns true, if the Type objectType is compatible with requiredType,
+        /// i.e. objectType is_a requiredType.
+        /// </summary>
+        /// <remarks>objectType could be e.g. the interface type implemented by a remote object,
+        /// or the type of a local object implementation class, ...</remarks>
+        public static bool IsCompatible(Type requiredType, Type objectType) {
+            return requiredType.IsAssignableFrom(objectType);
+        }
+        
+        /// <summary>
         /// returns true, if interface type iorType is assignable to requiredType.
         /// If not verifable with static inheritance information, returns false.
         /// </summary>
@@ -459,7 +469,7 @@ namespace Ch.Elca.Iiop.Idl {
             // the other requiredType types must be checked remote if not locally verifable
             if ((!requiredType.Equals(ReflectionHelper.MarshalByRefObjectType)) &&                
                 (!requiredType.Equals(ReflectionHelper.IObjectType)) && 
-                ((interfaceType == null) || (!requiredType.IsAssignableFrom(interfaceType)))) {
+                ((interfaceType == null) || (!IsCompatible(requiredType, interfaceType)))) {
                 // remote type not known or locally assignability not verifable
                 useTypeForId = requiredType;
                 return false;
@@ -591,3 +601,88 @@ namespace Ch.Elca.Iiop.Idl {
     }
 
 }
+
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {   
+    
+    using System.IO;        
+    using NUnit.Framework;    
+    using omg.org.CORBA;
+    using Ch.Elca.Iiop.Services;
+    using Ch.Elca.Iiop;    
+    using Ch.Elca.Iiop.Idl;
+    
+    [RepositoryID("IDL:Ch/Elca/Iiop/Tests/IRepositoryTestIf1:1.0")]
+    public interface IRepositoryTestIf1 {
+        
+    }
+    
+    [RepositoryID("IDL:Ch/Elca/Iiop/Tests/IRepositoryTestIf2:1.0")]
+    public interface IRepositoryTestIf2 : IRepositoryTestIf1 {
+        
+    }
+    
+    [RepositoryID("IDL:Ch/Elca/Iiop/Tests/IRepositoryTestIf3:1.0")]
+    public interface IRepositoryTestIf3 {
+        
+    }    
+    
+    [RepositoryID("IDL:Ch/Elca/Iiop/Tests/RepositoryTestClassImpl:1.0")]
+    public class RepositoryTestClassImpl : IRepositoryTestIf2 {
+        
+    }
+    
+    /// <summary>
+    /// Unit tests for repository type check operations.
+    /// </summary>
+    [TestFixture]
+    public class RepositoryTypeChecksTest {
+     
+        
+        [Test]
+        public void TestInterfaceCompatible() {
+            string repIdIf = "IDL:Ch/Elca/Iiop/Tests/IRepositoryTestIf2:1.0";
+            string repIdCl = "IDL:Ch/Elca/Iiop/Tests/RepositoryTestClassImpl:1.0";
+            
+            Type required = typeof(IRepositoryTestIf1);
+            
+            Type typeForId;
+            Assertion.Assert("type compatibility for TestIf2", 
+                             Repository.IsInterfaceCompatible(required,
+                                                              repIdIf,
+                                                              out typeForId));
+            Assertion.AssertEquals("type for if id", typeof(IRepositoryTestIf2),
+                                   typeForId);
+            
+            Assertion.Assert("type compatibility for TestClassImpl", 
+                             Repository.IsInterfaceCompatible(required,
+                                                              repIdCl,
+                                                              out typeForId));
+            Assertion.AssertEquals("type for cl id", typeof(RepositoryTestClassImpl),
+                                   typeForId);            
+        }
+        
+        [Test]
+        public void TestInterfaceNotCompatible() {            
+            string repIdCl = "IDL:Ch/Elca/Iiop/Tests/RepositoryTestClassImpl:1.0";
+            
+            Type required = typeof(IRepositoryTestIf3);
+            
+            Type typeForId;
+            bool isCompatible =
+                Repository.IsInterfaceCompatible(required, repIdCl, 
+                                                 out typeForId);
+            // for non-verifiable type compatibility, return required Type for the id
+            Assertion.AssertEquals("type for incompatible id", required,
+                                   typeForId);
+            Assertion.Assert("type compatibility for TestIf2", !isCompatible);
+        }                
+        
+        
+    }
+    
+}
+
+#endif
