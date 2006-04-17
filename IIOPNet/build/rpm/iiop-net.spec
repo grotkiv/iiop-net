@@ -14,7 +14,7 @@ BuildRequires:	mono-core
 BuildRoot:	%{_tmppath}/%{name}-%{version}-buildroot
 
 %description
-IOP.NET allows a seamless interoperation between .NET, CORBA and J2EE distributed objects. This is done by incorporating CORBA/IIOP support into .NET, leveraging the remoting framework.
+IIOP.NET allows a seamless interoperation between .NET, CORBA and J2EE distributed objects. This is done by incorporating CORBA/IIOP support into .NET, leveraging the remoting framework.
 
 %prep
 %setup -q -n IIOPNet
