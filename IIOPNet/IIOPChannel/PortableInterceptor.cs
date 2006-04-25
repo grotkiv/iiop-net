@@ -38,6 +38,7 @@ namespace omg.org.Dynamic {
             
     [IdlStruct]
     [RepositoryID("IDL:omg.org/Dynamic/Parameter:1.0")]
+    [Serializable]
     public struct Parameter {
                         
         [ObjectIdlTypeAttribute(IdlTypeObject.Any)]
