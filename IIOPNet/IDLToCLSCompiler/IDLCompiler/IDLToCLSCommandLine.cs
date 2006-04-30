@@ -67,6 +67,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private DirectoryInfo m_vtSkeletonsTargetDir = null;
         private Type m_vtSkelcodeDomProviderType;
         private IList /* <DirectoryInfo> */ m_idlSourceDirs = new ArrayList();
+        private IList /* <Assembly> */ m_refAssemblies = new ArrayList();
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -209,6 +210,15 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             }
         }
         
+        /// <summary>
+        /// the referenced assemblies.
+        /// </summary>
+        public IList /* <Assembly> */ ReferencedAssemblies {
+            get {
+                return m_refAssemblies;
+            }
+        }
+        
         /// <summary>returns true, if an error has been detected.</summary>
         public bool IsInvalid {
             get {
@@ -249,6 +259,17 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             return false;
         }
         
+        private bool AddRefAssembly(string asmName) {
+            try {                    
+                Assembly refAsm = Assembly.LoadFrom(asmName);
+                m_refAssemblies.Add(refAsm);
+                return true;
+            } catch (Exception ex) {
+                SetIsInvalid("can't load assembly: " + asmName + "\n" + ex);
+                return false;
+            }                                
+        }
+        
         private void ParseArgs(string[] args) {
             int i = 0;
 
@@ -260,8 +281,16 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                     i++;
                     m_outputDirectory = new DirectoryInfo(args[i++]);
                 } else if (args[i].StartsWith("-out:")) {                    
-                    m_outputDirectory = new DirectoryInfo(args[i].Substring(5));
+                    m_outputDirectory = new DirectoryInfo(args[i++].Substring(5));                    
+                } else if (args[i].Equals("-r")) {
                     i++;
+                    if (!AddRefAssembly(args[i++])) {
+                        return;
+                    }
+                } else if (args[i].StartsWith("-r:")) {
+                    if (!AddRefAssembly(args[i++].Substring(3))) {
+                        return;
+                    }
                 } else if (args[i].Equals("-c")) {
                     i++;
                     FileInfo customMappingFile = new System.IO.FileInfo(args[i++]);
@@ -375,6 +404,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "testAsm", "test.idl" });
             Assertion.AssertEquals("OutputDirectory", testDir.FullName,
                                    commandLine.OutputDirectory.FullName);            
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -384,6 +415,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-o", testDir.FullName, "testAsm", "test.idl" });
             Assertion.AssertEquals("OutputDirectory", testDir.FullName,
                                    commandLine.OutputDirectory.FullName);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -393,6 +426,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-out:" + testDir.FullName, "testAsm", "test.idl" });
             Assertion.AssertEquals("OutputDirectory", testDir.FullName,
                                    commandLine.OutputDirectory.FullName);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -437,7 +472,9 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             commandLine = new IDLToCLSCommandLine(
                 new string[] { "-help"} );
             Assertion.Assert("Help requested",
-                             commandLine.IsHelpRequested);            
+                             commandLine.IsHelpRequested);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -446,6 +483,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "testAsm", "test.idl" } );
             Assertion.AssertEquals("targetAssemblyName", "testAsm",
                                    commandLine.TargetAssemblyName);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
 
@@ -460,6 +499,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assertion.AssertEquals("idl file1", 
                                    file1,
                                    ((FileInfo)commandLine.InputFiles[0]).Name);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }        
         
         [Test]
@@ -481,6 +522,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assertion.AssertEquals("idl file3", 
                                    file3,
                                    ((FileInfo)commandLine.InputFiles[2]).Name);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }           
         
         [Test]
@@ -497,6 +540,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                    ((FileInfo)commandLine.CustomMappingFiles[0]).Name);
             Assertion.AssertEquals("CustomMappingFile 2", customMappingFile2,
                                    ((FileInfo)commandLine.CustomMappingFiles[1]).Name);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -521,6 +566,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-snk", snkFile, "testAsm", "test.idl" });
             Assertion.AssertEquals("Key file", snkFile,
                                    commandLine.SignKeyFile.Name);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -528,6 +575,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
                 new string[] { "-delaySign", "testAsm", "test.idl" });
             Assertion.Assert("DelaySign", commandLine.DelaySign);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }        
 
         [Test]
@@ -538,6 +587,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assertion.AssertEquals("Target Assembly Version", 
                                    asmVersion,
                                    commandLine.AssemblyVersion);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }        
         
         [Test]
@@ -545,6 +596,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
                 new string[] { "-mapAnyToCont", "testAsm", "test.idl" });
             Assertion.Assert("Map any to any container", commandLine.MapAnyToAnyContainer);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -554,6 +607,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-basedir", testDir.FullName, "testAsm", "test.idl" });
             Assertion.AssertEquals("BaseDirectory", testDir.FullName,
                                    commandLine.BaseDirectory.FullName);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }        
         
         [Test]
@@ -576,6 +631,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-b", type.FullName, "testAsm", "test.idl" });
             Assertion.AssertEquals("BaseInterface", type.FullName,
                                    commandLine.BaseInterface.FullName);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -597,6 +654,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-vtSkel", "testAsm", "test.idl" });
             Assertion.Assert("Value Type Skeleton generation", 
                              commandLine.GenerateValueTypeSkeletons);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -605,6 +664,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-vtSkelO", "testAsm", "test.idl" });
             Assertion.Assert("Value Type Skeleton overwrite", 
                              commandLine.OverwriteValueTypeSkeletons);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
         [Test]
@@ -614,6 +675,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-vtSkelTd", testDir.FullName, "testAsm", "test.idl" });
             Assertion.AssertEquals("Valuetype Skeletons Target Directory", testDir.FullName,
                                    commandLine.ValueTypeSkeletonsTargetDir.FullName);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }                
         
         [Test]
@@ -655,6 +718,46 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assertion.AssertEquals("idl source dir 2", 
                                    dir2.FullName,
                                    ((DirectoryInfo)commandLine.IdlSourceDirectories[1]).FullName);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
+        }
+        
+        [Test]
+        public void TestRefAssembliesSpaceSeparator() {
+            Assembly asm1 = this.GetType().Assembly;
+            Assembly asm2 = typeof(TestAttribute).Assembly;
+                        
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-r", asm1.CodeBase, "-r", asm2.CodeBase, "testAsm", "test.idl" } );
+            Assertion.AssertEquals("referenced assemblies", 2,
+                                   commandLine.ReferencedAssemblies.Count);
+            Assertion.AssertEquals("ref assembly 1", 
+                                   asm1.FullName,
+                                   ((Assembly)commandLine.ReferencedAssemblies[0]).FullName);
+            Assertion.AssertEquals("ref assembly 2", 
+                                   asm2.FullName,
+                                   ((Assembly)commandLine.ReferencedAssemblies[1]).FullName);            
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
+        }
+        
+        [Test]
+        public void TestRefAssembliesColonSeparator() {
+            Assembly asm1 = this.GetType().Assembly;
+            Assembly asm2 = typeof(TestAttribute).Assembly;
+                        
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-r:" + asm1.CodeBase, "-r:" + asm2.CodeBase, "testAsm", "test.idl" } );
+            Assertion.AssertEquals("referenced assemblies", 2,
+                                   commandLine.ReferencedAssemblies.Count);
+            Assertion.AssertEquals("ref assembly 1", 
+                                   asm1.FullName,
+                                   ((Assembly)commandLine.ReferencedAssemblies[0]).FullName);
+            Assertion.AssertEquals("ref assembly 2", 
+                                   asm2.FullName,
+                                   ((Assembly)commandLine.ReferencedAssemblies[1]).FullName);            
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }
         
     }
