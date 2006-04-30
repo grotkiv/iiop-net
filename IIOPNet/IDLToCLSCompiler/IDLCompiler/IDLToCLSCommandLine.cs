@@ -61,6 +61,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private string m_asmVersion = null;
         private bool m_mapAnyToAnyContainer = false;
         private DirectoryInfo m_baseDirectory = null;
+        private Type m_baseInterface = null;
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -148,6 +149,16 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             }
         }
         
+        /// <summary>
+        /// option to specify, that a generated concrete / abstract interface should inherit from
+        /// a certain base interface.
+        /// </summary>
+        public Type BaseInterface {
+            get {
+                return m_baseInterface;                
+            }                
+        }
+        
         /// <summary>returns true, if an error has been detected.</summary>
         public bool IsInvalid {
             get {
@@ -231,6 +242,15 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                                                    m_baseDirectory.FullName ) );
                         return;
                     }                    
+                } else if (args[i].Equals("-b")){                    
+                    i++;
+                    string baseInterfaceName = args[i++];
+                    m_baseInterface = Type.GetType(baseInterfaceName, false);
+                    if (m_baseInterface == null) {
+                        SetIsInvalid(String.Format("Error: base interface {0} does not exist!", 
+                                                   baseInterfaceName));
+                        return;
+                    }
                 } else {
                     SetIsInvalid(String.Format("Error: invalid option {0}", args[i]));
                     return;
@@ -477,6 +497,28 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                        "Error: base directory {0} does not exist!", testDir.FullName),
                                    commandLine.ErrorMessage);
         }        
+        
+        [Test]
+        public void TestInheritBaseInterface() {
+            Type type = typeof(IDisposable);
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-b", type.FullName, "testAsm", "test.idl" });
+            Assertion.AssertEquals("BaseInterface", type.FullName,
+                                   commandLine.BaseInterface.FullName);
+        }
+        
+        [Test]
+        public void TestBaseInterfaceNonExisting() {                        
+            string baseInterfaceName = "System.IDisposableNonExisting";
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-b", baseInterfaceName, "testAsm", "test.idl" });
+            Assertion.Assert("Invalid base interface",
+                             commandLine.IsInvalid);
+            Assertion.AssertEquals("invalid arguments message",
+                                   String.Format(
+                                       "Error: base interface {0} does not exist!", baseInterfaceName),
+                                   commandLine.ErrorMessage);
+        }
         
     }
 }
