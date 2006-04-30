@@ -155,6 +155,7 @@
     <Compile Include="IDLParserTreeConstants.cs" />
     <Compile Include="IDLParserVisitor.cs" />
     <Compile Include="IDLToCLS.cs" />
+    <Compile Include="IDLToCLSCommandLine.cs" />
     <Compile Include="InternalCompilerException.cs" />
     <Compile Include="InvalidIdlException.cs" />
     <Compile Include="JJTIDLParserState.cs" />
