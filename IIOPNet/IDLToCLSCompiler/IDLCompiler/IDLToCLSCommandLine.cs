@@ -55,6 +55,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private DirectoryInfo m_outputDirectory = new DirectoryInfo(".");
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
+        private bool m_isHelpRequested = false;
         
         #endregion IFields
         #region IConstructors
@@ -90,6 +91,13 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             }
         }
         
+        /// <summary>returns true, if help is requested.</summary>
+        public bool IsHelpRequested {
+            get {
+                return m_isHelpRequested;
+            }
+        }
+        
         #endregion IProperties
         #region IMethods
         
@@ -97,9 +105,9 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             int i = 0;
 
             while ((i < args.Length) && (args[i].StartsWith("-"))) {
-                if (args[i].Equals("-h")) {
-                
-                    i++;
+                if (args[i].Equals("-h") || args[i].Equals("-help")) {
+                    m_isHelpRequested = true;
+                    return;
                 } else if (args[i].Equals("-o")) {
                     i++;
                     m_outputDirectory = new DirectoryInfo(args[i++]);
@@ -180,6 +188,17 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                    commandLine.ErrorMessage);
         }
         
+        [Test]
+        public void TestIsHelpRequested() {
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-h"} );
+            Assertion.Assert("Help requested",
+                             commandLine.IsHelpRequested);            
+            commandLine = new IDLToCLSCommandLine(
+                new string[] { "-help"} );
+            Assertion.Assert("Help requested",
+                             commandLine.IsHelpRequested);            
+        }
         
     }
 }
