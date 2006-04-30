@@ -279,19 +279,57 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             return false;
         }
         
-        private bool AddRefAssembly(string asmName) {
-            try {                    
+        private void AddRefAssemblies(IList refAssemblies, IList libDirectories) {
+            ArrayList allLibDirectories = new ArrayList();
+            allLibDirectories.Add(new DirectoryInfo(".")); // current dir is the first to search
+            allLibDirectories.AddRange(libDirectories);                        
+            for (int j = 0; j < refAssemblies.Count; j++) {
+                string errorMsg;
+                if (!AddRefAssembly((string)refAssemblies[j], allLibDirectories, out errorMsg)) {
+                    SetIsInvalid(errorMsg);
+                    return;
+                }
+            }
+        }
+        
+        private bool AddRefAssembly(string asmFileName, IList libDirectories,
+                                    out string errorMsg) {
+            errorMsg = String.Empty;
+            Assembly loaded = null;
+            if (!Path.IsPathRooted(asmFileName)) {
+                foreach (DirectoryInfo libDir in libDirectories) {
+                    string asmFullyQualifiedFile = Path.Combine(libDir.FullName, asmFileName);
+                    if (File.Exists(asmFullyQualifiedFile)) {                    
+                        loaded = LoadRefAssembly(asmFullyQualifiedFile, out errorMsg);
+                        if (loaded != null) {
+                            break;
+                        }
+                    }                
+                }
+            }
+            if (loaded == null) {
+                loaded = LoadRefAssembly(asmFileName, out errorMsg);
+            }
+            if (loaded != null) {
+                m_refAssemblies.Add(loaded);
+            }
+            return (loaded != null);
+        }
+        
+        private Assembly LoadRefAssembly(string asmName, out string errorMessage) {
+            errorMessage = String.Empty;
+            try {
                 Assembly refAsm = Assembly.LoadFrom(asmName);
-                m_refAssemblies.Add(refAsm);
-                return true;
+                return refAsm;
             } catch (Exception ex) {
-                SetIsInvalid("can't load assembly: " + asmName + "\n" + ex);
-                return false;
-            }                                
+                errorMessage = "can't load assembly: " + asmName + "\n" + ex;
+                return null;
+            }            
         }
         
         private void ParseArgs(string[] args) {
             int i = 0;
+            ArrayList refAssemblies = new ArrayList();
 
             while ((i < args.Length) && (args[i].StartsWith("-"))) {
                 if (args[i].Equals("-h") || args[i].Equals("-help")) {
@@ -304,13 +342,9 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                     m_outputDirectory = new DirectoryInfo(args[i++].Substring(5));                    
                 } else if (args[i].Equals("-r")) {
                     i++;
-                    if (!AddRefAssembly(args[i++])) {
-                        return;
-                    }
+                    refAssemblies.Add(args[i++]);                    
                 } else if (args[i].StartsWith("-r:")) {
-                    if (!AddRefAssembly(args[i++].Substring(3))) {
-                        return;
-                    }
+                    refAssemblies.Add(args[i++].Substring(3));
                 } else if (args[i].Equals("-c")) {
                     i++;
                     FileInfo customMappingFile = new System.IO.FileInfo(args[i++]);
@@ -397,6 +431,8 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             for (int j = i; j < args.Length; j++) {
                 m_inputFileNames.Add(args[j]);
             }            
+            
+            AddRefAssemblies(refAssemblies, m_libDirectories);
         }
         
         #endregion IMethods
