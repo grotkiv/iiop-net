@@ -774,6 +774,16 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         }
         
         [Test]
+        public void TestRefAssembliesInvalid() {                                    
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-r", "inexistientAssembly.dll", "testAsm", "test.idl" } );
+                        
+            Assertion.Assert("Command line validity", commandLine.IsInvalid);
+            Assertion.Assert("invalid arguments message",
+                             commandLine.ErrorMessage.StartsWith("can't load assembly: inexistientAssembly.dll"));
+        }        
+        
+        [Test]
         public void TestPreprocessorDefines() {
             string def1 = "def1";
             string def2 = "def2";            
