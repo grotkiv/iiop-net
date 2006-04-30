@@ -135,6 +135,7 @@
     <File name=".\ValueTypeImplGenerator.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
     <File name=".\StringToIntConverter.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
     <File name=".\ASTprimary_expr_noLit.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
+    <File name=".\IDLToCLSCommandLine.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
   </Contents>
   <References>
     <Reference type="Project" refto="IIOPChannel" localcopy="True" />

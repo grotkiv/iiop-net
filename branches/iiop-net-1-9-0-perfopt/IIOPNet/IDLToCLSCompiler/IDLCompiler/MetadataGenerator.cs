@@ -196,7 +196,7 @@ public class MetaDataGenerator : IDLParserVisitor {
     /// </param>
     /// <param name="signKey">the key to use to sign the generated assembly; pass null to not sign the assembly</param>
     public MetaDataGenerator(AssemblyName targetAssemblyName, String targetDir,
-                             ArrayList refAssemblies) {
+                             IList refAssemblies) {
         m_targetAsmName = targetAssemblyName;        
         // define a persistent assembly
         CreateResultAssembly(targetDir);
@@ -264,7 +264,7 @@ public class MetaDataGenerator : IDLParserVisitor {
     
     /// <summary>initalizes the assemblies, which contains type to use
     /// instead of generating them</summary>
-    private void InitalizeRefAssemblies(ArrayList refAssemblies) {
+    private void InitalizeRefAssemblies(IList refAssemblies) {
         // add the IIOPChannel dll; IIdlAttribute is in channel assembly
         Type typeInChannel = typeof(IIdlAttribute);
         refAssemblies.Add(typeInChannel.Assembly);
