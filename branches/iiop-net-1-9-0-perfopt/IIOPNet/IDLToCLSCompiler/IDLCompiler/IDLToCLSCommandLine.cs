@@ -111,6 +111,11 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         #endregion IProperties
         #region IMethods
         
+        private void SetIsInvalid(string message) {
+            m_isInvalid = true;
+            m_errorMessage = message;
+        }
+        
         private void ParseArgs(string[] args) {
             int i = 0;
 
@@ -125,11 +130,14 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                     m_outputDirectory = new DirectoryInfo(args[i].Substring(5));
                     i++;
                 } else {
-                    m_isInvalid = true;
-                    m_errorMessage =
-                        String.Format("Error: invalid option {0}", args[i]);
+                    SetIsInvalid(String.Format("Error: invalid option {0}", args[i]));
                     return;
                 }
+            }
+            
+            if ((i + 1) > args.Length) {
+                SetIsInvalid("Error: target assembly name or idl-file missing");
+                return;
             }
             
             m_targetAssemblyName = args[i];
@@ -201,6 +209,17 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         }
         
         [Test]
+        public void TestMissingTargetAssemblyName() {
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[0] );
+            Assertion.Assert("Invalid commandLine detection",
+                             commandLine.IsInvalid);
+            Assertion.AssertEquals("invalid commandLine message",
+                                   "Error: target assembly name or idl-file missing",
+                                   commandLine.ErrorMessage);
+        }
+        
+        [Test]
         public void TestIsHelpRequested() {
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
                 new string[] { "-h"} );
@@ -219,6 +238,9 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assertion.AssertEquals("targetAssemblyName", "testAsm",
                                    commandLine.TargetAssemblyName);
         }
+        
+        
+        
         
     }
 }
