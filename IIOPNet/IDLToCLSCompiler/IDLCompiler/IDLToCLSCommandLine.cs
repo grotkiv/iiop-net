@@ -69,6 +69,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private IList /* <DirectoryInfo> */ m_idlSourceDirs = new ArrayList();
         private IList /* <Assembly> */ m_refAssemblies = new ArrayList();
         private IList /* <string> */ m_preprocessorDefines = new ArrayList();
+        private IList /* <DirectoryInfo> */ m_libDirectories = new ArrayList();
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -229,6 +230,15 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             }
         }
         
+        /// <summary>
+        /// the lib directories to search for references.
+        /// </summary>
+        public IList /* DirectoryInfo> */ LibDirectories {
+            get {
+                return m_libDirectories;
+            }
+        }
+        
         /// <summary>returns true, if an error has been detected.</summary>
         public bool IsInvalid {
             get {
@@ -363,7 +373,13 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                     m_vtSkeletonsTargetDir = new DirectoryInfo(args[i++]);
                 } else if (args[i].Equals("-vtSkelO")) {
                     i++;
-                    m_overwriteVtSkeletons = true;                    
+                    m_overwriteVtSkeletons = true;
+                } else if (args[i].StartsWith("-lib:")) {
+                    string libDirsString = args[i++].Substring(5);
+                    string[] libDirs = libDirsString.Split(';');
+                    for (int j = 0; j < libDirs.Length; j++) {
+                        m_libDirectories.Add(new DirectoryInfo(libDirs[j]));
+                    }
                 } else {
                     SetIsInvalid(String.Format("Error: invalid option {0}", args[i]));
                     return;
@@ -403,6 +419,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             target.WriteLine("-out:directory  the same as -o directory, but similar to the syntax of other .NET tools");
             target.WriteLine("-r assembly     assemblies to check for types in, instead of generating them");
             target.WriteLine("-r:assembly     the same as -r assembly, but similar to the syntax of other .NET tools");
+            target.WriteLine("-lib:directory  additional directories to search for assemblies specified with -r (multiple -lib allowed)");
             target.WriteLine("-c xmlfile      specifies custom mappings");
             target.WriteLine("-d define       defines a preprocessor symbol");
             target.WriteLine("-b baseIF       the created Interfaces inherit from baseIF.");
@@ -833,6 +850,30 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assertion.AssertEquals("define 2", 
                                    def2,
                                    commandLine.PreprocessorDefines[1]);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);            
+        }
+        
+        [Test]
+        public void TestLibDirs() {
+            DirectoryInfo dir1 = new DirectoryInfo(Path.Combine(".", "lib1"));
+            DirectoryInfo dir2 = new DirectoryInfo(Path.Combine(".", "lib2"));
+            DirectoryInfo dir3 = new DirectoryInfo(Path.Combine(".", "lib3"));
+            
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-lib:" + dir1.FullName + ";" + dir2.FullName, 
+                               "-lib:" + dir3.FullName, "testAsm", "test.idl" } );
+            Assertion.AssertEquals("libs", 3,
+                                   commandLine.LibDirectories.Count);
+            Assertion.AssertEquals("lib dir 1", 
+                                   dir1.FullName,
+                                   ((DirectoryInfo)commandLine.LibDirectories[0]).FullName);
+            Assertion.AssertEquals("lib dir 2", 
+                                   dir2.FullName,
+                                   ((DirectoryInfo)commandLine.LibDirectories[1]).FullName);
+            Assertion.AssertEquals("lib dir 3", 
+                                   dir3.FullName,
+                                   ((DirectoryInfo)commandLine.LibDirectories[2]).FullName);            
             
             Assertion.Assert("Command line validity", !commandLine.IsInvalid);            
         }
