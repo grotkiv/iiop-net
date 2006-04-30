@@ -384,6 +384,41 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         }
         
         #endregion IMethods
+        #region SMethods
+        
+        /// <summary>
+        /// the command line howto for this command line.
+        /// </summary>
+        public static void HowTo(TextWriter target) {
+            target.WriteLine("Compiler usage:");
+            target.WriteLine("  IDLToCLSCompiler [options] target_assembly_name idl-files");
+            target.WriteLine();
+            target.WriteLine("creates a CLS assembly for the OMG IDL definition files.");
+            target.WriteLine("target_assembly_name is the name of the target assembly without .dll");
+            target.WriteLine("idl-files: one or more idl files containg OMG IDL definitions");
+            target.WriteLine();
+            target.WriteLine("options are:");
+            target.WriteLine("-h or -help     help");
+            target.WriteLine("-o directory    output directory (default is `-o .`)");
+            target.WriteLine("-out:directory  the same as -o directory, but similar to the syntax of other .NET tools");
+            target.WriteLine("-r assembly     assemblies to check for types in, instead of generating them");
+            target.WriteLine("-r:assembly     the same as -r assembly, but similar to the syntax of other .NET tools");
+            target.WriteLine("-c xmlfile      specifies custom mappings");
+            target.WriteLine("-d define       defines a preprocessor symbol");
+            target.WriteLine("-b baseIF       the created Interfaces inherit from baseIF.");
+            target.WriteLine("-basedir directory directory to change to before doing any processing.");
+            target.WriteLine("-idir directory directory containing idl files (multiple -idir allowed)");
+            target.WriteLine("-vtSkel         enable creation of value type implementation skeletons");
+            target.WriteLine("-vtSkelProv     The fully qualified name of the codedomprovider to use for value type skeleton generation");
+            target.WriteLine("-vtSkelTd       The targetDirectory for generated valuetype impl skeletons");
+            target.WriteLine("-vtSkelO        Overwrite already present valuetype skeleton implementations");
+            target.WriteLine("-snk            sign key file (used for generating strong named assemblies)");
+            target.WriteLine("-delaySign      delay signing of assembly (snk file contains only a pk)");
+            target.WriteLine("-asmVersion     the version of the generated assembly");
+            target.WriteLine("-mapAnyToCont   maps idl any to the any container omg.org.CORBA.Any; if not specified, any is mapped to object");
+        }        
+        
+        #endregion SMethods
                                 
     }
     

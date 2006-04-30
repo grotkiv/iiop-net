@@ -143,32 +143,7 @@ public class IDLToCLS {
     }
     
     private static void HowTo() {
-        Console.WriteLine("Compiler usage:");
-        Console.WriteLine("  IDLToCLSCompiler [options] target_assembly_name idl-files");
-        Console.WriteLine();
-        Console.WriteLine("creates a CLS assembly for the OMG IDL definition files.");
-        Console.WriteLine("target_assembly_name is the name of the target assembly without .dll");
-        Console.WriteLine("idl-files: one or more idl files containg OMG IDL definitions");
-        Console.WriteLine();
-        Console.WriteLine("options are:");
-        Console.WriteLine("-h              help");
-        Console.WriteLine("-o directory    output directory (default is `-o .`)");
-        Console.WriteLine("-out:directory  the same as -o directory, but similar to the syntax of other .NET tools");
-        Console.WriteLine("-r assembly     assemblies to check for types in, instead of generating them");
-        Console.WriteLine("-r:assembly     the same as -r assembly, but similar to the syntax of other .NET tools");
-        Console.WriteLine("-c xmlfile      specifies custom mappings");
-        Console.WriteLine("-d define       defines a preprocessor symbol");
-        Console.WriteLine("-b baseIF       the created Interfaces inherit from baseIF.");
-        Console.WriteLine("-basedir directory directory to change to before doing any processing.");
-        Console.WriteLine("-idir directory directory containing idl files (multiple -idir allowed)");
-        Console.WriteLine("-vtSkel         enable creation of value type implementation skeletons");
-        Console.WriteLine("-vtSkelProv     The fully qualified name of the codedomprovider to use for value type skeleton generation");
-        Console.WriteLine("-vtSkelTd       The targetDirectory for generated valuetype impl skeletons");
-        Console.WriteLine("-vtSkelO        Overwrite already present valuetype skeleton implementations");
-        Console.WriteLine("-snk            sign key file (used for generating strong named assemblies)");
-        Console.WriteLine("-delaySign      delay signing of assembly (snk file contains only a pk)");
-        Console.WriteLine("-asmVersion     the version of the generated assembly");
-        Console.WriteLine("-mapAnyToCont   maps idl any to the any container omg.org.CORBA.Any; if not specified, any is mapped to object");
+        IDLToCLSCommandLine.HowTo(Console.Out);
     }
     
     public static void Error(String message) {
