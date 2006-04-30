@@ -267,8 +267,9 @@ public class MetaDataGenerator : IDLParserVisitor {
     private void InitalizeRefAssemblies(IList refAssemblies) {
         // add the IIOPChannel dll; IIdlAttribute is in channel assembly
         Type typeInChannel = typeof(IIdlAttribute);
-        refAssemblies.Add(typeInChannel.Assembly);
-        m_typesInRefAsms = new TypesInAssemblyManager(refAssemblies);
+        ArrayList refAssembliesWithChannelAsm = new ArrayList(refAssemblies);
+        refAssembliesWithChannelAsm.Add(typeInChannel.Assembly);
+        m_typesInRefAsms = new TypesInAssemblyManager(refAssembliesWithChannelAsm);
     }    
 
     ///<summary>
