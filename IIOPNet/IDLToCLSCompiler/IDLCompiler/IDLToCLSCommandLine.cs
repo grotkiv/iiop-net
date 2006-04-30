@@ -52,6 +52,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         
         #region IFields
         
+        private string m_targetAssemblyName;
         private DirectoryInfo m_outputDirectory = new DirectoryInfo(".");
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -67,6 +68,15 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         #endregion IConstructors
         #region IProperties
         
+        
+        /// <summary>
+        /// the name of the target assembly.
+        /// </summary>
+        public string TargetAssemblyName {
+            get {
+                return m_targetAssemblyName;
+            }
+        }
         
         /// <summary>the directory, the output will be written to.</summary>
         public DirectoryInfo OutputDirectory {
@@ -119,9 +129,11 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                     m_errorMessage =
                         String.Format("Error: invalid option {0}", args[i]);
                     return;
-                }                
+                }
             }
             
+            m_targetAssemblyName = args[i];
+            i++;            
         }
         
         #endregion IMethods
@@ -154,7 +166,7 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         [Test]
         public void TestDefaultOutputDir() {
             DirectoryInfo testDir = new DirectoryInfo(".");
-            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(new string[0]);
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(new string[1] { "testAsm" });
             Assertion.AssertEquals("OutputDirectory", testDir.FullName,
                                    commandLine.OutputDirectory.FullName);            
         }
@@ -163,7 +175,7 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         public void TestOutDirSpaceSeparator() {            
             DirectoryInfo testDir = new DirectoryInfo(Path.Combine(".", "testOut"));
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
-                new string[] { "-o", testDir.FullName});
+                new string[] { "-o", testDir.FullName, "testAsm" });
             Assertion.AssertEquals("OutputDirectory", testDir.FullName,
                                    commandLine.OutputDirectory.FullName);
         }
@@ -172,7 +184,7 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         public void TestOutDirColonSeparator() {
             DirectoryInfo testDir = new DirectoryInfo(Path.Combine(".", "testOut"));
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
-                new string[] { "-out:" + testDir.FullName});
+                new string[] { "-out:" + testDir.FullName, "testAsm" });
             Assertion.AssertEquals("OutputDirectory", testDir.FullName,
                                    commandLine.OutputDirectory.FullName);
         }
@@ -198,6 +210,14 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-help"} );
             Assertion.Assert("Help requested",
                              commandLine.IsHelpRequested);            
+        }
+        
+        [Test]
+        public void TestTargetAssemblyName() {
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "testAsm"} );
+            Assertion.AssertEquals("targetAssemblyName", "testAsm",
+                                   commandLine.TargetAssemblyName);
         }
         
     }
