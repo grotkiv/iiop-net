@@ -66,6 +66,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private bool m_overwriteVtSkeletons = false;
         private DirectoryInfo m_vtSkeletonsTargetDir = null;
         private Type m_vtSkelcodeDomProviderType;
+        private IList /* <DirectoryInfo> */ m_idlSourceDirs = new ArrayList();
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -199,6 +200,15 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             }
         }
         
+        /// <summary>
+        /// directories to search in for idl files.
+        /// </summary>
+        public IList /* <DirectoryInfo> */ IdlSourceDirectories {
+            get {
+                return m_idlSourceDirs;
+            }
+        }
+        
         /// <summary>returns true, if an error has been detected.</summary>
         public bool IsInvalid {
             get {
@@ -282,6 +292,9 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                                                    m_baseDirectory.FullName ) );
                         return;
                     }                    
+                } else if (args[i].Equals("-idir")) {
+                    i++;
+                    m_idlSourceDirs.Add(new DirectoryInfo(args[i++]));
                 } else if (args[i].Equals("-b")){                    
                     i++;
                     string baseInterfaceName = args[i++];
@@ -625,6 +638,23 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                    String.Format(
                                        "provider {0} not found!", providerName),
                                    commandLine.ErrorMessage);
+        }
+        
+        [Test]
+        public void TestIdlSourceDirectories() {
+            DirectoryInfo dir1 = new DirectoryInfo(".");
+            DirectoryInfo dir2 = new DirectoryInfo(Path.Combine(".", "testIdlDir"));
+                        
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-idir", dir1.FullName, "-idir", dir2.FullName, "testAsm", "test.idl" } );
+            Assertion.AssertEquals("idl source dirs", 2,
+                                   commandLine.IdlSourceDirectories.Count);
+            Assertion.AssertEquals("idl source dir 1", 
+                                   dir1.FullName,
+                                   ((DirectoryInfo)commandLine.IdlSourceDirectories[0]).FullName);
+            Assertion.AssertEquals("idl source dir 2", 
+                                   dir2.FullName,
+                                   ((DirectoryInfo)commandLine.IdlSourceDirectories[1]).FullName);
         }
         
     }
