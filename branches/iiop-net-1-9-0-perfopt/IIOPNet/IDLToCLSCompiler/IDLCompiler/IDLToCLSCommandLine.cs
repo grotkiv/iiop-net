@@ -58,6 +58,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private IList /* <FileInfo> */ m_customMappingFiles = new ArrayList();
         private FileInfo m_signKeyFile = null;
         private bool m_delaySign = false;
+        private string m_asmVersion = null;
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -117,6 +118,13 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         public bool DelaySign {
             get {
                 return m_delaySign;
+            }
+        }
+        
+        /// <summary>the version of the target assembly.</summary>
+        public string AssemblyVersion {
+            get {
+                return m_asmVersion;
             }
         }
         
@@ -189,6 +197,9 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                 } else if (args[i].Equals("-delaySign")) {
                     i++;
                     m_delaySign = true;
+                } else if (args[i].Equals("-asmVersion")) {
+                    i++;
+                    m_asmVersion = args[i++];                    
                 } else {
                     SetIsInvalid(String.Format("Error: invalid option {0}", args[i]));
                     return;
@@ -396,7 +407,16 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-delaySign", "testAsm", "test.idl" });
             Assertion.Assert("DelaySign", commandLine.DelaySign);
         }        
-        
+
+        [Test]
+        public void TestAsmVersion() {
+            string asmVersion = "1.0.0.0";
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-asmVersion", asmVersion, "testAsm", "test.idl" });
+            Assertion.AssertEquals("Target Assembly Version", 
+                                   asmVersion,
+                                   commandLine.AssemblyVersion);
+        }        
         
     }
 }
