@@ -62,6 +62,10 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private bool m_mapAnyToAnyContainer = false;
         private DirectoryInfo m_baseDirectory = null;
         private Type m_baseInterface = null;
+        private bool m_generateVtSkeletons = false;
+        private bool m_overwriteVtSkeletons = false;
+        private DirectoryInfo m_vtSkeletonsTargetDir = null;
+        private Type m_vtSkelcodeDomProviderType;
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -159,6 +163,42 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             }                
         }
         
+        /// <summary>
+        /// Generate ValueType skeletons or not.
+        /// </summary>
+        public bool GenerateValueTypeSkeletons {
+            get {
+                return m_generateVtSkeletons;
+            }
+        }
+        
+        /// <summary>
+        /// Overwrite already generated value type skeletons or not.
+        /// </summary>
+        public bool OverwriteValueTypeSkeletons {
+            get {
+                return m_overwriteVtSkeletons;
+            }
+        }        
+        
+        /// <summary>
+        /// The target directory for the generated value type skeletons.
+        /// </summary>
+        public DirectoryInfo ValueTypeSkeletonsTargetDir {
+            get {
+                return m_vtSkeletonsTargetDir;
+            }
+        }
+        
+        /// <summary>
+        /// the codedom provider to use for Valuetype skeleton generation.
+        /// </summary>
+        public Type ValueTypeSkeletonCodeDomProviderType {
+            get {
+                return m_vtSkelcodeDomProviderType;
+            }
+        }
+        
         /// <summary>returns true, if an error has been detected.</summary>
         public bool IsInvalid {
             get {
@@ -251,10 +291,28 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                                                    baseInterfaceName));
                         return;
                     }
+                } else if (args[i].Equals("-vtSkel")) {
+                    i++;
+                    m_generateVtSkeletons = true;
+                } else if (args[i].Equals("-vtSkelProv")) {
+                    i++;
+                    string providerTypeName = args[i++].Trim();                    
+                    m_vtSkelcodeDomProviderType = Type.GetType(providerTypeName, false);
+                    if (m_vtSkelcodeDomProviderType == null) {
+                        SetIsInvalid(String.Format("provider {0} not found!",
+                                            providerTypeName));
+                        return;
+                    }
+                } else if (args[i].Equals("-vtSkelTd")) {
+                    i++;
+                    m_vtSkeletonsTargetDir = new DirectoryInfo(args[i++]);
+                } else if (args[i].Equals("-vtSkelO")) {
+                    i++;
+                    m_overwriteVtSkeletons = true;                    
                 } else {
                     SetIsInvalid(String.Format("Error: invalid option {0}", args[i]));
                     return;
-                }
+                }                
             }
             
             if ((i + 2) > args.Length) {
@@ -517,6 +575,55 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assertion.AssertEquals("invalid arguments message",
                                    String.Format(
                                        "Error: base interface {0} does not exist!", baseInterfaceName),
+                                   commandLine.ErrorMessage);
+        }
+                
+        [Test]
+        public void TestVtSkel() {
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-vtSkel", "testAsm", "test.idl" });
+            Assertion.Assert("Value Type Skeleton generation", 
+                             commandLine.GenerateValueTypeSkeletons);
+        }
+        
+        [Test]
+        public void TestVtSkelOverwrite() {
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-vtSkelO", "testAsm", "test.idl" });
+            Assertion.Assert("Value Type Skeleton overwrite", 
+                             commandLine.OverwriteValueTypeSkeletons);
+        }
+        
+        [Test]
+        public void TestVtTargetDir() {
+            DirectoryInfo testDir = new DirectoryInfo(Path.Combine(".", "testGenVtDir"));
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-vtSkelTd", testDir.FullName, "testAsm", "test.idl" });
+            Assertion.AssertEquals("Valuetype Skeletons Target Directory", testDir.FullName,
+                                   commandLine.ValueTypeSkeletonsTargetDir.FullName);
+        }                
+        
+        [Test]
+        public void TestVtGenerationProvider() {
+            Type provider = typeof(Microsoft.CSharp.CSharpCodeProvider);
+            string providerName = provider.AssemblyQualifiedName;
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-vtSkelProv", providerName, "testAsm", "test.idl" });
+            Assertion.Assert("Command Line Validity", !commandLine.IsInvalid);
+            Assertion.AssertEquals("Valuetype Skeletons Generation Provider", provider,
+                                   commandLine.ValueTypeSkeletonCodeDomProviderType);
+        }                        
+        
+        [Test]
+        public void TestVtGenerationProviderInvalid() {                        
+            string providerName = "System.NonExistingProvider";
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-vtSkelProv", providerName, "testAsm", "test.idl" });
+            Assertion.Assert("Invalid codedom provider",
+                             commandLine.IsInvalid);
+            Assertion.AssertEquals("invalid arguments message",
+                                   String.Format(
+                                       "provider {0} not found!", providerName),
                                    commandLine.ErrorMessage);
         }
         
