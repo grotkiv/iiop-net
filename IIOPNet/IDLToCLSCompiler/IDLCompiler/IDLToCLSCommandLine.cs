@@ -53,7 +53,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         #region IFields
         
         private string m_targetAssemblyName;
-        private IList /* <FileInfo> */ m_inputFiles = new ArrayList();
+        private IList /* <string> */ m_inputFileNames = new ArrayList();
         private DirectoryInfo m_outputDirectory = new DirectoryInfo(".");
         private IList /* <FileInfo> */ m_customMappingFiles = new ArrayList();
         private FileInfo m_signKeyFile = null;
@@ -64,10 +64,11 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private Type m_baseInterface = null;
         private bool m_generateVtSkeletons = false;
         private bool m_overwriteVtSkeletons = false;
-        private DirectoryInfo m_vtSkeletonsTargetDir = null;
+        private DirectoryInfo m_vtSkeletonsTargetDir = new DirectoryInfo(".");
         private Type m_vtSkelcodeDomProviderType;
         private IList /* <DirectoryInfo> */ m_idlSourceDirs = new ArrayList();
         private IList /* <Assembly> */ m_refAssemblies = new ArrayList();
+        private IList /* <string> */ m_preprocessorDefines = new ArrayList();
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -94,11 +95,11 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         }
         
         /// <summary>
-        /// the list of input file infos, i.e. IList of FileInfo
+        /// the list of input file names; no fileinfo, because relative pathes are relative to base dir not current dir at the moment
         /// </summary>
-        public IList /* <FileInfo> */ InputFiles {
+        public IList /* <string> */ InputFileNames {
             get {
-                return m_inputFiles;
+                return m_inputFileNames;
             }
         }
         
@@ -219,6 +220,15 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             }
         }
         
+        /// <summary>
+        /// the preprocessor defines.
+        /// </summary>
+        public IList /* <string> */ PreprocessorDefines {
+            get {
+                return m_preprocessorDefines;
+            }
+        }
+        
         /// <summary>returns true, if an error has been detected.</summary>
         public bool IsInvalid {
             get {
@@ -333,6 +343,9 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                                                    baseInterfaceName));
                         return;
                     }
+                } else if (args[i].Equals("-d")) {
+                    i++;
+                    m_preprocessorDefines.Add(args[i++].Trim());
                 } else if (args[i].Equals("-vtSkel")) {
                     i++;
                     m_generateVtSkeletons = true;
@@ -366,7 +379,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             i++;            
             
             for (int j = i; j < args.Length; j++) {
-                m_inputFiles.Add(new FileInfo(args[j]));
+                m_inputFileNames.Add(args[j]);
             }            
         }
         
@@ -495,10 +508,10 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
                 new string[] { "testAsm", file1 } );
             Assertion.AssertEquals("idl files", 1,
-                                   commandLine.InputFiles.Count);
+                                   commandLine.InputFileNames.Count);
             Assertion.AssertEquals("idl file1", 
                                    file1,
-                                   ((FileInfo)commandLine.InputFiles[0]).Name);
+                                   commandLine.InputFileNames[0]);
             
             Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }        
@@ -512,16 +525,16 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
                 new string[] { "testAsm", file1, file2, file3 } );
             Assertion.AssertEquals("idl files", 3,
-                                   commandLine.InputFiles.Count);
+                                   commandLine.InputFileNames.Count);
             Assertion.AssertEquals("idl file1", 
                                    file1,
-                                   ((FileInfo)commandLine.InputFiles[0]).Name);
+                                   commandLine.InputFileNames[0]);
             Assertion.AssertEquals("idl file2", 
                                    file2,
-                                   ((FileInfo)commandLine.InputFiles[1]).Name);
+                                   commandLine.InputFileNames[1]);
             Assertion.AssertEquals("idl file3", 
                                    file3,
-                                   ((FileInfo)commandLine.InputFiles[2]).Name);
+                                   commandLine.InputFileNames[2]);
             
             Assertion.Assert("Command line validity", !commandLine.IsInvalid);
         }           
@@ -758,6 +771,25 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                    ((Assembly)commandLine.ReferencedAssemblies[1]).FullName);            
             
             Assertion.Assert("Command line validity", !commandLine.IsInvalid);
+        }
+        
+        [Test]
+        public void TestPreprocessorDefines() {
+            string def1 = "def1";
+            string def2 = "def2";            
+            
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-d", def1, "-d", def2, "testAsm", "test.idl" } );
+            Assertion.AssertEquals("defines", 2,
+                                   commandLine.PreprocessorDefines.Count);
+            Assertion.AssertEquals("define 1", 
+                                   def1,
+                                   commandLine.PreprocessorDefines[0]);
+            Assertion.AssertEquals("define 2", 
+                                   def2,
+                                   commandLine.PreprocessorDefines[1]);
+            
+            Assertion.Assert("Command line validity", !commandLine.IsInvalid);            
         }
         
     }
