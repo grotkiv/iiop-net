@@ -60,6 +60,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private bool m_delaySign = false;
         private string m_asmVersion = null;
         private bool m_mapAnyToAnyContainer = false;
+        private DirectoryInfo m_baseDirectory = null;
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -138,6 +139,15 @@ namespace Ch.Elca.Iiop.IdlCompiler {
             }
         }
         
+        /// <summary>
+        /// the directory to change to, before doing any processing.
+        /// </summary>
+        public DirectoryInfo BaseDirectory {
+            get {
+                return m_baseDirectory;
+            }
+        }
+        
         /// <summary>returns true, if an error has been detected.</summary>
         public bool IsInvalid {
             get {
@@ -213,6 +223,14 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                 } else if (args[i].Equals("-mapAnyToCont")) {
                     i++;
                     m_mapAnyToAnyContainer = true;
+                } else if (args[i].Equals("-basedir")) {
+                    i++;
+                    m_baseDirectory = new DirectoryInfo(args[i++]);
+                    if (!Directory.Exists(m_baseDirectory.FullName)) {
+                        SetIsInvalid(String.Format("Error: base directory {0} does not exist!", 
+                                                   m_baseDirectory.FullName ) );
+                        return;
+                    }                    
                 } else {
                     SetIsInvalid(String.Format("Error: invalid option {0}", args[i]));
                     return;
@@ -437,6 +455,28 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 new string[] { "-mapAnyToCont", "testAsm", "test.idl" });
             Assertion.Assert("Map any to any container", commandLine.MapAnyToAnyContainer);
         }
+        
+        [Test]
+        public void TestBaseDirectory() {            
+            DirectoryInfo testDir = new DirectoryInfo(".");
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-basedir", testDir.FullName, "testAsm", "test.idl" });
+            Assertion.AssertEquals("BaseDirectory", testDir.FullName,
+                                   commandLine.BaseDirectory.FullName);
+        }        
+        
+        [Test]
+        public void TestBaseDirectoryNonExisting() {            
+            DirectoryInfo testDir = new DirectoryInfo(Path.Combine(".", "NonExistantBaseDir"));
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-basedir", testDir.FullName, "testAsm", "test.idl" });
+            Assertion.Assert("Invalid Base directory",
+                             commandLine.IsInvalid);
+            Assertion.AssertEquals("invalid arguments message",
+                                   String.Format(
+                                       "Error: base directory {0} does not exist!", testDir.FullName),
+                                   commandLine.ErrorMessage);
+        }        
         
     }
 }
