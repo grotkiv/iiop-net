@@ -59,6 +59,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private FileInfo m_signKeyFile = null;
         private bool m_delaySign = false;
         private string m_asmVersion = null;
+        private bool m_mapAnyToAnyContainer = false;
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -125,6 +126,15 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         public string AssemblyVersion {
             get {
                 return m_asmVersion;
+            }
+        }
+        
+        /// <summary>
+        /// returns true, if any should be map to the any container type instead of object.
+        /// </summary>
+        public bool MapAnyToAnyContainer {
+            get {
+                return m_mapAnyToAnyContainer;
             }
         }
         
@@ -200,6 +210,9 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                 } else if (args[i].Equals("-asmVersion")) {
                     i++;
                     m_asmVersion = args[i++];                    
+                } else if (args[i].Equals("-mapAnyToCont")) {
+                    i++;
+                    m_mapAnyToAnyContainer = true;
                 } else {
                     SetIsInvalid(String.Format("Error: invalid option {0}", args[i]));
                     return;
@@ -417,6 +430,13 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                    asmVersion,
                                    commandLine.AssemblyVersion);
         }        
+        
+        [Test]
+        public void TestMapToAnyContainer() {
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-mapAnyToCont", "testAsm", "test.idl" });
+            Assertion.Assert("Map any to any container", commandLine.MapAnyToAnyContainer);
+        }
         
     }
 }
