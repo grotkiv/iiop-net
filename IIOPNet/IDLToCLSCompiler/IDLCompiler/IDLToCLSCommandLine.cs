@@ -53,6 +53,7 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         #region IFields
         
         private string m_targetAssemblyName;
+        private IList /* <FileInfo> */ m_inputFiles = new ArrayList();
         private DirectoryInfo m_outputDirectory = new DirectoryInfo(".");
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -75,6 +76,15 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         public string TargetAssemblyName {
             get {
                 return m_targetAssemblyName;
+            }
+        }
+        
+        /// <summary>
+        /// the list of input file infos, i.e. IList of FileInfo
+        /// </summary>
+        public IList InputFiles {
+            get {
+                return m_inputFiles;
             }
         }
         
@@ -135,13 +145,17 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                 }
             }
             
-            if ((i + 1) > args.Length) {
+            if ((i + 2) > args.Length) {
                 SetIsInvalid("Error: target assembly name or idl-file missing");
                 return;
             }
             
             m_targetAssemblyName = args[i];
             i++;            
+            
+            for (int j = i; j < args.Length; j++) {
+                m_inputFiles.Add(new FileInfo(args[j]));
+            }            
         }
         
         #endregion IMethods
@@ -174,7 +188,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         [Test]
         public void TestDefaultOutputDir() {
             DirectoryInfo testDir = new DirectoryInfo(".");
-            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(new string[1] { "testAsm" });
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "testAsm", "test.idl" });
             Assertion.AssertEquals("OutputDirectory", testDir.FullName,
                                    commandLine.OutputDirectory.FullName);            
         }
@@ -183,7 +198,7 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         public void TestOutDirSpaceSeparator() {            
             DirectoryInfo testDir = new DirectoryInfo(Path.Combine(".", "testOut"));
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
-                new string[] { "-o", testDir.FullName, "testAsm" });
+                new string[] { "-o", testDir.FullName, "testAsm", "test.idl" });
             Assertion.AssertEquals("OutputDirectory", testDir.FullName,
                                    commandLine.OutputDirectory.FullName);
         }
@@ -192,7 +207,7 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         public void TestOutDirColonSeparator() {
             DirectoryInfo testDir = new DirectoryInfo(Path.Combine(".", "testOut"));
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
-                new string[] { "-out:" + testDir.FullName, "testAsm" });
+                new string[] { "-out:" + testDir.FullName, "testAsm", "test.idl" });
             Assertion.AssertEquals("OutputDirectory", testDir.FullName,
                                    commandLine.OutputDirectory.FullName);
         }
@@ -220,6 +235,17 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         }
         
         [Test]
+        public void TestMissingIdlFileName() {
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "testAsm" } );
+            Assertion.Assert("Invalid commandLine detection",
+                             commandLine.IsInvalid);
+            Assertion.AssertEquals("invalid commandLine message",
+                                   "Error: target assembly name or idl-file missing",
+                                   commandLine.ErrorMessage);
+        }
+        
+        [Test]
         public void TestIsHelpRequested() {
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
                 new string[] { "-h"} );
@@ -234,13 +260,45 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         [Test]
         public void TestTargetAssemblyName() {
             IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
-                new string[] { "testAsm"} );
+                new string[] { "testAsm", "test.idl" } );
             Assertion.AssertEquals("targetAssemblyName", "testAsm",
                                    commandLine.TargetAssemblyName);
         }
         
+
+        [Test]
+        public void TestSingleIdlFile() {
+            string file1 = "test1.idl";
+            
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "testAsm", file1 } );
+            Assertion.AssertEquals("idl files", 1,
+                                   commandLine.InputFiles.Count);
+            Assertion.AssertEquals("idl file1", 
+                                   file1,
+                                   ((FileInfo)commandLine.InputFiles[0]).Name);
+        }        
         
-        
+        [Test]
+        public void TestIdlFiles() {            
+            string file1 = "test1.idl";
+            string file2 = "test2.idl";
+            string file3 = "test3.idl";
+            
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "testAsm", file1, file2, file3 } );
+            Assertion.AssertEquals("idl files", 3,
+                                   commandLine.InputFiles.Count);
+            Assertion.AssertEquals("idl file1", 
+                                   file1,
+                                   ((FileInfo)commandLine.InputFiles[0]).Name);
+            Assertion.AssertEquals("idl file2", 
+                                   file2,
+                                   ((FileInfo)commandLine.InputFiles[1]).Name);
+            Assertion.AssertEquals("idl file3", 
+                                   file3,
+                                   ((FileInfo)commandLine.InputFiles[2]).Name);
+        }                
         
     }
 }
