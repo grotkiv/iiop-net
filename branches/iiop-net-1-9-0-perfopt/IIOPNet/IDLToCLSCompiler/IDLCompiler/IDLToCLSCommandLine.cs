@@ -56,6 +56,8 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         private IList /* <FileInfo> */ m_inputFiles = new ArrayList();
         private DirectoryInfo m_outputDirectory = new DirectoryInfo(".");
         private IList /* <FileInfo> */ m_customMappingFiles = new ArrayList();
+        private FileInfo m_signKeyFile = null;
+        private bool m_delaySign = false;
         
         private bool m_isInvalid = false;
         private string m_errorMessage = String.Empty;
@@ -101,6 +103,20 @@ namespace Ch.Elca.Iiop.IdlCompiler {
         public IList /* <FileInfo> */ CustomMappingFiles {
             get {
                 return m_customMappingFiles;
+            }
+        }
+        
+        /// <summary>the key file used to sign the resulting assembly</summary>
+        public FileInfo SignKeyFile {
+            get {
+                return m_signKeyFile;
+            }
+        }
+        
+        /// <summary>delay sign the assembly</summary>
+        public bool DelaySign {
+            get {
+                return m_delaySign;
             }
         }
         
@@ -166,6 +182,13 @@ namespace Ch.Elca.Iiop.IdlCompiler {
                         SetIsInvalid("tried to add a custom mapping file multiple times: " + customMappingFile.FullName);
                         return;
                     }
+                    
+                } else if (args[i].Equals("-snk")) {
+                    i++;
+                    m_signKeyFile = new FileInfo(args[i++]);
+                } else if (args[i].Equals("-delaySign")) {
+                    i++;
+                    m_delaySign = true;
                 } else {
                     SetIsInvalid(String.Format("Error: invalid option {0}", args[i]));
                     return;
@@ -357,6 +380,22 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                              commandLine.ErrorMessage.StartsWith(
                                 "tried to add a custom mapping file multiple times: "));
         }
+        
+        [Test]
+        public void TestSnkFile() {
+            string snkFile = "test.snk";
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-snk", snkFile, "testAsm", "test.idl" });
+            Assertion.AssertEquals("Key file", snkFile,
+                                   commandLine.SignKeyFile.Name);
+        }
+        
+        [Test]
+        public void TestDelaySign() {            
+            IDLToCLSCommandLine commandLine = new IDLToCLSCommandLine(
+                new string[] { "-delaySign", "testAsm", "test.idl" });
+            Assertion.Assert("DelaySign", commandLine.DelaySign);
+        }        
         
         
     }
