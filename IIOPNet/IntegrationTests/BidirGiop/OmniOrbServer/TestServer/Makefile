@@ -1,8 +1,8 @@
 !include .\MakeVars
 RELATIVE=$(OMNIORB_HOME)
-DELAY=..\..\..\utils\delay.exe
-LAUNCH=..\..\..\utils\launch.exe
-KILL=..\..\..\utils\kill.exe
+DELAY=..\..\..\..\Utils\delay.exe
+LAUNCH=..\..\..\..\Utils\launch.exe
+KILL=..\..\..\..\Utils\kill.exe
 
 
 build: omniorb_home_var server.exe

@@ -41,6 +41,7 @@ using System.Text;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.CorbaObjRef;
 using Ch.Elca.Iiop.Interception;
+using Ch.Elca.Iiop.MessageHandling;
 using omg.org.IOP;
 
 #if DEBUG_LOGFILE
@@ -488,11 +489,13 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         /// <param name="interceptionOptions"></param>
         private void ConfigureSinkProviderChain(GiopClientConnectionManager conManager,
+                                                GiopMessageHandler messageHandler,
                                                 IInterceptionOption[] interceptionOptions) {
             IClientChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopClientFormatterSinkProvider) {
-                    ((IiopClientFormatterSinkProvider)prov).Configure(conManager, interceptionOptions);
+                    ((IiopClientFormatterSinkProvider)prov).Configure(conManager, messageHandler,
+                                                                      interceptionOptions);
                     break;
                 }
                 prov = prov.Next;
@@ -525,8 +528,10 @@ namespace Ch.Elca.Iiop {
                 IClientFormatterSinkProvider formatterProv = new IiopClientFormatterSinkProvider();
                 formatterProv.Next = transportProvider;
                 m_providerChain = formatterProv;
-            }
-            ConfigureSinkProviderChain(m_conManager, interceptionOptions);
+            }            
+            GiopMessageHandler messageHandler = 
+                new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+            ConfigureSinkProviderChain(m_conManager, messageHandler, interceptionOptions);
         }
 
         #region Implementation of IChannelSender
@@ -548,7 +553,7 @@ namespace Ch.Elca.Iiop {
                 return (IMessageSink) sink;                
             } else if ((url == null) && (remoteChannelData is IiopChannelData)) {
                 // check remoteChannelData
-                Console.WriteLine("url null, remote channel data: " + remoteChannelData);
+                Trace.WriteLine("url null, remote channel data: " + remoteChannelData);
 //                IiopChannelData chanData = (IiopChannelData)remoteChannelData;
 //                IClientChannelSink sink = m_providerChain.CreateSink(this, url, chanData);
 //                if (!(sink is IMessageSink)) { 
@@ -789,11 +794,13 @@ namespace Ch.Elca.Iiop {
         /// <summary>
         /// Configures the installed IIOPServerSideFormatterProivder
         /// </summary>        
-        private void ConfigureSinkProviderChain(IInterceptionOption[] interceptionOptions) {
+        private void ConfigureSinkProviderChain(GiopMessageHandler messageHandler,
+                                                IInterceptionOption[] interceptionOptions) {
             IServerChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopServerFormatterSinkProvider) {
-                    ((IiopServerFormatterSinkProvider)prov).Configure(interceptionOptions);
+                    ((IiopServerFormatterSinkProvider)prov).Configure(messageHandler,
+                                                                      interceptionOptions);
                     break;
                 }
                 prov = prov.Next;
@@ -805,7 +812,6 @@ namespace Ch.Elca.Iiop {
             if (m_port < 0) {
                 throw new ArgumentException("illegal port to listen on: " + m_port); 
             }
-            ConfigureSinkProviderChain(interceptionOptions);
             m_transportFactory = transportFactory;
             m_hostNameToUse = DetermineMachineNameToUse();
             SetupChannelData(m_hostNameToUse, m_port, null);
@@ -816,6 +822,9 @@ namespace Ch.Elca.Iiop {
             if (m_providerChain == null) {
                 m_providerChain = new IiopServerFormatterSinkProvider();
             }
+            GiopMessageHandler messageHandler = 
+                new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+            ConfigureSinkProviderChain(messageHandler, interceptionOptions);            
             
             IServerChannelSink sinkChain = ChannelServices.CreateServerChannelSinkChain(m_providerChain, this);
             m_transportSink = new IiopServerTransportSink(sinkChain);            
@@ -858,6 +867,8 @@ namespace Ch.Elca.Iiop {
 
         private void SetupChannelData(string hostName, int port, TaggedComponent[] additionalComponents) {
             IiopChannelData newChannelData = new IiopChannelData(hostName, port);
+            newChannelData.AddAdditionalTaggedComponent(
+                Services.CodeSetService.CreateDefaultCodesetComponent());
             if ((additionalComponents != null) && (additionalComponents.Length > 0)){
                 newChannelData.AddAdditionalTaggedComponents(additionalComponents);
             }
@@ -978,6 +989,7 @@ namespace Ch.Elca.Iiop {
         private ArrayList m_additionTaggedComponents = new ArrayList();
         #endregion IFields
         #region IConstructors
+
         public IiopChannelData(string hostName, int port) : base(new String[] { "iiop://"+hostName+":"+port } ) {
             m_hostName = hostName;
             m_port = port;
@@ -1023,18 +1035,130 @@ namespace Ch.Elca.Iiop {
             m_additionTaggedComponents.AddRange(newTaggedComponents);
         }
         
-        /// <summary>replaces the current additional tagged components by the new ones.</summary>
-        public void ReplaceAdditionalTaggedComponents(TaggedComponent[] newTaggedComponents) {
-            // now add additional components to the channel data:            
-            m_additionTaggedComponents.Clear();
-            if (newTaggedComponents != null) {
-                m_additionTaggedComponents.AddRange(newTaggedComponents);
-            
-            }        
-        }
-
         #endregion IMethods
 
     }
     
 }
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using System.Runtime.Remoting.Channels;
+    using System.Runtime.Remoting;
+    using NUnit.Framework;
+    using Ch.Elca.Iiop.Services;
+    using Ch.Elca.Iiop;
+    using Ch.Elca.Iiop.Idl;
+    
+    /// <summary>
+    /// Unit-test for class IiopChannelData
+    /// </summary>
+    [TestFixture]    
+    public class IiopChannelDataTest {
+        
+        private const string HOST = "localhost";
+        private const int PORT = 8087;
+        
+        private IiopChannelData m_channelData;
+        
+        [SetUp]
+        public void Setup() {
+            m_channelData = new IiopChannelData(HOST, PORT);
+        }
+        
+        [Test]
+        public void TestCorrectCreation() {
+            Assertion.AssertEquals("Host", HOST, m_channelData.HostName);
+            Assertion.AssertEquals("Port", PORT, m_channelData.Port);
+            Assertion.AssertEquals("No components by default", 0, 
+                                   m_channelData.AdditionalTaggedComponents.Length);
+            Assertion.AssertEquals("chan uris length", 1,
+                                   m_channelData.ChannelUris.Length);
+            Assertion.AssertEquals("chan uri 1", "iiop://" + HOST + ":" + PORT,
+                                   m_channelData.ChannelUris[0]);
+        }
+        
+        [Test]
+        public void AddComponent() {
+            TaggedComponent comp = 
+                TaggedComponent.CreateTaggedComponent(TAG_CODE_SETS.ConstVal,
+                                                      new Services.CodeSetComponentData(10000,
+                                                                                        new int[0],
+                                                                                        20000,
+                                                                                        new int[0]));                                    
+            m_channelData.AddAdditionalTaggedComponent(comp);
+            Assertion.AssertEquals("Component not added correctly", 1, 
+                                   m_channelData.AdditionalTaggedComponents.Length);
+            Assertion.AssertEquals("Component not added correctly", comp.tag, 
+                                   m_channelData.AdditionalTaggedComponents[0].tag);
+        }
+        
+    }
+    
+    public interface ISimpleCallTestOnChannel {
+        
+        byte EchoByte(byte arg);
+        
+    }
+    
+    [SupportedInterface(typeof(ISimpleCallTestOnChannel))]
+    public class SimpleCallTestOnChannelImpl : MarshalByRefObject, ISimpleCallTestOnChannel {
+        
+        public byte EchoByte(byte arg) {
+            return arg;
+        }
+        
+        public override object InitializeLifetimeService() {
+            return null;
+        }
+        
+    }
+    
+    
+    /// <summary>
+    /// Simple Unit-test for whole Channel functionality.
+    /// </summary>
+    [TestFixture]
+    public class SimpleCallTests {
+
+        private const int TEST_PORT = 8090;
+        
+        private IiopChannel m_channel;
+        
+        [SetUp]
+        public void SetUp() {                       
+            m_channel = new IiopChannel(TEST_PORT);
+            ChannelServices.RegisterChannel(m_channel);
+        }
+        
+        [TearDown]
+        public void TearDown() {            
+            if (m_channel != null) {
+                ChannelServices.UnregisterChannel(m_channel);
+            }
+            m_channel = null;
+        }
+    
+        [Test]
+        public void TestSimpleCall() {
+            MarshalByRefObject mbr = new SimpleCallTestOnChannelImpl();
+            string uri = "TestSimpleCallOnChannel";
+            try {
+                RemotingServices.Marshal(mbr, uri);
+                ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+                    RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                             "iiop://localhost:" + TEST_PORT + "/" + uri);
+                byte arg = 1;
+                Assertion.AssertEquals(1, proxy.EchoByte(arg));
+            } finally {
+                RemotingServices.Disconnect(mbr);
+            }
+        }
+    }
+    
+    
+}
+
+#endif

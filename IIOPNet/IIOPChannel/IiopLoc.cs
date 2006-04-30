@@ -44,6 +44,12 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     /// </summary>
     internal class IiopLoc {
         
+        #region SFields
+        
+        private readonly static object s_defaultCodeSetTaggedComponent = 
+            Services.CodeSetService.CreateDefaultCodesetComponent();
+        
+        #endregion SFields                
         #region IFields
         
         private string m_objectUri;
@@ -110,8 +116,10 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         }        
         
         public IorProfile[] GetProfiles() {
-            IorProfile[] result = new IorProfile[] { 
-                m_objAddr.GetProfileForAddr(GetKeyAsByteArray()) };
+            IorProfile addrProfile = 
+                m_objAddr.GetProfileForAddr(GetKeyAsByteArray());
+            addrProfile.AddTaggedComponent((TaggedComponent)s_defaultCodeSetTaggedComponent);
+            IorProfile[] result = new IorProfile[] { addrProfile };
             return result;
         }
         
@@ -141,7 +149,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     /// base class for iiop-addresses
     /// </summary>
     internal abstract class IiopLocIiopAddrBase : IiopLocObjAddr {
-
+        
         #region IFields
         
         private GiopVersion m_version;
@@ -317,16 +325,20 @@ namespace Ch.Elca.Iiop.Tests {
 	
     using NUnit.Framework;
     using Ch.Elca.Iiop.CorbaObjRef;
+    using Ch.Elca.Iiop.Services;
+    using Ch.Elca.Iiop.Security.Ssl;    
     
     /// <summary>
     /// Unit-test for class Corbaloc
     /// </summary>
-    public class IioplocTest : TestCase {
+    [TestFixture]
+    public class IioplocTest {
         
         public IioplocTest() {
         }
 
         
+        [Test]
         public void TestIiopLoc() {
             string testIiopLoc = "iiop://elca.ch:1234/test";
             IiopLoc parsed = new IiopLoc(testIiopLoc);
@@ -346,9 +358,15 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(1, addr.Version.Major);
             Assertion.AssertEquals(1, addr.Version.Minor);
             Assertion.AssertEquals("elca.ch", addr.Host);
-            Assertion.AssertEquals(1234, addr.Port);            
+            Assertion.AssertEquals(1234, addr.Port);
+            
+        	Assertion.AssertEquals(1, parsed.GetProfiles().Length);
+        	Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
+        	Assertion.Assert(parsed.GetProfiles()[0].TaggedComponents.ContainsTaggedComponent(
+                                CodeSetService.SERVICE_ID));            
         }
         
+        [Test]
         public void TestIiopSslLoc() {
             string testIiopLoc = "iiop-ssl://elca.ch:1234/test";
             IiopLoc parsed = new IiopLoc(testIiopLoc);
@@ -368,7 +386,14 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(1, addr.Version.Major);
             Assertion.AssertEquals(1, addr.Version.Minor);
             Assertion.AssertEquals("elca.ch", addr.Host);
-            Assertion.AssertEquals(1234, addr.Port);            
+            Assertion.AssertEquals(1234, addr.Port);         
+            
+        	Assertion.AssertEquals(1, parsed.GetProfiles().Length);
+        	Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
+        	Assertion.Assert(parsed.GetProfiles()[0].TaggedComponents.ContainsTaggedComponent(
+                                 CodeSetService.SERVICE_ID));
+        	Assertion.Assert(parsed.GetProfiles()[0].TaggedComponents.ContainsTaggedComponent(
+                                 TAG_SSL_SEC_TRANS.ConstVal));            
         }
         
     }

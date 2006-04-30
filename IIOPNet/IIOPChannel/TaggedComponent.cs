@@ -90,6 +90,7 @@ namespace omg.org.IOP {
             
     [RepositoryID("IDL:omg.org/IOP/TaggedComponent:1.0")]
     [IdlStruct]
+    [Serializable]
     public struct TaggedComponent {
     
         #region SFields
@@ -138,24 +139,28 @@ namespace omg.org.IOP {
         /// <summary>
         /// serialise the component data as cdr encapsulation.
         /// </summary>
-        private static byte[] SerialiseComponentData(object data) {
+        private static byte[] SerialiseComponentData(object data,
+                                                     SerializerFactory serFactory) {
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0);
-            Marshaller marshaller = Marshaller.GetSingleton();
-            marshaller.Marshal(data.GetType(), AttributeExtCollection.EmptyCollection, 
-                               data, encap);
+            Serializer ser =
+                serFactory.Create(data.GetType(), 
+                                  AttributeExtCollection.EmptyCollection); 
+            ser.Serialize(data, encap);
             return encap.GetEncapsulationData();
         }                
         
         public static TaggedComponent CreateTaggedComponent(int tag, object componentData) {
-            return new TaggedComponent(tag, SerialiseComponentData(componentData));
+            return new TaggedComponent(tag, SerialiseComponentData(componentData,
+                                                                   OrbServices.GetSingleton().SerializerFactory));
         }
         
         /// <summary>deserialise the component data of the given type; encoded as cdr encapsulation.</summary>        
         public static object DeserialiseComponentData(TaggedComponent component, Type componentDataType) {
             CdrEncapsulationInputStream encap = new CdrEncapsulationInputStream(component.component_data);
-            Marshaller marshaller = Marshaller.GetSingleton();
-            return marshaller.Unmarshal(componentDataType, AttributeExtCollection.EmptyCollection, 
-                                        encap);
+            Serializer ser =
+                OrbServices.GetSingleton().SerializerFactory.Create(componentDataType, 
+                                                                    AttributeExtCollection.EmptyCollection); 
+            return ser.Deserialize(encap);
         }        
         
         #endregion SMethods        

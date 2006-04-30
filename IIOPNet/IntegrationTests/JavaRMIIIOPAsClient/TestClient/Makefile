@@ -15,6 +15,9 @@ build-idl:
 	idlj -td .. $(TestService)TestAbstrInterfaceImplByMarshalByVal.idl
 	idlj -td .. $(TestService)TestEchoInterface.idl
 	idlj -td .. $(TestService)TestEnum.idl
+	idlj -td .. $(TestService)TestEnumBI16.idl
+	idlj -td .. $(TestService)TestEnumUI32.idl
+	idlj -td .. $(TestService)TestEnumBI64.idl
 	idlj -td .. $(TestService)TestInterfaceA.idl
 	idlj -td .. $(TestService)TestNonSerializableBaseClass.idl
 	idlj -td .. $(TestService)TestSerializableClassB1.idl
