@@ -3,6 +3,9 @@
 CSC=$(NET_FRAMEWORK_DIR)csc
 NUNIT_FRAMEWORK_DLL=$(NUNITV2_HOME)\bin\nunit.framework.dll 
 NUNIT_CONSOLE=%NUNITV2_HOME%\bin\nunit-console.exe
+# the following option can be set to /assembly: to support older versions of nunit
+# NUNIT_ASSEMBLY_ARG_OPTION=/assembly:
+
 
 nunit-var:
 	@if not defined NUNITV2_HOME echo Define NUNITV2_HOME as the home directory of your NUNIT installation

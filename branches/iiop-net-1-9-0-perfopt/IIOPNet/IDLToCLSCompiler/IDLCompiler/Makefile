@@ -38,7 +38,7 @@ $(DestUt)IDLToCLSCompiler.exe: $(DestUt)IIOPChannel.dll $(DestUt)IDLPreprocessor
 
 
 test: build-tests
-	$(NUNIT_CONSOLE) $(DestUt)IDLToCLSCompiler.exe
+	$(NUNIT_CONSOLE) $(NUNIT_ASSEMBLY_ARG_OPTION)$(DestUt)IDLToCLSCompiler.exe
 
 	
 clean:
