@@ -15,3 +15,13 @@ clean:
         cd Client
         $(MAKE) clean
         cd ..
+
+start-server:
+	cd Server
+	$(MAKE) start-server
+ 	cd ..
+ 
+stop-server:
+ 	cd Server
+ 	$(MAKE) stop-server
+ 	cd ..
