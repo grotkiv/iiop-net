@@ -1,3 +1,5 @@
+include ..\..\..\MakeVars
+
 IIOPCHANNEL = ..\..\..\IIOPChannel\bin\IIOPChannel.dll
 IIOPCHANNELPDB = ..\..\..\IIOPChannel\bin\IIOPChannel.pdb
 LAUNCH = ..\..\..\Utils\launch.exe
@@ -20,7 +22,7 @@ $(bin)IIOPChannel.dll: $(IIOPCHANNEL)
 
 
 $(bin)TestServer.exe: $(bin)IIOPChannel.dll *.cs
-    csc $(CSFLAGS) /t:exe /r:$(bin)IIOPChannel.dll /out:$(bin)TestServer.exe *.cs
+    $(CSC) $(CSFLAGS) /t:exe /r:$(bin)IIOPChannel.dll /out:$(bin)TestServer.exe *.cs
 
 IDL\Ch\Elca\Iiop\IntegrationTests\TestService.idl: $(bin)TestServer.exe
     ..\..\..\CLSToIDLGenerator\bin\CLSIDLGenerator.exe -o IDL Ch.Elca.Iiop.IntegrationTests.TestService $(bin)TestServer.exe

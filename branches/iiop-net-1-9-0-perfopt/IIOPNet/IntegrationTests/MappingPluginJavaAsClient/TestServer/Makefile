@@ -1,3 +1,5 @@
+include ..\..\..\MakeVars
+
 IIOPCHANNEL = ..\..\..\IIOPChannel\bin\IIOPChannel.dll
 IIOPCHANNELPDB = ..\..\..\IIOPChannel\bin\IIOPChannel.pdb
 MAPPINGPLUGINDIR = ..\..\..\MappingPlugin\java\ 
@@ -31,7 +33,7 @@ $(bin)customGeneratorMapping.xml: $(bin) $(MAPPINGPLUGINDIR)customGeneratorMappi
         copy /y $(MAPPINGPLUGINDIR)customGeneratorMapping.xml $(bin)
 
 build-server: $(bin)IIOPChannel.dll $(bin)$(CUSTOMJAVATYPEMAPPING).dll $(bin)customMapping.xml $(bin)javaCollections.dll *.cs
-    csc $(CSFLAGS) /res:customMapping.xml /t:exe /r:$(bin)IIOPChannel.dll /out:$(bin)TestServer.exe TestService.cs TestServer.cs
+    $(CSC) $(CSFLAGS) /res:customMapping.xml /t:exe /r:$(bin)IIOPChannel.dll /out:$(bin)TestServer.exe TestService.cs TestServer.cs
     
 
 build-idl: $(bin)customGeneratorMapping.xml
