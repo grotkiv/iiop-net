@@ -1,3 +1,5 @@
+include ..\..\..\..\MakeVars
+
 IIOPCHANNEL = ..\..\..\..\IIOPChannel\bin\IIOPChannel.dll
 IIOPCHANNELPDB = ..\..\..\..\IIOPChannel\bin\IIOPChannel.pdb
 LAUNCH = ..\..\..\..\Utils\launch.exe
@@ -20,7 +22,7 @@ $(bin)IIOPChannel.dll: $(IIOPCHANNEL)
 
 $(bin)TestServer.exe:  $(bin)IIOPChannel.dll $(bin)testIdlServices.dll *.cs
 	if not exist $(bin)nul mkdir $(bin)
-	csc $(CSFLAGS) /t:exe /r:$(IIOPCHANNEL) /r:$(bin)testIdlServices.dll /out:$(bin)TestServer.exe *.cs
+	$(CSC) $(CSFLAGS) /t:exe /r:$(IIOPCHANNEL) /r:$(bin)testIdlServices.dll /out:$(bin)TestServer.exe *.cs
 
 $(bin)testIdlServices.dll: TestExceptionService.idl TestBoxedValueTypeService.idl
 	..\..\..\..\IDLToCLSCompiler\IDLCompiler\bin\IDLToCLSCompiler.exe -o $(bin) -snk ..\..\..\..\Key.snk testIdlServices TestExceptionService.idl TestBoxedValueTypeService.idl
@@ -38,16 +40,16 @@ start-server: install-gac
 	@$(LAUNCH) bin\TestServer.exe >> pid
 
 install-gac: $(IIOPCHANNEL)
-	gacutil /i $(IIOPCHANNEL)
-	gacutil /i $(bin)testIdlServices.dll
+	$(GACUTIL) /i $(IIOPCHANNEL)
+	$(GACUTIL) /i $(bin)testIdlServices.dll
 
 stop-server: uninstall-gac
 	@for /F %%p in (pid) do @$(KILL) %%p
 	@del pid
 
 uninstall-gac:
-	gacutil /u testIdlServices
-	gacutil /u IiopChannel
+	$(GACUTIL) /u testIdlServices
+	$(GACUTIL) /u IiopChannel
 
 
 clean: uninstall-gac
