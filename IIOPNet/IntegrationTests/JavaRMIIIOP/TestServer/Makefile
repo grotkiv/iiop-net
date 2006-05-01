@@ -1,4 +1,4 @@
-
+include ..\..\..\MakeVars
 
 LAUNCH = ..\..\..\Utils\launch.exe
 KILL = ..\..\..\Utils\kill.exe
