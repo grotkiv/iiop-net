@@ -515,6 +515,13 @@ namespace Ch.Elca.Iiop.Tests {
                                  TAG_SSL_SEC_TRANS.ConstVal));
         }
         
+        [ExpectedException(typeof(BAD_PARAM))]
+        [Test]
+        public void TestNoCorbaLoc() {
+        	string otherUrl = "iiop://localhost:8087/test";
+        	Corbaloc parsed = new Corbaloc(otherUrl);
+        }
+        
     }
 
 }
