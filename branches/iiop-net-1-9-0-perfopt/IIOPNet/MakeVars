@@ -19,3 +19,9 @@ junit-var:
 JacORBHome:
     if not defined JACORB_HOME echo define JACORB_HOME first (e.g. C:\JACORB)
     if not defined JACORB_HOME exit 2
+
+omniorb_home_var:
+    @IF NOT DEFINED OMNIORB_HOME echo define OMNIORB_HOME first
+    @IF NOT DEFINED OMNIORB_HOME exit 2
+    @IF NOT DEFINED OMNIORB_VERSION echo define OMNIORB_VERSION first
+    @IF NOT DEFINED OMNIORB_VERSION exit 2
