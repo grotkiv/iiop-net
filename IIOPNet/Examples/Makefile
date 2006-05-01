@@ -1,4 +1,4 @@
-
+include ..\MakeVars
 
 build: idl-files
 	cd GenericCollections
