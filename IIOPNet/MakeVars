@@ -1,3 +1,7 @@
 CSC=$(NET_FRAMEWORK_DIR)csc
-NUNIT=$(NUNITV2_HOME)\bin\nunit.framework.dll 
+NUNIT_FRAMEWORK_DLL=$(NUNITV2_HOME)\bin\nunit.framework.dll 
+NUNIT_CONSOLE=%NUNITV2_HOME%\bin\nunit-console.exe
 
+nunit-var:
+	if not defined NUNITV2_HOME echo Define NUNITV2_HOME as the home directory of your NUNIT installation
+	if not defined NUNITV2_HOME exit 2
