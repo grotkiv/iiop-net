@@ -1,3 +1,5 @@
+include ..\..\..\MakeVars
+
 LAUNCH = ..\..\..\Utils\launch.exe
 DELAY = ..\..\..\Utils\delay.exe
 KILL = ..\..\..\Utils\kill.exe
