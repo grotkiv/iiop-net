@@ -1,3 +1,5 @@
+.DEFAULT_GOAL : build
+
 CSC=$(NET_FRAMEWORK_DIR)csc
 NUNIT_FRAMEWORK_DLL=$(NUNITV2_HOME)\bin\nunit.framework.dll 
 NUNIT_CONSOLE=%NUNITV2_HOME%\bin\nunit-console.exe
