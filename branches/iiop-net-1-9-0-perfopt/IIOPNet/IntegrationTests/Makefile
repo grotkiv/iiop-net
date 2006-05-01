@@ -1,3 +1,5 @@
+include ..\MakeVars
+
 PRCURRENTTIME = ..\Utils\currenttime.exe
 
 
@@ -82,15 +84,6 @@ build-ssl:
     @if not defined JAVA_HOME echo JAVA_HOME not set, skipping JBOSS SSL integration test
     @if defined JBOSS_HOME_3_2_5 @if defined JAVA_HOME $(MAKE) /C build-with-setup 
     cd ..
-
-
-nunit-var:        
-    @if not defined NUNITV2_HOME echo Set the NUNITV2_HOME variable to the NUnit V2 home directory. Please check TestInstructions.txt.
-    @if not defined NUNITV2_HOME exit 2
-
-junit-var:
-    @if not defined JUNIT_HOME echo set the JUNIT_HOME variable to the JUNIT home directory. Please check TestInstructions.txt.
-    @if not defined JUNIT_HOME exit 2
 
 
 test: nunit-var junit-var

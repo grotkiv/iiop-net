@@ -5,5 +5,10 @@ NUNIT_FRAMEWORK_DLL=$(NUNITV2_HOME)\bin\nunit.framework.dll
 NUNIT_CONSOLE=%NUNITV2_HOME%\bin\nunit-console.exe
 
 nunit-var:
-	if not defined NUNITV2_HOME echo Define NUNITV2_HOME as the home directory of your NUNIT installation
-	if not defined NUNITV2_HOME exit 2
+	@if not defined NUNITV2_HOME echo Define NUNITV2_HOME as the home directory of your NUNIT installation
+	@if not defined NUNITV2_HOME exit 2
+
+junit-var:
+	@if not defined JUNIT_HOME echo set the JUNIT_HOME variable to the JUNIT home directory. Please check TestInstructions.txt.
+	@if not defined JUNIT_HOME exit 2
+
