@@ -1,4 +1,5 @@
-NUNIT=$(NUNITV2_HOME)\bin\nunit.framework.dll 
+include ..\..\..\..\MakeVars
+
 IIOPCHANNEL = ..\..\..\..\IIOPChannel\bin\IIOPChannel.dll 
 IIOPCHANNELPDB = ..\..\..\..\IIOPChannel\bin\IIOPChannel.pdb 
 bin         = bin\ 
@@ -26,21 +27,21 @@ $(binTmp)Client.dll: IDL\Ch\Elca\Iiop\IntegrationTests\TestService.idl IDL\Ch\El
 
 $(bin)ClientTest.dll: $(binTmp)Client.dll *.cs
         if not exist $(bin)nul mkdir $(bin)
-	csc $(CSFLAGS) /t:library /r:$(NUNIT) /r:$(IIOPCHANNEL) /r:$(binTmp)Client.dll /out:$(bin)ClientTest.dll TestClient.cs ValueTypeImpls.cs
+	$(CSC) $(CSFLAGS) /t:library /r:$(NUNIT_FRAMEWORK_DLL) /r:$(IIOPCHANNEL) /r:$(binTmp)Client.dll /out:$(bin)ClientTest.dll TestClient.cs ValueTypeImpls.cs
 
 
 start-client: install-gac
 	@echo "Basic GAC IntegrationTest"
-	%NUNITV2_HOME%\bin\nunit-console.exe /assembly:bin\ClientTest.dll
+	$(NUNIT_CONSOLE) $(NUNIT_ASSEMBLY_ARG_OPTION)bin\ClientTest.dll
 	$(MAKE) Makefile -C uninstall-gac
 
 install-gac:
-	gacutil /i $(IIOPCHANNEL)
-	gacutil /i $(binTmp)Client.dll
+	$(GACUTIL) /i $(IIOPCHANNEL)
+	$(GACUTIL) /i $(binTmp)Client.dll
 
 uninstall-gac:
-	gacutil /u Client
-	gacutil /u IiopChannel
+	$(GACUTIL) /u Client
+	$(GACUTIL) /u IiopChannel
 	
 
 clean: uninstall-gac
