@@ -1,3 +1,5 @@
+include ..\..\..\..\MakeVars
+
 CLS2IDL     = ..\..\..\..\CLSToIDLGenerator\bin\CLSIDLGenerator.exe
 IIOPCHANNEL = ..\..\..\..\IIOPChannel\bin\IIOPChannel.dll
 bin         = bin\ 
@@ -20,7 +22,7 @@ $(bin)IIOPChannel.dll: $(IIOPCHANNEL)
 	copy /y $(IIOPCHANNEL) $(bin)IIOPChannel.dll
 
 $(SERVEREXE): $(bin)IIOPChannel.dll *.cs
-	csc $(CSFLAGS) /t:exe /out:$@ /r:$(bin)IIOPChannel.dll *.cs
+	$(CSC) $(CSFLAGS) /t:exe /out:$@ /r:$(bin)IIOPChannel.dll *.cs
 
 
 build-idl: $(IDL) $(SERVEREXE) 

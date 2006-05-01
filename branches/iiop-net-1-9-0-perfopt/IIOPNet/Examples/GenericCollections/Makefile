@@ -1,3 +1,4 @@
+include ..\..\MakeVars
 
 build:
 	cd net
