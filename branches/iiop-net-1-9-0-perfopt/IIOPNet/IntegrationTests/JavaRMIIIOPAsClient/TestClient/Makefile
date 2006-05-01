@@ -1,7 +1,7 @@
+include ..\..\..\MakeVars
+
 IDLSource=..\TestServer\IDL\Ch\Elca\Iiop\IntegrationTests\*.idl
 TestService=Ch\Elca\Iiop\IntegrationTests\ 
-JUNIT_JAR = $(JUNIT_HOME)\junit.jar
-
 
 build: build-idl build-java
 
@@ -38,21 +38,17 @@ build-idl:
 	idlj -td .. Predef.idl
 	cd ..
 
-junit-jar:
-	if not defined JUNIT_HOME echo define JUNIT_HOME first (e.g. C:\JUNIT\Junit3.8.1)
-        if not defined JUNIT_HOME exit 2
-
 copy-valuetypeImpls:
         copy valTypeImpls\*.java $(TestService)
 
-build-java: junit-jar copy-valuetypeImpls compile-java
+build-java: junit-var copy-valuetypeImpls compile-java
 
 compile-java: $(TestService)*.java *.java
 	javac -classpath .;$(JUNIT_JAR) $?
 
 start-client:
-	@echo "Mapping plugin java client IntegrationTest"
-	java -Djava.naming.factory.initial=com.sun.jndi.cosnaming.CNCtxFactory -Djava.naming.provider.url=iiop://localhost:8087 -cp .;%JUNIT_HOME%\junit.jar TestClient
+	@echo "java client IntegrationTest"
+	java -Djava.naming.factory.initial=com.sun.jndi.cosnaming.CNCtxFactory -Djava.naming.provider.url=iiop://localhost:8087 -cp .;$(JUNIT_JAR) TestClient
 
 clean:
 	if exist IDL\nul rmdir /q /s IDL
