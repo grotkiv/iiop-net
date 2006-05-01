@@ -1,4 +1,4 @@
-
+include ..\MakeVars
 Utils = launch.exe kill.exe delay.exe currenttime.exe
 
 .SUFFIXES : .exe .cs
@@ -6,7 +6,7 @@ Utils = launch.exe kill.exe delay.exe currenttime.exe
 build: $(Utils)
 
 .cs.exe:
-	csc $(CSFLAGS) $<
+	$(CSC) $(CSFLAGS) $<
 
 clean:
 	if exist *.exe del *.exe
