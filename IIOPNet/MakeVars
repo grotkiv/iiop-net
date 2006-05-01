@@ -27,3 +27,8 @@ omniorb_home_var:
     @IF NOT DEFINED OMNIORB_HOME exit 2
     @IF NOT DEFINED OMNIORB_VERSION echo define OMNIORB_VERSION first
     @IF NOT DEFINED OMNIORB_VERSION exit 2
+
+mico_home_var:
+    @IF NOT DEFINED MICO_HOME echo define MICO_HOME first
+    @IF NOT DEFINED MICO_HOME exit 2
+
