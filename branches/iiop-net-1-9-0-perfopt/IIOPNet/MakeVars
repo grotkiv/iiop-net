@@ -1,0 +1,3 @@
+CSC=$(NET_FRAMEWORK_DIR)csc
+NUNIT=$(NUNITV2_HOME)\bin\nunit.framework.dll 
+

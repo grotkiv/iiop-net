@@ -1,4 +1,4 @@
-projects = IIOPChannel CLSToIDLGenerator
+include MakeVars
 
 build: build-base build-examples
 
