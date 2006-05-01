@@ -1,3 +1,5 @@
+include ..\..\MakeVars
+
 DELAY = ..\..\Utils\delay.exe
 PRCURRENTTIME = ..\..\Utils\currenttime.exe
 
