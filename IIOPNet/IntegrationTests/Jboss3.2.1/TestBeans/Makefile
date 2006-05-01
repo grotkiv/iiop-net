@@ -1,3 +1,5 @@
+include ..\..\..\MakeVars
+
 Test=ch\elca\iiop\integrationTests\ 
 BIN=bin\ 
 IDL=IDL\ 
