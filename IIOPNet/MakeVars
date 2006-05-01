@@ -7,6 +7,8 @@ NUNIT_CONSOLE=%NUNITV2_HOME%\bin\nunit-console.exe
 # the following option can be set to /assembly: to support older versions of nunit
 # NUNIT_ASSEMBLY_ARG_OPTION=/assembly:
 
+NUNITFORMS=$(NUNITFORMS_HOME)\NUnitForms.dll
+
 JUNIT_JAR = $(JUNIT_HOME)\junit.jar
 
 

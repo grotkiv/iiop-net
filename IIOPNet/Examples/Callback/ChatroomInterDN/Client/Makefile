@@ -1,5 +1,5 @@
-NUNIT=$(NUNITV2_2_HOME)\bin\nunit.framework.dll
-NUNITFORMS=$(NUNITFORMS_HOME)\NUnitForms.dll
+include ..\..\..\..\MakeVars
+
 IIOPCHANNEL = ..\..\..\..\IIOPChannel\bin\IIOPChannel.dll 
 IIOPCHANNELPDB = ..\..\..\..\IIOPChannel\bin\IIOPChannel.pdb 
 bin         = bin\ 
@@ -29,13 +29,13 @@ $(bin)NUnitForms.dll:
 
 
 build-client: $(bin)IIOPChannel.dll $(bin)chatroom.dll Client.cs ClientForm.cs MessageImpl.cs MessageListenerImpl.cs
-	csc $(CSFLAGS) /r:$(bin)IIOPChannel.dll /r:$(bin)chatroom.dll /t:exe /out:$(bin)Client.exe Client.cs ClientForm.cs MessageImpl.cs MessageListenerImpl.cs
+	$(CSC) $(CSFLAGS) /r:$(bin)IIOPChannel.dll /r:$(bin)chatroom.dll /t:exe /out:$(bin)Client.exe Client.cs ClientForm.cs MessageImpl.cs MessageListenerImpl.cs
 
 $(bin)ClientTest.dll: $(bin)NUnitForms.dll $(bin)IIOPChannel.dll $(bin)chatroom.dll *.cs
-	csc $(CSFLAGS) /t:library /r:$(NUNIT) /r:$(bin)NUnitForms.dll /r:$(bin)IIOPChannel.dll /r:$(bin)chatroom.dll /out:$(bin)ClientTest.dll *.cs 
+	$(CSC) $(CSFLAGS) /t:library /r:$(NUNIT_FRAMEWORK_DLL) /r:$(bin)NUnitForms.dll /r:$(bin)IIOPChannel.dll /r:$(bin)chatroom.dll /out:$(bin)ClientTest.dll *.cs 
 
 start-client: $(bin)ClientTest.dll
-	%NUNITV2_2_HOME%\bin\nunit-console.exe bin\ClientTest.dll
+	$(NUNIT_CONSOLE) $(NUNIT_ASSEMBLY_ARG_OPTION)bin\ClientTest.dll
 
 clean:
 	if exist bin del /s /q bin\ 
