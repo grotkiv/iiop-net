@@ -1184,6 +1184,7 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Assertion.AssertEquals("wrong adder result", arg1 + arg2, adder.Add(arg1, arg2));
         }
 
+        [Test]
         public void TestErrorReportBadOperation() {
             m_testService.GetAllUsagerType();
         }
