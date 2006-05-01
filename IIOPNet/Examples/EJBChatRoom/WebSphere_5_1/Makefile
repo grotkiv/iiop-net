@@ -19,3 +19,18 @@ clean:
 	cd ..\net
 	$(MAKE) clean
 	cd ..
+
+start-server:
+        cd java
+        $(MAKE) start-server
+        cd ..
+
+stop-server:
+        cd java
+        $(MAKE) stop-server
+        cd ..
+
+start-client:
+        cd net
+        $(MAKE) start-client
+        cd ..

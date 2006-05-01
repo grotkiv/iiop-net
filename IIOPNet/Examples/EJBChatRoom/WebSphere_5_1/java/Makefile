@@ -1,3 +1,5 @@
+include ..\..\..\..\MakeVars
+
 ANT_ARGS=-Dbasedir="." -Dwas_home="$(WAS5_1_HOME)" 
 JAVA_HOME=$(WAS5_1_HOME)\java 
 ANTCLASSPATH="$(JAVA_HOME)\lib\tools.jar";"$(WAS5_1_HOME)\lib\xerces.jar";"$(WAS5_1_HOME)\lib\j2ee.jar";"$(WAS5_1_HOME)\lib\ant.jar"
@@ -21,6 +23,10 @@ undeploy:
 start-server: undeploy build-deploy
         @echo Starting WAS5 in default configuration (server1)
         @call $(WAS5_1_HOME)\bin\startServer.bat server1
+
+stop-server:
+	@echo stopping WAS5
+	@call $(WAS5_1_HOME)\bin\stopServer.bat server1	
 
 clean:
 	"$(WAS5_1_HOME)\bin\wsadmin" -conntype none -c "$$AdminApp uninstall WAS5EJBChatroom"
