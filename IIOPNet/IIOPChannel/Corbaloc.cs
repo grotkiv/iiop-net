@@ -403,18 +403,17 @@ namespace Ch.Elca.Iiop.Tests {
 			string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
         	Corbaloc parsed = new Corbaloc(testCorbaLoc);
         	Assertion.AssertEquals("test", parsed.KeyString);
-        	Assertion.AssertEquals(1, parsed.ObjAddrs.Length);
-        	Assertion.AssertEquals(typeof(CorbaLocIiopAddr), parsed.ObjAddrs[0].GetType());
-        	CorbaLocIiopAddr addr = (CorbaLocIiopAddr)(parsed.ObjAddrs[0]);
-        	Assertion.AssertEquals(1, addr.Version.Major);
-        	Assertion.AssertEquals(2, addr.Version.Minor);
-        	Assertion.AssertEquals("elca.ch", addr.Host);
-        	Assertion.AssertEquals(1234, addr.Port);
-        	
+        	        	        	        	
         	Assertion.AssertEquals(1, parsed.GetProfiles().Length);
         	Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
-        	Assertion.Assert(parsed.GetProfiles()[0].TaggedComponents.ContainsTaggedComponent(
+        	InternetIiopProfile profile = (InternetIiopProfile)parsed.GetProfiles()[0];
+        	Assertion.Assert(profile.TaggedComponents.ContainsTaggedComponent(
                                 CodeSetService.SERVICE_ID));
+
+        	Assertion.AssertEquals(1, profile.Version.Major);
+        	Assertion.AssertEquals(2, profile.Version.Minor);
+        	Assertion.AssertEquals("elca.ch", profile.HostName);
+        	Assertion.AssertEquals(1234, profile.Port);        	        	        	        	
         }
         
         [Test]
