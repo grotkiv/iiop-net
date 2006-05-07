@@ -787,3 +787,67 @@ namespace Corba {
     }
 
 }
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using System;
+    using System.Reflection;
+    using System.IO;
+    using NUnit.Framework;
+    using omg.org.CORBA;
+    using Corba;
+    
+    /// <summary>
+    /// Unit-tests for testing DataInputStream
+    /// </summary>
+    [TestFixture]
+    public class DataInputStreamTest {
+    	
+    	private DataInputStream CreateInputStream(byte[] content) {
+    		MemoryStream contentStream = new MemoryStream(content);
+    		CdrInputStreamImpl inputStream = new CdrInputStreamImpl(contentStream);
+    		inputStream.ConfigStream(0, new GiopVersion(1, 2));
+    		inputStream.SetMaxLength((uint)content.Length);
+    		DataInputStreamImpl di = 
+    			new DataInputStreamImpl(inputStream, new SerializerFactory());
+    		return di;
+    	}
+    	
+    	[Test]
+    	public void TestReadOctet() {
+    		byte val = 1;
+    		DataInputStream inputStream = CreateInputStream(new byte[] { val });
+    		byte read = inputStream.read_octet();
+    		Assertion.AssertEquals("read", val, read);
+    	}
+    	
+    }
+    
+    /// <summary>
+    /// Unit-tests for testing DataOutputStream
+    /// </summary>
+    [TestFixture]
+    public class DataOutputStreamTest {
+    	    	
+    	
+    	[Test]
+    	public void TestWriteOctet() {
+    		byte val = 1;
+    		MemoryStream outputStream = new MemoryStream();
+    		CdrOutputStream cdrOut = new CdrOutputStreamImpl(outputStream, 0, new GiopVersion(1,2));
+    		DataOutputStream doStream = new DataOutputStreamImpl(cdrOut,
+    		                                                     new SerializerFactory());
+    		doStream.write_octet(val);
+    		outputStream.Seek(0, SeekOrigin.Begin);
+    		Assertion.AssertEquals("written", val, outputStream.ReadByte());
+    	}
+    	
+    }
+    
+    
+    
+}
+
+#endif
