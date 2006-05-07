@@ -30,6 +30,7 @@
 using System;
 using System.Net;
 using System.Text;
+using System.Collections;
 using Ch.Elca.Iiop.Security.Ssl;
 using Ch.Elca.Iiop.Util;
 using omg.org.CORBA;
@@ -54,14 +55,15 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         
         private string m_objectUri;
         private byte[] m_keyBytes;        
-        private IiopLocObjAddr m_objAddr;        
+        private IiopLocObjAddr m_objAddr;
+        private IorProfile[] m_profiles;
         
         #endregion IFields        
         #region IConstructors
         
         /// <summary>creates the corbaloc from a corbaloc url string</summary>
         public IiopLoc(string iiopUrl) {            
-            Parse(iiopUrl);
+            Parse(iiopUrl, new object[] { s_defaultCodeSetTaggedComponent });
         }
 
         #endregion IConstructors
@@ -79,7 +81,8 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         #endregion IProperties
         #region IMethods
         
-        private void Parse(string iiopUrl) {
+        private void Parse(string iiopUrl,
+                           IList /* TaggedComponent */ additionalComponents) {
             Uri uri = new Uri(iiopUrl);            
             if (IiopLocIiopAddr.IsResponsibleForProtocol(uri.Scheme)) {
                 m_objAddr = new IiopLocIiopAddr(uri.Scheme, uri.Host, uri.Port);        
@@ -98,7 +101,20 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             } catch (Exception) {
                 throw new INV_OBJREF(146, CompletionStatus.Completed_MayBe);
             }
+            m_profiles = new IorProfile[] { 
+            	GetProfileFor(m_objAddr, GetKeyAsByteArray(),
+            	              additionalComponents) };
         }
+        
+	    private IorProfile GetProfileFor(IiopLocObjAddr objAddr, byte[] objKey,
+	                                     IList /* TaggedComponent */ additionalComponents) {
+			IorProfile addrProfile = 
+	            objAddr.GetProfileForAddr(objKey);	            
+			for (int i = 0; i < additionalComponents.Count; i++) {
+		        addrProfile.AddTaggedComponent((TaggedComponent)additionalComponents[i]);
+		    }
+            return addrProfile;
+	    }        
         
         /// <summary>
         /// get the byte representation of the corba object key.
@@ -109,11 +125,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         }        
         
         public IorProfile[] GetProfiles() {
-            IorProfile addrProfile = 
-                m_objAddr.GetProfileForAddr(GetKeyAsByteArray());
-            addrProfile.AddTaggedComponent((TaggedComponent)s_defaultCodeSetTaggedComponent);
-            IorProfile[] result = new IorProfile[] { addrProfile };
-            return result;
+            return m_profiles;
         }
         
         public Uri ParseUrl(out string objectUri, out GiopVersion version) {
