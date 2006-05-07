@@ -452,47 +452,51 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestIncompleteCorbaLocIiop() {
         	string testCorbaLoc = "corbaloc::/test";
         	Corbaloc parsed = new Corbaloc(testCorbaLoc);
-        	Assertion.AssertEquals("test", parsed.KeyString);
-        	Assertion.AssertEquals(1, parsed.ObjAddrs.Length);
-        	Assertion.AssertEquals(typeof(CorbaLocIiopAddr), parsed.ObjAddrs[0].GetType());
-        	CorbaLocIiopAddrBase addr = (CorbaLocIiopAddr)(parsed.ObjAddrs[0]);
-        	Assertion.AssertEquals(1, addr.Version.Major);
-        	Assertion.AssertEquals(0, addr.Version.Minor);
-        	Assertion.AssertEquals("localhost", addr.Host);
-        	Assertion.AssertEquals(2809, addr.Port);
+        	Assertion.AssertEquals("test", parsed.KeyString);        	
+        	IorProfile[] profiles = parsed.GetProfiles();
+        	Assertion.AssertEquals(1, profiles.Length);
+        	Assertion.AssertEquals(typeof(InternetIiopProfile), profiles[0].GetType());
+        	InternetIiopProfile prof = (InternetIiopProfile)(profiles[0]);
+        	Assertion.AssertEquals(1, prof.Version.Major);
+        	Assertion.AssertEquals(0, prof.Version.Minor);
+        	Assertion.AssertEquals("localhost", prof.HostName);
+        	Assertion.AssertEquals(2809, prof.Port);
         	
         	testCorbaLoc = "corbaloc::elca.ch/test";
         	parsed = new Corbaloc(testCorbaLoc);
         	Assertion.AssertEquals("test", parsed.KeyString);
-        	Assertion.AssertEquals(1, parsed.ObjAddrs.Length);
-        	Assertion.AssertEquals(typeof(CorbaLocIiopAddr), parsed.ObjAddrs[0].GetType());
-        	addr = (CorbaLocIiopAddr)(parsed.ObjAddrs[0]);
-        	Assertion.AssertEquals(1, addr.Version.Major);
-        	Assertion.AssertEquals(0, addr.Version.Minor);
-        	Assertion.AssertEquals("elca.ch", addr.Host);
-        	Assertion.AssertEquals(2809, addr.Port);
+        	profiles = parsed.GetProfiles();
+        	Assertion.AssertEquals(1, profiles.Length);
+        	Assertion.AssertEquals(typeof(InternetIiopProfile), profiles[0].GetType());
+        	prof = (InternetIiopProfile)(profiles[0]);
+        	Assertion.AssertEquals(1, prof.Version.Major);
+        	Assertion.AssertEquals(0, prof.Version.Minor);
+        	Assertion.AssertEquals("elca.ch", prof.HostName);
+        	Assertion.AssertEquals(2809, prof.Port);
         	
         	testCorbaLoc = "corbaloc:iiop:1.2@elca.ch/test";
         	parsed = new Corbaloc(testCorbaLoc);
         	Assertion.AssertEquals("test", parsed.KeyString);
-        	Assertion.AssertEquals(1, parsed.ObjAddrs.Length);
-        	Assertion.AssertEquals(typeof(CorbaLocIiopAddr), parsed.ObjAddrs[0].GetType());
-        	addr = (CorbaLocIiopAddr)(parsed.ObjAddrs[0]);
-        	Assertion.AssertEquals(1, addr.Version.Major);
-        	Assertion.AssertEquals(2, addr.Version.Minor);
-        	Assertion.AssertEquals("elca.ch", addr.Host);
-        	Assertion.AssertEquals(2809, addr.Port);
+        	profiles = parsed.GetProfiles();
+        	Assertion.AssertEquals(1, profiles.Length);
+        	Assertion.AssertEquals(typeof(InternetIiopProfile), profiles[0].GetType());
+        	prof = (InternetIiopProfile)(profiles[0]);
+        	Assertion.AssertEquals(1, prof.Version.Major);
+        	Assertion.AssertEquals(2, prof.Version.Minor);
+        	Assertion.AssertEquals("elca.ch", prof.HostName);
+        	Assertion.AssertEquals(2809, prof.Port);
         	
         	testCorbaLoc = "corbaloc::elca.ch:1234/test";
         	parsed = new Corbaloc(testCorbaLoc);
         	Assertion.AssertEquals("test", parsed.KeyString);
-        	Assertion.AssertEquals(1, parsed.ObjAddrs.Length);
-        	Assertion.AssertEquals(typeof(CorbaLocIiopAddr), parsed.ObjAddrs[0].GetType());
-        	addr = (CorbaLocIiopAddr)(parsed.ObjAddrs[0]);
-        	Assertion.AssertEquals(1, addr.Version.Major);
-        	Assertion.AssertEquals(0, addr.Version.Minor);
-        	Assertion.AssertEquals("elca.ch", addr.Host);
-        	Assertion.AssertEquals(1234, addr.Port);                        
+        	profiles = parsed.GetProfiles();
+        	Assertion.AssertEquals(1, profiles.Length);
+        	Assertion.AssertEquals(typeof(InternetIiopProfile), profiles[0].GetType());
+        	prof = (InternetIiopProfile)(profiles[0]);
+        	Assertion.AssertEquals(1, prof.Version.Major);
+        	Assertion.AssertEquals(0, prof.Version.Minor);
+        	Assertion.AssertEquals("elca.ch", prof.HostName);
+        	Assertion.AssertEquals(1234, prof.Port);                        
         }
         
         [Test]
