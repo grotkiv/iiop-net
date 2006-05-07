@@ -530,6 +530,34 @@ namespace Ch.Elca.Iiop.Tests {
         	Corbaloc parsed = new Corbaloc(otherUrl);
         }
         
+        [Test]
+        public void TestParseUrl() {
+            string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
+            Corbaloc parsed = new Corbaloc(testCorbaLoc);
+            string objectUri;
+            GiopVersion version;
+            Uri channelUri = parsed.ParseUrl(out objectUri, out version);
+            Assertion.AssertEquals("object uri", "test", objectUri);
+            Assertion.AssertEquals("version major", 1, version.Major);
+            Assertion.AssertEquals("version minor", 2, version.Minor);
+            Assertion.AssertEquals("channel uri", "iiop1.2://elca.ch:1234/",
+                                   channelUri.AbsoluteUri);
+        }
+        
+        [Test]
+        public void TestParseUrlSsl() {
+            string testCorbaLoc = "corbaloc:iiop-ssl:1.2@elca.ch:1234/test";
+            Corbaloc parsed = new Corbaloc(testCorbaLoc);
+            string objectUri;
+            GiopVersion version;
+            Uri channelUri = parsed.ParseUrl(out objectUri, out version);
+            Assertion.AssertEquals("object uri", "test", objectUri);
+            Assertion.AssertEquals("version major", 1, version.Major);
+            Assertion.AssertEquals("version minor", 2, version.Minor);
+            Assertion.AssertEquals("channel uri", "iiop-ssl1.2://elca.ch:1234/",
+                                   channelUri.AbsoluteUri);
+        }        
+        
     }
 
 }
