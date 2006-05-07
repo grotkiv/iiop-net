@@ -75,14 +75,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
                 return m_objectUri;
             }
         }
-        
-        /// <summary>the obj addr</summary>
-        public IiopLocObjAddr ObjAddr {
-            get {
-                return m_objAddr;
-            }
-        }        
-                
+                        
         #endregion IProperties
         #region IMethods
         
