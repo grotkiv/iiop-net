@@ -399,6 +399,35 @@ namespace Ch.Elca.Iiop.Tests {
                                  TAG_SSL_SEC_TRANS.ConstVal));            
         }
         
+        [Test]
+        public void TestParseUrl() {
+            string testIiopLoc = "iiop://elca.ch:1234/test";
+            IiopLoc parsed = new IiopLoc(testIiopLoc);
+            string objectUri;
+            GiopVersion version;
+            Uri channelUri = parsed.ParseUrl(out objectUri, out version);
+            Assertion.AssertEquals("object uri", "test", objectUri);
+            Assertion.AssertEquals("version major", 1, version.Major);
+            Assertion.AssertEquals("version minor", 2, version.Minor);
+            Assertion.AssertEquals("channel uri", "iiop1.2://elca.ch:1234/",
+                                   channelUri.AbsoluteUri);
+        }
+        
+        [Test]
+        public void TestParseUrlSsl() {
+            string testIiopLoc = "iiop-ssl://elca.ch:1234/test";
+            IiopLoc parsed = new IiopLoc(testIiopLoc);
+            string objectUri;
+            GiopVersion version;
+            Uri channelUri = parsed.ParseUrl(out objectUri, out version);
+            Assertion.AssertEquals("object uri", "test", objectUri);
+            Assertion.AssertEquals("version major", 1, version.Major);
+            Assertion.AssertEquals("version minor", 2, version.Minor);
+            Assertion.AssertEquals("channel uri", "iiop-ssl1.2://elca.ch:1234/",
+                                   channelUri.AbsoluteUri);
+        }
+
+        
     }
 
 }
