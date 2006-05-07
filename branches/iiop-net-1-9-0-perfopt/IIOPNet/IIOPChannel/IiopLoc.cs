@@ -370,28 +370,27 @@ namespace Ch.Elca.Iiop.Tests {
             string testIiopLoc = "iiop-ssl://elca.ch:1234/test";
             IiopLoc parsed = new IiopLoc(testIiopLoc);
             Assertion.AssertEquals("test", parsed.ObjectUri);
-            Assertion.AssertEquals(typeof(IiopLocIiopSslAddr), parsed.ObjAddr.GetType());
-            IiopLocIiopSslAddr addr = (IiopLocIiopSslAddr)(parsed.ObjAddr);
-            Assertion.AssertEquals(1, addr.Version.Major);
-            Assertion.AssertEquals(2, addr.Version.Minor);
-            Assertion.AssertEquals("elca.ch", addr.Host);
-            Assertion.AssertEquals(1234, addr.Port);
+            Assertion.AssertEquals(1, parsed.GetProfiles().Length);
+            Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
+            InternetIiopProfile prof = (InternetIiopProfile)(parsed.GetProfiles()[0]);
+            Assertion.AssertEquals(1, prof.Version.Major);
+            Assertion.AssertEquals(2, prof.Version.Minor);
+            Assertion.AssertEquals("elca.ch", prof.HostName);
+            Assertion.AssertEquals(0, prof.Port);
             
             testIiopLoc = "iiop-ssl1.1://elca.ch:1234/test";
             parsed = new IiopLoc(testIiopLoc);
             Assertion.AssertEquals("test", parsed.ObjectUri);
-            Assertion.AssertEquals(typeof(IiopLocIiopSslAddr), parsed.ObjAddr.GetType());
-            addr = (IiopLocIiopSslAddr)(parsed.ObjAddr);
-            Assertion.AssertEquals(1, addr.Version.Major);
-            Assertion.AssertEquals(1, addr.Version.Minor);
-            Assertion.AssertEquals("elca.ch", addr.Host);
-            Assertion.AssertEquals(1234, addr.Port);         
-            
-        	Assertion.AssertEquals(1, parsed.GetProfiles().Length);
-        	Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
-        	Assertion.Assert(parsed.GetProfiles()[0].TaggedComponents.ContainsTaggedComponent(
+            Assertion.AssertEquals(1, parsed.GetProfiles().Length);
+            Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
+            prof = (InternetIiopProfile)(parsed.GetProfiles()[0]);
+            Assertion.AssertEquals(1, prof.Version.Major);
+            Assertion.AssertEquals(1, prof.Version.Minor);
+            Assertion.AssertEquals("elca.ch", prof.HostName);
+            Assertion.AssertEquals(0, prof.Port);            
+        	Assertion.Assert(prof.TaggedComponents.ContainsTaggedComponent(
                                  CodeSetService.SERVICE_ID));
-        	Assertion.Assert(parsed.GetProfiles()[0].TaggedComponents.ContainsTaggedComponent(
+        	Assertion.Assert(prof.TaggedComponents.ContainsTaggedComponent(
                                  TAG_SSL_SEC_TRANS.ConstVal));            
         }
         
