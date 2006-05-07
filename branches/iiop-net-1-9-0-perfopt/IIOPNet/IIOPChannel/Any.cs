@@ -379,6 +379,17 @@ namespace Ch.Elca.Iiop.Tests {
                                    anyContainer.Value.GetType());            
         }        
         
+        [Test]
+        public void TestNonAssignableException() {
+        	try {
+        		Any any = new Any("1.0", new OctetTC());
+        		Assertion.Fail("assignement possible, but shouldn't");
+        	} catch (BAD_PARAM bpEx) {
+        		Assertion.Assert("exception message", 
+        		                 bpEx.Message.StartsWith("CORBA system exception : omg.org.CORBA.BAD_PARAM [The given instance 1.0 of type"));
+        	}
+        }
+        
     }
     
 }

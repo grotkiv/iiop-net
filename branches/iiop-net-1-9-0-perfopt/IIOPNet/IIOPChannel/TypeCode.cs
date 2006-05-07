@@ -200,7 +200,13 @@ namespace omg.org.CORBA {
         }
         
         protected Exception CreateCantConvertToAssignableException(object val) {
-            return new BAD_PARAM(456, CompletionStatus.Completed_MayBe);
+        	string typeName = (val != null ? val.GetType().AssemblyQualifiedName : "[null]");
+        	Type clsForTypeCode = GetClsForTypeCode();
+        	string tcTypeName = (clsForTypeCode != null ? clsForTypeCode.AssemblyQualifiedName : "[null]");
+            return new BAD_PARAM(456, CompletionStatus.Completed_MayBe,
+        	                     "The given instance " + val + " of type " + typeName +
+        	                     " is not compatible with the type code of kind " + m_kind +
+        	                     " mapped to type " + tcTypeName);
         }
         
         protected Exception CreateCantConvertToExternalRepresentationException(object val) {
