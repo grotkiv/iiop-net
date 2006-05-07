@@ -29,7 +29,7 @@ build-idl: $(IDL)
     cd ..
 
 build-client: $(BIN)$(STUB).dll $(BIN)IIOPChannel.dll NClient.cs ExceptionImplementation.cs
-    $(CSC) /r:$(BIN)$(STUB).dll /r:$(BIN)IIOPChannel.dll /out:$(BIN)NClient.exe NClient.cs ExceptionImplementation.cs
+    $(CSC) $(CSFLAGS) /r:$(BIN)$(STUB).dll /r:$(BIN)IIOPChannel.dll /out:$(BIN)NClient.exe NClient.cs ExceptionImplementation.cs
 
 clean:
     if exist $(IDL)nul rmdir /q /s $(IDL)
