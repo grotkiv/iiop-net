@@ -37,6 +37,9 @@ using Ch.Elca.Iiop.Security.Ssl;
 
 namespace Ch.Elca.Iiop.CorbaObjRef {
 
+	/// <summary>
+	/// This class parses a corbaloc url.
+	/// </summary>
 	internal class Corbaloc {
     	    	
         #region SFields
