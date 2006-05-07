@@ -55,13 +55,14 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 	    private byte[] m_keyBytes;
 		
 		private CorbaLocObjAddr[] m_objAddrs;
+		private IorProfile[] m_profiles;
     	
     	#endregion IFields
     	#region IConstructors
     	
     	/// <summary>creates the corbaloc from a corbaloc url string</summary>
     	public Corbaloc(string corbalocUrl) {
-            Parse(corbalocUrl);
+            Parse(corbalocUrl, new object[] { s_defaultCodeSetTaggedComponent });
     	}
     
     	#endregion IConstructors
@@ -89,7 +90,8 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     	#region IMethods
     
     	/// <summary>parses a corbaloc url according to section 13.6.10 in Corba standard</summary>
-    	private void Parse(string corbalocUrl) {
+    	private void Parse(string corbalocUrl,
+    	                   IList /* TaggedComponent */ additionalComponents) {
     		if (!corbalocUrl.StartsWith("corbaloc:")) {
     			throw new BAD_PARAM(7, CompletionStatus.Completed_No);
     		}
@@ -103,19 +105,22 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     		    (m_keyString == null)) {
     		    throw new BAD_PARAM(10, CompletionStatus.Completed_No);
     		}
-    		ParseAddrList(addrPart);    		
     	    // create key bytes from keystring
     	    CalculateKeyBytesFromKeyString();
+    		ParseAddrList(addrPart, additionalComponents);
 	    }
 	    
 	    /// <summary>parses the addr list</summary>
-	    private void ParseAddrList(string addrList) {
+	    private void ParseAddrList(string addrList,
+	                               IList /* TaggedComponent */ additionalComponents) {
 	    	if (addrList == null) {
 	    		throw new BAD_PARAM(8, CompletionStatus.Completed_No);
 	    	}
 	    	string[] parts = addrList.Split(',');
             // at least one!
             m_objAddrs = new CorbaLocObjAddr[parts.Length];
+            m_profiles = new IorProfile[parts.Length];                        
+
 	    	for (int i = 0; i < parts.Length; i++) {
 	    	    if (CorbaLocIiopAddr.IsResponsibleForProtocol(parts[i])) {
 	    			m_objAddrs[i] = new CorbaLocIiopAddr(parts[i]);
@@ -124,21 +129,23 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 	    		} else {
 	    			throw new BAD_PARAM(8, CompletionStatus.Completed_No);
 	    		}
+            	m_profiles[i] = GetProfileFor(m_objAddrs[i], GetKeyAsByteArray(),
+            	                              additionalComponents);
 	    	}	    	
+	    }
+	    
+	    private IorProfile GetProfileFor(CorbaLocObjAddr objAddr, byte[] objKey,
+	                                     IList /* TaggedComponent */ additionalComponents) {
+			IorProfile addrProfile = 
+	            objAddr.GetProfileForAddr(objKey);	            
+			for (int i = 0; i < additionalComponents.Count; i++) {
+		        addrProfile.AddTaggedComponent((TaggedComponent)additionalComponents[i]);
+		    }
+            return addrProfile;
 	    }
 
 	    public IorProfile[] GetProfiles() {
-	        IorProfile[] result = new IorProfile[m_objAddrs.Length];	        
-	        for (int i = 0; i < m_objAddrs.Length; i++) {
-	            IorProfile addrProfile = 
-	                m_objAddrs[i].GetProfileForAddr(GetKeyAsByteArray());	            
-                addrProfile.AddTaggedComponent((TaggedComponent)s_defaultCodeSetTaggedComponent);
-	            result[i] = addrProfile;
-	        }	        
-            if (result.Length == 0) {
-                throw new INV_OBJREF(8421, CompletionStatus.Completed_MayBe);
-            }
-            return result;
+            return m_profiles;
 	    }
 	    
 	    public Uri ParseUrl(out string objectUri, out GiopVersion version) {
