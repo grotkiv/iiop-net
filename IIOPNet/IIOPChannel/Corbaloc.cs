@@ -63,14 +63,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     
     	#endregion IConstructors
     	#region IProperties
-    	
-    	/// <summary>the obj_addr_list</summary>
-    	public CorbaLocObjAddr[] ObjAddrs {
-    		get {
-    			return m_objAddrs;
-    		}
-    	}
-    	
+    	    	
     	/// <summary>
     	/// contains an ASCII representation of the object key; valid characters in
     	/// this string are member of the ASCII charset ->
