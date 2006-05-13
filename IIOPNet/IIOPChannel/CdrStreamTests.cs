@@ -36,6 +36,7 @@ namespace Ch.Elca.Iiop.Tests {
     using NUnit.Framework;
     using Ch.Elca.Iiop;
     using Ch.Elca.Iiop.Cdr;
+    using omg.org.CORBA;
     
 	/// <summary>
 	/// Tests the CdrInputStream
@@ -43,13 +44,19 @@ namespace Ch.Elca.Iiop.Tests {
 	[TestFixture]
 	public class CdrInputStreamTests {
 	    
-	    [Test]
-	    public void TestReadStringCodeSetOk() {
-	        byte[] testData = new byte[] { 0, 0, 0, 5, 65, 66, 67, 68, 0 };
+	    
+	    private CdrInputStream PrepareStream(byte[] testData) {
 	        MemoryStream testStream = new MemoryStream(testData);
 	        CdrInputStreamImpl inputStream = new CdrInputStreamImpl(testStream);
 	        inputStream.SetMaxLength((uint)testData.Length);
-	        inputStream.ConfigStream(0, new GiopVersion(1, 2));
+	        inputStream.ConfigStream(0, new GiopVersion(1, 2));	        
+	        return inputStream;
+	    }
+	    
+	    [Test]
+	    public void TestReadStringCodeSetOk() {
+	        byte[] testData = new byte[] { 0, 0, 0, 5, 65, 66, 67, 68, 0 };
+	        CdrInputStream inputStream = PrepareStream(testData);
 	        string result = inputStream.ReadString();
 	        Assertion.AssertEquals("read string", "ABCD", result);
 	    }
@@ -57,12 +64,19 @@ namespace Ch.Elca.Iiop.Tests {
 	    [Test]
 	    public void TestReadWStringCodeSetOk() {
 	        byte[] testData = new byte[] { 0, 0, 0, 8, 0, 65, 0, 66, 0, 67, 0, 68 };
-	        MemoryStream testStream = new MemoryStream(testData);
-	        CdrInputStreamImpl inputStream = new CdrInputStreamImpl(testStream);
-	        inputStream.SetMaxLength((uint)testData.Length);
-	        inputStream.ConfigStream(0, new GiopVersion(1, 2));
+	        CdrInputStream inputStream = PrepareStream(testData);
 	        string result = inputStream.ReadWString();
 	        Assertion.AssertEquals("read string", "ABCD", result);
+	    }
+	    
+	    // [Test]	    
+	    public void TestCdrStreamWStringCodeSetNotSet() {
+	        try {
+	            
+	            Assertion.Fail("no exception, although no wchar code set set");
+	        } catch (INV_OBJREF iEx) {
+	            Assertion.AssertEquals("minor code", 1, iEx.Minor);
+	        }
 	    }
 		
 	}
