@@ -318,6 +318,7 @@ namespace Ch.Elca.Iiop.Tests {
             }
             cdrStream.ConfigStream(endianFlag, new GiopVersion(1, 2));
             cdrStream.SetMaxLength((uint)content.Length);
+            cdrStream.WCharSet = (int)Ch.Elca.Iiop.Services.WCharSet.UTF16;
             return cdrStream;
         }
                         
@@ -400,6 +401,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestEncodeBeStream() {
             MemoryStream outStream = new MemoryStream();
             CdrOutputStreamImpl cdrStream = new CdrOutputStreamImpl(outStream, 0, new GiopVersion(1, 2));
+            cdrStream.WCharSet = (int)Ch.Elca.Iiop.Services.WCharSet.UTF16;
             cdrStream.WriteWString("Test");
             AssertByteArrayEquals(new byte[] { 0, 0, 0, 8, 0, 84, 0, 101, 0, 115, 0, 116 },
                                   outStream.ToArray());
@@ -413,6 +415,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestEncodeLeStream() {
             MemoryStream outStream = new MemoryStream();
             CdrOutputStreamImpl cdrStream = new CdrOutputStreamImpl(outStream, 1, new GiopVersion(1, 2));
+            cdrStream.WCharSet = (int)Ch.Elca.Iiop.Services.WCharSet.UTF16;
             cdrStream.WriteWString("Test");
             AssertByteArrayEquals(new byte[] { 10, 0, 0, 0, 0xFF, 0xFE, 84, 0, 101, 0, 115, 0, 116, 0 },
                                   outStream.ToArray());            
@@ -443,6 +446,7 @@ namespace Ch.Elca.Iiop.Tests {
             }
             cdrStream.ConfigStream(endianFlag, new GiopVersion(1, 1));
             cdrStream.SetMaxLength((uint)content.Length);
+            cdrStream.WCharSet = (int)Ch.Elca.Iiop.Services.WCharSet.UTF16;
             return cdrStream;
         }
                         
@@ -525,6 +529,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestEncodeBeStream() {
             MemoryStream outStream = new MemoryStream();
             CdrOutputStreamImpl cdrStream = new CdrOutputStreamImpl(outStream, 0, new GiopVersion(1, 1));
+            cdrStream.WCharSet = (int)Ch.Elca.Iiop.Services.WCharSet.UTF16;
             cdrStream.WriteWString("Test");
             AssertByteArrayEquals(new byte[] { 0, 0, 0, 5, 0, 84, 0, 101, 0, 115, 0, 116, 0, 0 },
                                   outStream.ToArray());
@@ -538,6 +543,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestEncodeLeStream() {
             MemoryStream outStream = new MemoryStream();
             CdrOutputStreamImpl cdrStream = new CdrOutputStreamImpl(outStream, 1, new GiopVersion(1, 1));
+            cdrStream.WCharSet = (int)Ch.Elca.Iiop.Services.WCharSet.UTF16;
             cdrStream.WriteWString("Test");
             AssertByteArrayEquals(new byte[] { 6, 0, 0, 0, 0xFF, 0xFE, 84, 0, 101, 0, 115, 0, 116, 0, 0, 0 },
                                   outStream.ToArray());            
