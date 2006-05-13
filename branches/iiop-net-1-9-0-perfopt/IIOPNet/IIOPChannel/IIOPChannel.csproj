@@ -123,6 +123,7 @@
     <Compile Include="ArgumentsSerializer.cs" />
     <Compile Include="Messages.cs" />
     <Compile Include="TestUtil.cs" />
+    <Compile Include="CdrStreamTests.cs" />
   </ItemGroup>
   <Import Project="$(SharpDevelopBinPath)\SharpDevelop.Build.CSharp.targets" />
 </Project>
