@@ -327,12 +327,21 @@ namespace Ch.Elca.Iiop.Cdr {
         #region IProperties
 
         /// <summary>the charset to use</summary>
+        /// <remarks>
+        /// The CORBA standards uses LATIN1 charset, if no charset is specified
+        /// in IOR.        
+        /// </remarks>
         int CharSet {
             get;
             set;
         }
         
         /// <summary>the wcharset to use</summary>
+        /// <remarks>
+        /// The CORBA standard defines, that there is no default. 
+        /// If this is not set, serializing/deserializing a wchar/wstring
+        /// is not allowed.
+        /// </remarks>
         int WCharSet {
             get; 
             set;
@@ -747,6 +756,8 @@ namespace Ch.Elca.Iiop.Cdr {
         internal const uint INDIRECTION_TAG = 0xffffffff;           
         internal const uint MIN_VALUE_TAG = 0x7fffff00;
         internal const uint MAX_VALUE_TAG = 0x7fffffff;
+        
+        private const int WCHARSET_NOT_SET = -1;
 
         #endregion Constants
         #region IFields
@@ -756,8 +767,11 @@ namespace Ch.Elca.Iiop.Cdr {
 
         private uint m_index = 0;
 
-        private int m_charSet = CodeSetService.DefaultCharSet;
-        private int m_wcharSet = CodeSetService.DefaultWCharSet;
+        // default for this is latin1
+        private int m_charSet = (int)Ch.Elca.Iiop.Services.CharSet.LATIN1;
+        // no default for this available
+        private int m_wcharSet = WCHARSET_NOT_SET;
+        // private int m_wcharSet = CodeSetService.DefaultWCharSet;
         
         #endregion IFields
         #region IConstructors
