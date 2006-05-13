@@ -1976,7 +1976,8 @@ namespace Ch.Elca.Iiop.Tests {
         internal void GenericSerTest(Serializer ser, object actual, byte[] expected) {
             MemoryStream outStream = new MemoryStream();
             try {
-                CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);                
+                CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);
+                cdrOut.WCharSet = (int)Ch.Elca.Iiop.Services.WCharSet.UTF16;
                 ser.Serialize(actual, cdrOut);
                 outStream.Seek(0, SeekOrigin.Begin);
                 byte[] result = outStream.ToArray();
@@ -1994,6 +1995,7 @@ namespace Ch.Elca.Iiop.Tests {
                 inStream.Seek(0, SeekOrigin.Begin);
                 CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
                 cdrIn.ConfigStream(0, new GiopVersion(1, 2));            
+                cdrIn.WCharSet = (int)Ch.Elca.Iiop.Services.WCharSet.UTF16;
                 return ser.Deserialize(cdrIn);
             } finally {
                 inStream.Close();        
