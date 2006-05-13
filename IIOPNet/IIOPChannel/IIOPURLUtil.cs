@@ -57,6 +57,9 @@ namespace Ch.Elca.Iiop.Util {
         #region SFields
 
         private static ASCIIEncoding s_asciiEncoder = new ASCIIEncoding();
+                       
+        private readonly static object[] s_defaultAdditionalTaggedComponents =
+            new object[] { Services.CodeSetService.CreateDefaultCodesetComponent() };
         
         #endregion SFields
         #region IConstructors
@@ -76,7 +79,7 @@ namespace Ch.Elca.Iiop.Util {
         public static bool IsIorString(string url) {
             return url.StartsWith("IOR");
         }
-        
+
         /// <summary>creates an IOR for the object described by the Url url</summary>
         /// <param name="url">an url of the form IOR:--hex-- or iiop://addr/key</param>
         /// <param name="targetType">if the url contains no info about the target type, use this type</param>
@@ -86,11 +89,13 @@ namespace Ch.Elca.Iiop.Util {
                 ior = new Ior(url);
             } else if (url.StartsWith("iiop")) {
                 // iiop1.0, iiop1.1, iiop1.2 (=iiop); extract version in protocol tag
-                IiopLoc iiopLoc = new IiopLoc(url);                                
+                IiopLoc iiopLoc = new IiopLoc(url, 
+                                              s_defaultAdditionalTaggedComponents);
                 // now create an IOR with the above information
                 ior = new Ior(repositoryId, iiopLoc.GetProfiles());
             } else if (url.StartsWith("corbaloc")) {
-                Corbaloc loc = new Corbaloc(url);
+                Corbaloc loc = new Corbaloc(url,
+                                            s_defaultAdditionalTaggedComponents);
                 IorProfile[] profiles = loc.GetProfiles();
                 ior = new Ior(repositoryId, profiles);
             } else {
@@ -110,7 +115,8 @@ namespace Ch.Elca.Iiop.Util {
                                      out GiopVersion version) {
             Uri uri = null;
             if (url.StartsWith("iiop")) {
-                IiopLoc iiopLoc = new IiopLoc(url);
+                IiopLoc iiopLoc = new IiopLoc(url, 
+                                              s_defaultAdditionalTaggedComponents);
                 uri = iiopLoc.ParseUrl(out objectUri, out version);
             } else if (url.StartsWith("IOR")) {
                 Ior ior = new Ior(url);
@@ -126,7 +132,8 @@ namespace Ch.Elca.Iiop.Util {
                     version = new GiopVersion(1,0);
                 }                
             } else if (url.StartsWith("corbaloc")) {
-                Corbaloc loc = new Corbaloc(url);
+                Corbaloc loc = new Corbaloc(url, 
+                                            s_defaultAdditionalTaggedComponents);
                 uri = loc.ParseUrl(out objectUri, out version);
             } else {
                 // not possible

@@ -44,8 +44,8 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     	    	
         #region SFields
         
-        private readonly static object s_defaultCodeSetTaggedComponent = 
-            Services.CodeSetService.CreateDefaultCodesetComponent();
+        private readonly static object[] s_defaultComponents =
+            new object[0];
         
         #endregion SFields    	
         #region IFields
@@ -59,10 +59,14 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     	
     	#endregion IFields
     	#region IConstructors
+
+    	/// <summary>creates the corbaloc from a corbaloc url string</summary>
+    	public Corbaloc(string corbalocUrl) : this(corbalocUrl, s_defaultComponents) {
+    	}
     	
     	/// <summary>creates the corbaloc from a corbaloc url string</summary>
-    	public Corbaloc(string corbalocUrl) {
-            Parse(corbalocUrl, new object[] { s_defaultCodeSetTaggedComponent });
+    	public Corbaloc(string corbalocUrl, IList /* TaggedComponent */ additionalComponents) {
+            Parse(corbalocUrl, additionalComponents);
     	}
     
     	#endregion IConstructors
@@ -397,14 +401,23 @@ namespace Ch.Elca.Iiop.Tests {
     /// </summary>
     [TestFixture]
     public class CorbalocTest {
+    	
+    	private object m_defaultCodeSetTaggedComponent;
         
         public CorbalocTest() {
         }
+    	
+    	[SetUp]
+    	public void SetUp() {
+            m_defaultCodeSetTaggedComponent = 
+                Services.CodeSetService.CreateDefaultCodesetComponent();    		
+    	}
 
         [Test]
         public void TestSingleCompleteCorbaLocIiop() {
 			string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
-        	Corbaloc parsed = new Corbaloc(testCorbaLoc);
+			Corbaloc parsed = new Corbaloc(testCorbaLoc, 
+			                               new object[] { m_defaultCodeSetTaggedComponent });
         	Assertion.AssertEquals("test", parsed.KeyString);
         	        	        	        	
         	Assertion.AssertEquals(1, parsed.GetProfiles().Length);
@@ -422,7 +435,8 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestMultipleCompleteCorbaLocIiop() {
         	string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234,:1.2@elca.ch:1235,:1.2@elca.ch:1236/test";
-        	Corbaloc parsed = new Corbaloc(testCorbaLoc);
+        	Corbaloc parsed = new Corbaloc(testCorbaLoc,
+        	                               new object[] { m_defaultCodeSetTaggedComponent });
         	Assertion.AssertEquals("test", parsed.KeyString);
         	
         	IorProfile[] profiles = parsed.GetProfiles();        	
@@ -454,7 +468,8 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestIncompleteCorbaLocIiop() {
         	string testCorbaLoc = "corbaloc::/test";
-        	Corbaloc parsed = new Corbaloc(testCorbaLoc);
+        	Corbaloc parsed = new Corbaloc(testCorbaLoc,
+        	                               new object[] { m_defaultCodeSetTaggedComponent });
         	Assertion.AssertEquals("test", parsed.KeyString);        	
         	IorProfile[] profiles = parsed.GetProfiles();
         	Assertion.AssertEquals(1, profiles.Length);
@@ -466,7 +481,8 @@ namespace Ch.Elca.Iiop.Tests {
         	Assertion.AssertEquals(2809, prof.Port);
         	
         	testCorbaLoc = "corbaloc::elca.ch/test";
-        	parsed = new Corbaloc(testCorbaLoc);
+        	parsed = new Corbaloc(testCorbaLoc,
+        	                      new object[] { m_defaultCodeSetTaggedComponent });
         	Assertion.AssertEquals("test", parsed.KeyString);
         	profiles = parsed.GetProfiles();
         	Assertion.AssertEquals(1, profiles.Length);
@@ -478,7 +494,8 @@ namespace Ch.Elca.Iiop.Tests {
         	Assertion.AssertEquals(2809, prof.Port);
         	
         	testCorbaLoc = "corbaloc:iiop:1.2@elca.ch/test";
-        	parsed = new Corbaloc(testCorbaLoc);
+        	parsed = new Corbaloc(testCorbaLoc,
+        	                      new object[] { m_defaultCodeSetTaggedComponent });
         	Assertion.AssertEquals("test", parsed.KeyString);
         	profiles = parsed.GetProfiles();
         	Assertion.AssertEquals(1, profiles.Length);
@@ -490,7 +507,8 @@ namespace Ch.Elca.Iiop.Tests {
         	Assertion.AssertEquals(2809, prof.Port);
         	
         	testCorbaLoc = "corbaloc::elca.ch:1234/test";
-        	parsed = new Corbaloc(testCorbaLoc);
+        	parsed = new Corbaloc(testCorbaLoc,
+        	                      new object[] { m_defaultCodeSetTaggedComponent });
         	Assertion.AssertEquals("test", parsed.KeyString);
         	profiles = parsed.GetProfiles();
         	Assertion.AssertEquals(1, profiles.Length);
@@ -505,7 +523,8 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestCorbaLocIiopSsl() {
         	string testCorbaLoc = "corbaloc:iiop-ssl:elca.ch:1234/test";
-        	Corbaloc parsed = new Corbaloc(testCorbaLoc);
+        	Corbaloc parsed = new Corbaloc(testCorbaLoc,
+        	                               new object[] { m_defaultCodeSetTaggedComponent });
         	Assertion.AssertEquals("test", parsed.KeyString);
         	IorProfile[] profiles = parsed.GetProfiles();
         	Assertion.AssertEquals(1, profiles.Length);
@@ -527,13 +546,15 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestNoCorbaLoc() {
         	string otherUrl = "iiop://localhost:8087/test";
-        	Corbaloc parsed = new Corbaloc(otherUrl);
+        	Corbaloc parsed = new Corbaloc(otherUrl,
+        	                               new object[] { m_defaultCodeSetTaggedComponent });
         }
         
         [Test]
         public void TestParseUrl() {
             string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
-            Corbaloc parsed = new Corbaloc(testCorbaLoc);
+            Corbaloc parsed = new Corbaloc(testCorbaLoc,
+                                           new object[] { m_defaultCodeSetTaggedComponent });
             string objectUri;
             GiopVersion version;
             Uri channelUri = parsed.ParseUrl(out objectUri, out version);
@@ -547,7 +568,8 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestParseUrlSsl() {
             string testCorbaLoc = "corbaloc:iiop-ssl:1.2@elca.ch:1234/test";
-            Corbaloc parsed = new Corbaloc(testCorbaLoc);
+            Corbaloc parsed = new Corbaloc(testCorbaLoc,
+                                           new object[] { m_defaultCodeSetTaggedComponent });
             string objectUri;
             GiopVersion version;
             Uri channelUri = parsed.ParseUrl(out objectUri, out version);

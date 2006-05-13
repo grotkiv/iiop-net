@@ -47,10 +47,10 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         
         #region SFields
         
-        private readonly static object s_defaultCodeSetTaggedComponent = 
-            Services.CodeSetService.CreateDefaultCodesetComponent();
-        
-        #endregion SFields                
+        private readonly static object[] s_defaultComponents =
+            new object[0];
+                
+        #endregion SFields
         #region IFields
         
         private string m_objectUri;
@@ -60,10 +60,15 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         
         #endregion IFields        
         #region IConstructors
+
+        /// <summary>creates the corbaloc from a corbaloc url string</summary>
+        public IiopLoc(string iiopUrl, IList /* TaggedComponent */ additionalComponents) {
+            Parse(iiopUrl, additionalComponents);
+        }
         
         /// <summary>creates the corbaloc from a corbaloc url string</summary>
-        public IiopLoc(string iiopUrl) {            
-            Parse(iiopUrl, new object[] { s_defaultCodeSetTaggedComponent });
+        public IiopLoc(string iiopUrl) : this (iiopUrl,
+                                               s_defaultComponents) {
         }
 
         #endregion IConstructors
@@ -339,14 +344,22 @@ namespace Ch.Elca.Iiop.Tests {
     [TestFixture]
     public class IioplocTest {
         
+        private object m_defaultCodeSetTaggedComponent;
+        
         public IioplocTest() {
         }
 
+    	[SetUp]
+    	public void SetUp() {
+            m_defaultCodeSetTaggedComponent = 
+                Services.CodeSetService.CreateDefaultCodesetComponent();    		
+    	}        
         
         [Test]
         public void TestIiopLoc() {
             string testIiopLoc = "iiop://elca.ch:1234/test";
-            IiopLoc parsed = new IiopLoc(testIiopLoc);
+            IiopLoc parsed = new IiopLoc(testIiopLoc,
+                                         new object[] { m_defaultCodeSetTaggedComponent });
             Assertion.AssertEquals("test", parsed.ObjectUri);
             Assertion.AssertEquals(1, parsed.GetProfiles().Length);
             Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
@@ -357,7 +370,8 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(1234, prof.Port);
             
             testIiopLoc = "iiop1.1://elca.ch:1234/test";
-            parsed = new IiopLoc(testIiopLoc);
+            parsed = new IiopLoc(testIiopLoc, 
+                                 new object[] { m_defaultCodeSetTaggedComponent });
             Assertion.AssertEquals("test", parsed.ObjectUri);
             Assertion.AssertEquals(1, parsed.GetProfiles().Length);
             Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
@@ -373,7 +387,8 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestIiopSslLoc() {
             string testIiopLoc = "iiop-ssl://elca.ch:1234/test";
-            IiopLoc parsed = new IiopLoc(testIiopLoc);
+            IiopLoc parsed = new IiopLoc(testIiopLoc, 
+                                         new object[] { m_defaultCodeSetTaggedComponent });
             Assertion.AssertEquals("test", parsed.ObjectUri);
             Assertion.AssertEquals(1, parsed.GetProfiles().Length);
             Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
@@ -384,7 +399,8 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(0, prof.Port);
             
             testIiopLoc = "iiop-ssl1.1://elca.ch:1234/test";
-            parsed = new IiopLoc(testIiopLoc);
+            parsed = new IiopLoc(testIiopLoc,
+                                 new object[] { m_defaultCodeSetTaggedComponent });
             Assertion.AssertEquals("test", parsed.ObjectUri);
             Assertion.AssertEquals(1, parsed.GetProfiles().Length);
             Assertion.AssertEquals(typeof(InternetIiopProfile), parsed.GetProfiles()[0].GetType());
@@ -402,7 +418,8 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestParseUrl() {
             string testIiopLoc = "iiop://elca.ch:1234/test";
-            IiopLoc parsed = new IiopLoc(testIiopLoc);
+            IiopLoc parsed = new IiopLoc(testIiopLoc, 
+                                         new object[] { m_defaultCodeSetTaggedComponent });
             string objectUri;
             GiopVersion version;
             Uri channelUri = parsed.ParseUrl(out objectUri, out version);
@@ -416,7 +433,8 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestParseUrlSsl() {
             string testIiopLoc = "iiop-ssl://elca.ch:1234/test";
-            IiopLoc parsed = new IiopLoc(testIiopLoc);
+            IiopLoc parsed = new IiopLoc(testIiopLoc, 
+                                         new object[] { m_defaultCodeSetTaggedComponent });
             string objectUri;
             GiopVersion version;
             Uri channelUri = parsed.ParseUrl(out objectUri, out version);
