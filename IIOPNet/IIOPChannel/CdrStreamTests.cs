@@ -74,11 +74,57 @@ namespace Ch.Elca.Iiop.Tests {
 	        try {
 	            
 	            Assertion.Fail("no exception, although no wchar code set set");
-	        } catch (INV_OBJREF iEx) {
-	            Assertion.AssertEquals("minor code", 1, iEx.Minor);
+	        } catch (BAD_PARAM) {
+	            // ok, expected
 	        }
 	    }
 		
+	}
+	
+	
+	
+	/// <summary>
+	/// Tests the CdrOutputStream
+	/// </summary>
+	[TestFixture]
+	public class CdrOutputStreamTests {
+	    
+	    
+	    private CdrOutputStream PrepareStream(MemoryStream baseStream) {
+	        CdrOutputStreamImpl outputStream = new CdrOutputStreamImpl(
+                baseStream, 0, new GiopVersion(1, 2));	        
+	        return outputStream;
+	    }
+	    
+	    private void AssertOutput(byte[] expected, MemoryStream actual) {
+	        byte[] actualArray = actual.ToArray();
+	        ArrayAssertion.AssertByteArrayEquals("output", expected, actualArray);
+	    }
+	    
+	    [Test]
+	    public void TestWriteStringCodeSetOk() {
+	        byte[] expectedSerData = new byte[] { 0, 0, 0, 5, 65, 66, 67, 68, 0 };
+	        string testData = "ABCD";
+	        using (MemoryStream outBase = new MemoryStream()) {
+	            CdrOutputStream outputStream = PrepareStream(outBase);
+	            outputStream.WriteString(testData);
+	            AssertOutput(expectedSerData, outBase);
+	        }	        
+	    }
+	    
+	    [Test]
+	    public void TestWriteWStringCodeSetOk() {
+            byte[] expectedSerData = new byte[] { 0, 0, 0, 8, 0, 65, 0, 66, 0, 67, 0, 68 };
+	        string testData = "ABCD";
+	        using (MemoryStream outBase = new MemoryStream()) {
+	            CdrOutputStream outputStream = PrepareStream(outBase);
+	            outputStream.WriteWString(testData);
+	            AssertOutput(expectedSerData, outBase);
+	        }
+	    }
+	    
+	    
+	
 	}
 		
 }
