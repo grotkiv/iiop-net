@@ -770,8 +770,7 @@ namespace Ch.Elca.Iiop.Cdr {
         // default for this is latin1
         private int m_charSet = (int)Ch.Elca.Iiop.Services.CharSet.LATIN1;
         // no default for this available
-        private int m_wcharSet = WCHARSET_NOT_SET;
-        // private int m_wcharSet = CodeSetService.DefaultWCharSet;
+        private int m_wcharSet = WCHARSET_NOT_SET;        
         
         #endregion IFields
         #region IConstructors
