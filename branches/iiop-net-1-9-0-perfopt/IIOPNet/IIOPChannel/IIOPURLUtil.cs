@@ -474,18 +474,7 @@ namespace Ch.Elca.Iiop.Tests {
             Ior iorForUrl = 
                 IiopUrlUtil.CreateIorForUrl(testIorLoc, String.Empty);
             CheckIorForUrl(iorForUrl, 1, true);
-        }
-        
-        
-        [Ignore("prpepare next step")]
-        [Test]
-        public void CreateIorForCorbaLocUrlWithoutCodeSetComponent() {
-            string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
-            Ior iorForUrl = 
-                IiopUrlUtil.CreateIorForUrl(testCorbaLoc, String.Empty);
-            CheckIorForUrl(iorForUrl, 0, false);
-        }
-
+        }                
         
     }
 
