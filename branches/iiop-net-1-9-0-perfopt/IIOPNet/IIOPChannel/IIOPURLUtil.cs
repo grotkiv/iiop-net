@@ -391,3 +391,63 @@ namespace Ch.Elca.Iiop.Util {
  
      
 }
+
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using System.IO;
+    using NUnit.Framework;
+    using Ch.Elca.Iiop;
+    using Ch.Elca.Iiop.Idl;
+    using Ch.Elca.Iiop.Util;
+    using Ch.Elca.Iiop.Services;
+    using omg.org.CORBA;
+
+    
+    /// <summary>
+    /// Unit-tests for testing request/reply serialisation/deserialisation
+    /// </summary>
+    [TestFixture]    
+    public class IiopUrlUtilTest {
+        
+        [Test]
+        public void CreateIorForCorbaLocUrlWithCodeSetComponent() {
+            string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
+            Ior iorForUrl = 
+                IiopUrlUtil.CreateIorForUrl(testCorbaLoc, String.Empty);
+            Assertion.AssertEquals("number of profiles", 1, iorForUrl.Profiles.Length);
+            Assertion.AssertEquals("type", typeof(MarshalByRefObject), 
+                                   iorForUrl.Type);
+            IIorProfile profile = iorForUrl.FindInternetIiopProfile();
+            Assertion.AssertNotNull("internet iiop profile",
+                                    profile);
+            ArrayAssertion.AssertByteArrayEquals("profile object key",
+                                                 new byte[] { 116, 101, 115, 116 },
+                                                 profile.ObjectKey);
+            Assertion.AssertEquals("profile giop version", 
+                                   new GiopVersion(1, 2), 
+                                   profile.Version);
+            Assertion.AssertEquals("number of components",
+                                   1, profile.TaggedComponents.Count);
+            Assertion.Assert("code set component present",
+                             profile.ContainsTaggedComponent(
+                                 CodeSetService.SERVICE_ID));
+            CodeSetComponentData data = (CodeSetComponentData)
+                profile.GetTaggedComponentData(CodeSetService.SERVICE_ID,
+                                               typeof(CodeSetComponentData));
+            Assertion.AssertEquals("code set component: native char set",
+                                   (int)CharSet.LATIN1,
+                                   data.NativeCharSet);
+            Assertion.AssertEquals("code set component: native char set",
+                                   (int)WCharSet.UTF16,
+                                   data.NativeWCharSet);            
+        }
+        
+    }
+
+}
+
+#endif
+
