@@ -412,7 +412,8 @@ namespace Ch.Elca.Iiop.Tests {
     [TestFixture]    
     public class IiopUrlUtilTest {
         
-        private void CheckIorForUrl(Ior iorForUrl) {
+        private void CheckIorForUrl(Ior iorForUrl, int expectedNumberOfComponents,
+                                    bool shouldHaveCodeSetComponent) {
             Assertion.AssertEquals("number of profiles", 1, iorForUrl.Profiles.Length);
             Assertion.AssertEquals("type", typeof(MarshalByRefObject), 
                                    iorForUrl.Type);
@@ -425,20 +426,28 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("profile giop version", 
                                    new GiopVersion(1, 2), 
                                    profile.Version);
-            Assertion.AssertEquals("number of components",
-                                   1, profile.TaggedComponents.Count);
-            Assertion.Assert("code set component present",
-                             profile.ContainsTaggedComponent(
-                                 CodeSetService.SERVICE_ID));
-            CodeSetComponentData data = (CodeSetComponentData)
-                profile.GetTaggedComponentData(CodeSetService.SERVICE_ID,
-                                               typeof(CodeSetComponentData));
-            Assertion.AssertEquals("code set component: native char set",
-                                   (int)CharSet.LATIN1,
-                                   data.NativeCharSet);
-            Assertion.AssertEquals("code set component: native char set",
-                                   (int)WCharSet.UTF16,
-                                   data.NativeWCharSet);            
+            
+            if (shouldHaveCodeSetComponent) {
+                Assertion.AssertEquals("number of components",
+                                       expectedNumberOfComponents, 
+                                       profile.TaggedComponents.Count);
+                Assertion.Assert("code set component present",
+                                 profile.ContainsTaggedComponent(
+                                     CodeSetService.SERVICE_ID));
+                CodeSetComponentData data = (CodeSetComponentData)
+                    profile.GetTaggedComponentData(CodeSetService.SERVICE_ID,
+                                                   typeof(CodeSetComponentData));
+                Assertion.AssertEquals("code set component: native char set",
+                                       (int)CharSet.LATIN1,
+                                       data.NativeCharSet);
+                Assertion.AssertEquals("code set component: native char set",
+                                       (int)WCharSet.UTF16,
+                                       data.NativeWCharSet);
+            } else {
+                Assertion.Assert("code set component present",
+                                 !profile.ContainsTaggedComponent(
+                                     CodeSetService.SERVICE_ID));                
+            }
         }
         
         [Test]
@@ -446,7 +455,7 @@ namespace Ch.Elca.Iiop.Tests {
             string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
             Ior iorForUrl = 
                 IiopUrlUtil.CreateIorForUrl(testCorbaLoc, String.Empty);
-            CheckIorForUrl(iorForUrl);
+            CheckIorForUrl(iorForUrl, 1, true);
         }
         
         [Test]
@@ -454,7 +463,7 @@ namespace Ch.Elca.Iiop.Tests {
             string testIiopLoc = "iiop1.2://localhost:1234/test";
             Ior iorForUrl = 
                 IiopUrlUtil.CreateIorForUrl(testIiopLoc, String.Empty);
-            CheckIorForUrl(iorForUrl);
+            CheckIorForUrl(iorForUrl, 1, true);
         }
         
         
@@ -464,8 +473,19 @@ namespace Ch.Elca.Iiop.Tests {
                 "IOR:000000000000000100000000000000010000000000000050000102000000000A6C6F63616C686F73740004D2000000047465737400000001000000010000002800000000000100010000000300010001000100200501000100010109000000020001010000010109";            
             Ior iorForUrl = 
                 IiopUrlUtil.CreateIorForUrl(testIorLoc, String.Empty);
-            CheckIorForUrl(iorForUrl);
+            CheckIorForUrl(iorForUrl, 1, true);
         }
+        
+        
+        [Ignore("prpepare next step")]
+        [Test]
+        public void CreateIorForCorbaLocUrlWithoutCodeSetComponent() {
+            string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
+            Ior iorForUrl = 
+                IiopUrlUtil.CreateIorForUrl(testCorbaLoc, String.Empty);
+            CheckIorForUrl(iorForUrl, 0, false);
+        }
+
         
     }
 
