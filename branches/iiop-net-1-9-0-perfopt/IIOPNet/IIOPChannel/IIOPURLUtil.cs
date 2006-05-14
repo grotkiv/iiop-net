@@ -412,11 +412,7 @@ namespace Ch.Elca.Iiop.Tests {
     [TestFixture]    
     public class IiopUrlUtilTest {
         
-        [Test]
-        public void CreateIorForCorbaLocUrlWithCodeSetComponent() {
-            string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
-            Ior iorForUrl = 
-                IiopUrlUtil.CreateIorForUrl(testCorbaLoc, String.Empty);
+        private void CheckIorForUrl(Ior iorForUrl) {
             Assertion.AssertEquals("number of profiles", 1, iorForUrl.Profiles.Length);
             Assertion.AssertEquals("type", typeof(MarshalByRefObject), 
                                    iorForUrl.Type);
@@ -443,6 +439,14 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("code set component: native char set",
                                    (int)WCharSet.UTF16,
                                    data.NativeWCharSet);            
+        }
+        
+        [Test]
+        public void CreateIorForCorbaLocUrlWithCodeSetComponent() {
+            string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
+            Ior iorForUrl = 
+                IiopUrlUtil.CreateIorForUrl(testCorbaLoc, String.Empty);
+            CheckIorForUrl(iorForUrl);
         }
         
         [Test]
@@ -450,34 +454,18 @@ namespace Ch.Elca.Iiop.Tests {
             string testIiopLoc = "iiop1.2://localhost:1234/test";
             Ior iorForUrl = 
                 IiopUrlUtil.CreateIorForUrl(testIiopLoc, String.Empty);
-            Assertion.AssertEquals("number of profiles", 1, iorForUrl.Profiles.Length);
-            Assertion.AssertEquals("type", typeof(MarshalByRefObject), 
-                                   iorForUrl.Type);
-            IIorProfile profile = iorForUrl.FindInternetIiopProfile();
-            Assertion.AssertNotNull("internet iiop profile",
-                                    profile);
-            ArrayAssertion.AssertByteArrayEquals("profile object key",
-                                                 new byte[] { 116, 101, 115, 116 },
-                                                 profile.ObjectKey);
-            Assertion.AssertEquals("profile giop version", 
-                                   new GiopVersion(1, 2), 
-                                   profile.Version);
-            Assertion.AssertEquals("number of components",
-                                   1, profile.TaggedComponents.Count);
-            Assertion.Assert("code set component present",
-                             profile.ContainsTaggedComponent(
-                                 CodeSetService.SERVICE_ID));
-            CodeSetComponentData data = (CodeSetComponentData)
-                profile.GetTaggedComponentData(CodeSetService.SERVICE_ID,
-                                               typeof(CodeSetComponentData));
-            Assertion.AssertEquals("code set component: native char set",
-                                   (int)CharSet.LATIN1,
-                                   data.NativeCharSet);
-            Assertion.AssertEquals("code set component: native char set",
-                                   (int)WCharSet.UTF16,
-                                   data.NativeWCharSet);            
+            CheckIorForUrl(iorForUrl);
         }
         
+        
+        [Test]
+        public void CreateIorForIorUrl() {
+            string testIorLoc = 
+                "IOR:000000000000000100000000000000010000000000000050000102000000000A6C6F63616C686F73740004D2000000047465737400000001000000010000002800000000000100010000000300010001000100200501000100010109000000020001010000010109";            
+            Ior iorForUrl = 
+                IiopUrlUtil.CreateIorForUrl(testIorLoc, String.Empty);
+            CheckIorForUrl(iorForUrl);
+        }
         
     }
 
