@@ -445,6 +445,40 @@ namespace Ch.Elca.Iiop.Tests {
                                    data.NativeWCharSet);            
         }
         
+        [Test]
+        public void CreateIorForIiopLocUrlWithCodeSetComponent() {
+            string testIiopLoc = "iiop1.2://localhost:1234/test";
+            Ior iorForUrl = 
+                IiopUrlUtil.CreateIorForUrl(testIiopLoc, String.Empty);
+            Assertion.AssertEquals("number of profiles", 1, iorForUrl.Profiles.Length);
+            Assertion.AssertEquals("type", typeof(MarshalByRefObject), 
+                                   iorForUrl.Type);
+            IIorProfile profile = iorForUrl.FindInternetIiopProfile();
+            Assertion.AssertNotNull("internet iiop profile",
+                                    profile);
+            ArrayAssertion.AssertByteArrayEquals("profile object key",
+                                                 new byte[] { 116, 101, 115, 116 },
+                                                 profile.ObjectKey);
+            Assertion.AssertEquals("profile giop version", 
+                                   new GiopVersion(1, 2), 
+                                   profile.Version);
+            Assertion.AssertEquals("number of components",
+                                   1, profile.TaggedComponents.Count);
+            Assertion.Assert("code set component present",
+                             profile.ContainsTaggedComponent(
+                                 CodeSetService.SERVICE_ID));
+            CodeSetComponentData data = (CodeSetComponentData)
+                profile.GetTaggedComponentData(CodeSetService.SERVICE_ID,
+                                               typeof(CodeSetComponentData));
+            Assertion.AssertEquals("code set component: native char set",
+                                   (int)CharSet.LATIN1,
+                                   data.NativeCharSet);
+            Assertion.AssertEquals("code set component: native char set",
+                                   (int)WCharSet.UTF16,
+                                   data.NativeWCharSet);            
+        }
+        
+        
     }
 
 }
