@@ -798,7 +798,19 @@ namespace Ch.Elca.Iiop.Tests {
     using Ch.Elca.Iiop.MessageHandling;
     using Ch.Elca.Iiop.Cdr;
     using omg.org.CORBA;
+
     
+    interface TestStringInterface {
+        
+        [return: StringValue()]
+        [return: WideChar(false)]
+        string EchoString([StringValue] [WideChar(false)] string arg);
+        
+        [return: StringValue()]
+        [return: WideChar(true)]
+        string EchoWString([StringValue] [WideChar(true)] string arg);
+        
+    }
 
     /// <summary>
     /// Unit-tests for testing request/reply serialisation/deserialisation
@@ -829,6 +841,79 @@ namespace Ch.Elca.Iiop.Tests {
             omg.org.IOP.ServiceContextList result = new ServiceContextList(cdrIn);
             // check if context is present
             Assertion.Assert("expected context not in collection", result.ContainsServiceContext(1234567) == true);
+        }
+        
+        [Test]
+        [ExpectedException(typeof(BAD_PARAM))]
+        [Ignore("prepare next step")]
+        public void TestWCharSetNotDefinedClient() {
+            MethodInfo methodToCall =
+                typeof(TestStringInterface).GetMethod("EchoWString");
+            object[] args = new object[] { "test" };
+            string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
+            Ior target = IiopUrlUtil.CreateIorForUrl(uri, "");
+            IIorProfile targetProfile = target.Profiles[0];
+            TestMessage msg = new TestMessage(methodToCall, args, uri);
+            msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = (uint)5; // set request-id
+            msg.Properties[SimpleGiopMsg.TARGET_PROFILE_KEY] = targetProfile;
+            
+            // prepare connection context
+            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, 
+                                                                            new GiopRequestNumberGenerator(), null);            
+            
+            SerializerFactory serFactory = new SerializerFactory();            
+            GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
+                                                new ArgumentsSerializerFactory(serFactory));
+            GiopClientRequest request = 
+                new GiopClientRequest(msg, conDesc,
+                                      new IInterceptionOption[0]);
+            CdrOutputStreamImpl targetStream = 
+                new CdrOutputStreamImpl(new MemoryStream(), 0, new GiopVersion(1,2));
+            ser.SerialiseRequest(request, targetStream, targetProfile,
+                                 conDesc);
+        }
+        
+        [Test]
+        public void TestWCharSetDefinedClient() {
+            MethodInfo methodToCall =
+                typeof(TestStringInterface).GetMethod("EchoWString");
+            object[] args = new object[] { "test" };
+            string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
+            Ior target = IiopUrlUtil.CreateIorForUrl(uri, "");
+            IIorProfile targetProfile = target.Profiles[0];
+            TestMessage msg = new TestMessage(methodToCall, args, uri);
+            msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = (uint)5; // set request-id
+            msg.Properties[SimpleGiopMsg.TARGET_PROFILE_KEY] = targetProfile;
+            
+            // prepare connection context
+            GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, 
+                                                                            new GiopRequestNumberGenerator(), null);            
+            
+            SerializerFactory serFactory = new SerializerFactory();            
+            GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
+                                                new ArgumentsSerializerFactory(serFactory));
+            GiopClientRequest request = 
+                new GiopClientRequest(msg, conDesc,
+                                      new IInterceptionOption[0]);
+            MemoryStream baseStream = new MemoryStream();
+            CdrOutputStreamImpl targetStream =
+                new CdrOutputStreamImpl(baseStream, 0, new GiopVersion(1,2));
+            ser.SerialiseRequest(request, targetStream, targetProfile,
+                                 conDesc);
+            
+            ArrayAssertion.AssertByteArrayEquals("serialised message",
+                new byte[] { 0, 0, 0, 5, 3, 0, 0, 0,
+                             0, 0, 0, 0, 
+                             0, 0, 0, 7, 116, 101, 115, 116,
+                             117, 114, 105, 0,
+                             0, 0, 0, 12, 69, 99, 104, 111, 
+                             87, 83, 116, 114, 105, 110, 103, 0,
+                             0, 0, 0, 1, 0, 0, 0, 1,
+                             0, 0, 0, 12, 0, 0, 0, 0,
+                             0, 1, 0, 1, 0, 1, 1, 9,                              
+                             0, 0, 0, 8, 0, 116, 0, 101,
+                             0, 115, 0, 116},
+                baseStream.ToArray());
         }        
                 
     }
