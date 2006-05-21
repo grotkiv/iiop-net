@@ -169,7 +169,8 @@ namespace omg.org.CORBA {
 
         /// <summary>serialize the whole type-code to the stream</summary>
         /// <param name="cdrStream"></param>
-        internal virtual void WriteToStream(CdrOutputStream cdrStream) {            
+        internal virtual void WriteToStream(CdrOutputStream cdrStream,
+                                            SerializerFactory serFactory) {
             uint val = Convert.ToUInt32(kind());
             StreamPosition indirPos = cdrStream.WriteIndirectableInstanceTag(val);
             cdrStream.StoreIndirection(this, 
@@ -180,7 +181,8 @@ namespace omg.org.CORBA {
 
         /// <summary>reads the type-code content from the stream, without the TCKind at the beginning</summary>
         /// <remarks>helper which is used by the constructor with arg CdrInputStream</remarks>
-        internal virtual void ReadFromStream(CdrInputStream cdrStream) { }
+        internal virtual void ReadFromStream(CdrInputStream cdrStream,
+                                             SerializerFactory serFactory) { }
         
         protected string ReadRepositoryId(CdrInputStream cdrStream) {
             return cdrStream.ReadString();
@@ -367,14 +369,16 @@ namespace omg.org.CORBA {
             return m_name;
         }
 
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream, 
+                                              SerializerFactory serFactory) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             encap.WriteString(m_id);
             encap.WriteString(m_name);
@@ -766,20 +770,22 @@ namespace omg.org.CORBA {
             return m_aliased;
         }
 
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             m_aliased = (TypeCode) ser.Deserialize(encap);
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             encap.WriteString(m_id);
             encap.WriteString(m_name);
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             ser.Serialize(m_aliased, encap);
             encap.WriteToTargetStream();
         }
@@ -880,12 +886,14 @@ namespace omg.org.CORBA {
             return m_length;
         }
         
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             m_length = (int)cdrStream.ReadULong();
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             cdrStream.WriteULong((uint)m_length);
         }
     
@@ -932,12 +940,14 @@ namespace omg.org.CORBA {
             return m_length;
         }
         
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             m_length = (int)cdrStream.ReadULong();
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             cdrStream.WriteULong((uint)m_length);
         }
     
@@ -1061,7 +1071,8 @@ namespace omg.org.CORBA {
             return m_members[index];
         }
 
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
@@ -1072,8 +1083,9 @@ namespace omg.org.CORBA {
             }
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             encap.WriteString(m_id);
             encap.WriteString(m_name);
@@ -1163,20 +1175,22 @@ namespace omg.org.CORBA {
             return m_boxed;
         }
 
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             m_boxed = (TypeCodeImpl) ser.Deserialize(encap);
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             encap.WriteString(m_id);
             encap.WriteString(m_name);
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             ser.Serialize(m_boxed, encap);
             encap.WriteToTargetStream();
         }
@@ -1281,17 +1295,19 @@ namespace omg.org.CORBA {
             return m_seqType;
         }
 
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             m_seqType = (TypeCode) ser.Deserialize(encap);
             m_length = (int)encap.ReadULong();
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             ser.Serialize(m_seqType, encap);
             encap.WriteULong((uint)m_length);
             encap.WriteToTargetStream();
@@ -1372,17 +1388,19 @@ namespace omg.org.CORBA {
             return m_innerDimension;
         }
 
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             m_innerDimension = (TypeCode) ser.Deserialize(encap);
             m_length = (int)encap.ReadULong();
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             ser.Serialize(m_innerDimension, encap);
             encap.WriteULong((uint)m_length);
             encap.WriteToTargetStream();
@@ -1515,13 +1533,14 @@ namespace omg.org.CORBA {
             return m_members[index].type;            
         }
 
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
             uint length = encap.ReadULong();
             m_members = new StructMember[length];
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             for (int i = 0; i < length; i++) {
                 string memberName = encap.ReadString();
                 TypeCode memberType = (TypeCode)ser.Deserialize(encap);
@@ -1530,13 +1549,14 @@ namespace omg.org.CORBA {
             }
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             encap.WriteString(m_id);
             encap.WriteString(m_name);
             encap.WriteULong((uint)m_members.Length);
-            TypeCodeSerializer ser = new TypeCodeSerializer();            
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);            
             foreach(StructMember member in m_members) {
                 encap.WriteString(member.name);
                 ser.Serialize(member.type, encap);
@@ -1709,11 +1729,12 @@ namespace omg.org.CORBA {
             return m_members[index].ElementType;
         }
 
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             m_discriminatorType = (omg.org.CORBA.TypeCode)ser.Deserialize(encap);
             Type discrTypeCls = ((TypeCodeImpl)m_discriminatorType).GetClsForTypeCode();
             m_defaultCase = encap.ReadLong();
@@ -1721,8 +1742,8 @@ namespace omg.org.CORBA {
             uint length = encap.ReadULong();
             m_members = new UnionSwitchCase[length];            
             Serializer serDisc =
-                omg.org.CORBA.OrbServices.GetSingleton().SerializerFactory.Create(discrTypeCls, 
-                                                                                  AttributeExtCollection.EmptyCollection);
+                serFactory.Create(discrTypeCls, 
+                                  AttributeExtCollection.EmptyCollection);
             for (int i = 0; i < length; i++) {
                 object discrLabel = serDisc.Deserialize(encap);
                 string memberName = encap.ReadString();                
@@ -1733,22 +1754,23 @@ namespace omg.org.CORBA {
             }
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
             // write common part: typecode nr
-            base.WriteToStream(cdrStream);
+            base.WriteToStream(cdrStream, serFactory);
             // complex type-code: in encapsulation
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             encap.WriteString(m_id);
             encap.WriteString(m_name);
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             Type discrTypeCls = ((TypeCodeImpl)m_discriminatorType).GetClsForTypeCode();
             ser.Serialize(m_discriminatorType, encap);
             encap.WriteLong(m_defaultCase);
             
             encap.WriteULong((uint)m_members.Length);
             Serializer serDisc =
-                omg.org.CORBA.OrbServices.GetSingleton().SerializerFactory.Create(discrTypeCls, 
-                                                                                  AttributeExtCollection.EmptyCollection);            
+                serFactory.Create(discrTypeCls, 
+                                  AttributeExtCollection.EmptyCollection);            
             for (int i = 0; i < m_members.Length; i++) {
                 serDisc.Serialize(m_members[i].DiscriminatorValue, encap);
                 encap.WriteString(m_members[i].ElementName);
@@ -1923,12 +1945,13 @@ namespace omg.org.CORBA {
         }
 
 
-        internal override void ReadFromStream(CdrInputStream cdrStream) {
+        internal override void ReadFromStream(CdrInputStream cdrStream,
+                                              SerializerFactory serFactory) {
             CdrEncapsulationInputStream encap = cdrStream.ReadEncapsulation();    
             m_id = ReadRepositoryId(encap);
             m_name = encap.ReadString();
             m_typeMod = encap.ReadShort();
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             m_baseClass = (TypeCode)ser.Deserialize(encap);
             // deser members
             uint length = encap.ReadULong();
@@ -1942,13 +1965,14 @@ namespace omg.org.CORBA {
             }
         }
 
-        internal override void WriteToStream(CdrOutputStream cdrStream) {
-            base.WriteToStream(cdrStream);
+        internal override void WriteToStream(CdrOutputStream cdrStream,
+                                             SerializerFactory serFactory) {
+            base.WriteToStream(cdrStream, serFactory);
             CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0, cdrStream);
             encap.WriteString(m_id);
             encap.WriteString(m_name);
             encap.WriteShort(m_typeMod);
-            TypeCodeSerializer ser = new TypeCodeSerializer();
+            TypeCodeSerializer ser = new TypeCodeSerializer(serFactory);
             // ser baseclass type
             ser.Serialize(m_baseClass, encap);
             // ser members
