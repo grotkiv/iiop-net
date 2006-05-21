@@ -1183,9 +1183,16 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         #region IFields
         
-        private TypeCodeSerializer m_typeCodeSer = new TypeCodeSerializer();
+        private TypeCodeSerializer m_typeCodeSer;
 
         #endregion IFields
+        #region IConstructors
+        
+        internal TypeSerializer(SerializerFactory serFactory) {
+            m_typeCodeSer = new TypeCodeSerializer(serFactory);
+        }
+        
+        #endregion IConstructors
         #region IMethods
 
         internal override void Serialize(object actual, CdrOutputStream targetStream) {
@@ -1522,7 +1529,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion SFields
         #region IFields
         
-        private TypeCodeSerializer m_typeCodeSer = new TypeCodeSerializer();
+        private TypeCodeSerializer m_typeCodeSer;
         private SerializerFactory m_serFactory;
         private bool m_formalIsAnyContainer;
         private bool m_unboxAnyToCls = true;
@@ -1533,6 +1540,7 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal AnySerializer(SerializerFactory serFactory, bool formalIsAnyContainer) : base() {
             m_serFactory = serFactory;
             m_formalIsAnyContainer = formalIsAnyContainer;
+            m_typeCodeSer = new TypeCodeSerializer(serFactory);
         }
         
         #endregion IConstructors
@@ -1627,6 +1635,18 @@ namespace Ch.Elca.Iiop.Marshalling {
     /// <summary>serializes a typecode</summary>
     internal class TypeCodeSerializer : Serializer {
         
+        #region IFields
+        
+        private SerializerFactory m_serFactory;
+        
+        #endregion IFields
+        #region IConstructors
+        
+        internal TypeCodeSerializer(SerializerFactory serFactory) : base() {
+            m_serFactory = serFactory;
+        }        
+        
+        #endregion IConstructors
         #region IMethods
 
         internal override object Deserialize(CdrInputStream sourceStream) {
@@ -1750,7 +1770,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                                 IndirectionUsage.TypeCode);
                 sourceStream.StoreIndirection(indirInfo, result);
                 // read additional parts of typecode, if present
-                result.ReadFromStream(sourceStream);                                
+                result.ReadFromStream(sourceStream, m_serFactory);                                
                 return result;
             } else {
                 // resolve indirection:
@@ -1769,7 +1789,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             }
             omg.org.CORBA.TypeCodeImpl tcImpl = actual as omg.org.CORBA.TypeCodeImpl;
             if (!targetStream.IsPreviouslyMarshalled(tcImpl, IndirectionType.TypeCode, IndirectionUsage.TypeCode)) {
-                tcImpl.WriteToStream(targetStream);
+                tcImpl.WriteToStream(targetStream, m_serFactory);
             } else {
                 targetStream.WriteIndirection(tcImpl);
             }

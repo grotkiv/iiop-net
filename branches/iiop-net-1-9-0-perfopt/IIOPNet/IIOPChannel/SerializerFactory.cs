@@ -74,8 +74,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         // non-base type generic serializers
         private Serializer m_anySerForObject;
         private Serializer m_anySerForAnyCont;
-        private Serializer m_typeSer = new TypeSerializer();
-        private Serializer m_typeCodeSer = new TypeCodeSerializer();       
+        private Serializer m_typeSer;
+        private Serializer m_typeCodeSer;       
         
         private Serializer m_exceptionSer;
         
@@ -95,6 +95,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         internal SerializerFactory() {
             m_anySerForObject = new AnySerializer(this, false);
             m_anySerForAnyCont = new AnySerializer(this, true);
+            m_typeSer = new TypeSerializer(this);
+            m_typeCodeSer = new TypeCodeSerializer(this);
             
             m_exceptionSer = new ExceptionSerializer(this);
             
