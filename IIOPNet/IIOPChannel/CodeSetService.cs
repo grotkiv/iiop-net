@@ -174,7 +174,7 @@ namespace Ch.Elca.Iiop.Services {
         /// <summary>
         /// the default char set to use (if nothing different is specified by Code set establishment)
         /// </summary>
-        internal static int DefaultCharSet {
+        private static int DefaultCharSet {
             get {
                 if (s_defaultCharSet == UNINITALIZED_CHAR_SET) {
                     lock(s_initLock) {
@@ -190,7 +190,7 @@ namespace Ch.Elca.Iiop.Services {
         /// <summary>
         /// the default wchar set to use (if nothing different is specified by Code set establishment)
         /// </summary>        
-        internal static int DefaultWCharSet {
+        private static int DefaultWCharSet {
             get {
                 if (s_defaultWCharSet == UNINITALIZED_WCHAR_SET) {
                     lock(s_initLock) {

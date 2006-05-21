@@ -684,8 +684,13 @@ namespace Ch.Elca.Iiop.Tests {
                        
         [Test]
         public void TestOverrideCodeSetsWhenAlreadySet() {
-            Assertion.Assert(Enum.IsDefined(typeof(CharSet), CodeSetService.DefaultCharSet));
-            Assertion.Assert(Enum.IsDefined(typeof(WCharSet), CodeSetService.DefaultWCharSet));
+            TaggedComponent defaultComponent = 
+                CodeSetService.CreateDefaultCodesetComponent();
+            CodeSetComponentData codeSetData = (CodeSetComponentData)
+                TaggedComponent.DeserialiseComponentData(defaultComponent,
+                                                         typeof(CodeSetComponentData));            
+            Assertion.Assert(Enum.IsDefined(typeof(CharSet), codeSetData.NativeCharSet));
+            Assertion.Assert(Enum.IsDefined(typeof(WCharSet), codeSetData.NativeWCharSet));
             
             IOrbServices orbServices = OrbServices.GetSingleton();
             try {
