@@ -143,10 +143,12 @@ namespace Ch.Elca.Iiop.MessageHandling {
                         conDesc.SetNegotiatedCodeSets(charSet, wcharSet);
                     } else {
                         conDesc.SetCodeSetNegotiated();
-                    }                    
-                    Ch.Elca.Iiop.Services.CodeSetService.InsertCodeSetServiceContext(cntxColl,
-                                                                                     conDesc.CharSet, 
-                                                                                     conDesc.WCharSet);
+                    }
+                    if (conDesc.IsCodeSetDefined()) {
+                        // only insert a codeset service context, if a codeset is selected
+                        CodeSetService.InsertCodeSetServiceContext(cntxColl,
+                            conDesc.CharSet, conDesc.WCharSet);
+                    }
                 }
             } else {
                 // giop 1.0; don't send code set service context; don't check again
@@ -212,8 +214,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// </summary>
         /// <param name="cdrStream"></param>
         private void SetCodeSet(CdrInputStream cdrStream, GiopConnectionDesc conDesc) {
-            cdrStream.CharSet = conDesc.CharSet;
-            cdrStream.WCharSet = conDesc.WCharSet;
+            if (conDesc.IsCodeSetDefined()) {
+                // set the codeset, if one is chosen
+                cdrStream.CharSet = conDesc.CharSet;
+                cdrStream.WCharSet = conDesc.WCharSet;
+            } // otherwise: use cdrStream default.
         }
 
         /// <summary>
@@ -221,8 +226,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
         /// </summary>
         /// <param name="cdrStream"></param>
         private void SetCodeSet(CdrOutputStream cdrStream, GiopConnectionDesc conDesc) {            
-            cdrStream.CharSet = conDesc.CharSet;
-            cdrStream.WCharSet = conDesc.WCharSet;
+            if (conDesc.IsCodeSetDefined()) {
+                // set the codeset, if one is chosen
+                cdrStream.CharSet = conDesc.CharSet;
+                cdrStream.WCharSet = conDesc.WCharSet;
+            } // otherwise: use cdrStream default.
         }
 
         /// <summary>read the target for the request</summary>
@@ -811,6 +819,21 @@ namespace Ch.Elca.Iiop.Tests {
         string EchoWString([StringValue] [WideChar(true)] string arg);
         
     }
+    
+    public class TestStringInterfaceImpl : MarshalByRefObject, TestStringInterface {
+                    	
+        [return: StringValue()]
+        [return: WideChar(false)]        		
+		public string EchoString([StringValue] [WideChar(true)] string arg) {
+			return arg;
+		}
+    	
+        [return: StringValue()]
+        [return: WideChar(false)]        		
+		public string EchoWString([StringValue] [WideChar(true)] string arg) {
+		    return arg;
+		}
+    }
 
     /// <summary>
     /// Unit-tests for testing request/reply serialisation/deserialisation
@@ -844,13 +867,13 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
         [Test]
-        [ExpectedException(typeof(BAD_PARAM))]
-        [Ignore("prepare next step")]
+        [ExpectedException(typeof(BAD_PARAM))]        
         public void TestWCharSetNotDefinedClient() {
             MethodInfo methodToCall =
                 typeof(TestStringInterface).GetMethod("EchoWString");
-            object[] args = new object[] { "test" };
-            string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
+            object[] args = new object[] { "test" };            
+            string uri = 
+                "IOR:000000000000000100000000000000010000000000000020000102000000000A6C6F63616C686F73740004D2000000047465737400000000";
             Ior target = IiopUrlUtil.CreateIorForUrl(uri, "");
             IIorProfile targetProfile = target.Profiles[0];
             TestMessage msg = new TestMessage(methodToCall, args, uri);
@@ -915,6 +938,114 @@ namespace Ch.Elca.Iiop.Tests {
                              0, 115, 0, 116},
                 baseStream.ToArray());
         }        
+        
+        
+        [Test]
+        public void TestWCharSetDefinedServer() {
+            byte[] sourceContent = 
+                new byte[] {
+                             0, 0, 0, 5, 3, 0, 0, 0,
+                             0, 0, 0, 0, 
+                             0, 0, 0, 7, 116, 101, 115, 116,
+                             117, 114, 105, 0,
+                             0, 0, 0, 12, 69, 99, 104, 111, 
+                             87, 83, 116, 114, 105, 110, 103, 0,
+                             0, 0, 0, 1, 0, 0, 0, 1,
+                             0, 0, 0, 12, 0, 0, 0, 0,
+                             0, 1, 0, 1, 0, 1, 1, 9,                              
+                             0, 0, 0, 8, 0, 116, 0, 101,
+                             0, 115, 0, 116};            
+            MemoryStream sourceStream =
+                new MemoryStream(sourceContent);
+            
+            // create a connection context: this is needed for request deserialisation
+            GiopConnectionDesc conDesc = new GiopConnectionDesc(null, null);
+
+            // go to stream begin
+            sourceStream.Seek(0, SeekOrigin.Begin);
+            
+            SerializerFactory serFactory = new SerializerFactory();            
+            GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
+                                                new ArgumentsSerializerFactory(serFactory));
+            
+            CdrInputStreamImpl cdrSourceStream = 
+                new CdrInputStreamImpl(sourceStream);
+            cdrSourceStream.ConfigStream(0, new GiopVersion(1, 2));
+            cdrSourceStream.SetMaxLength((uint)sourceContent.Length);
+ 
+            IMessage result = null;
+            TestStringInterfaceImpl service = new TestStringInterfaceImpl();
+            try {
+                // object which should be called
+                string uri = "testuri";
+                RemotingServices.Marshal(service, uri);
+
+                // deserialise request message
+                result = ser.DeserialiseRequest(cdrSourceStream, new GiopVersion(1,2),
+                                                conDesc, InterceptorManager.EmptyInterceptorOptions);
+            } finally {
+                RemotingServices.Disconnect(service);
+            }
+
+            // now check if values are correct
+            Assertion.Assert("deserialised message is null", result != null);
+            object[] args = (object[])result.Properties[SimpleGiopMsg.ARGS_KEY];
+            Assertion.Assert("args is null", args != null);
+            Assertion.AssertEquals(1, args.Length);
+            Assertion.AssertEquals("test", args[0]);
+        }  
+        
+        [Test]
+        public void TestWCharSetNotDefinedServer() {
+            byte[] sourceContent = 
+                new byte[] {
+                             0, 0, 0, 5, 3, 0, 0, 0,
+                             0, 0, 0, 0, 
+                             0, 0, 0, 7, 116, 101, 115, 116,
+                             117, 114, 105, 0,
+                             0, 0, 0, 12, 69, 99, 104, 111, 
+                             87, 83, 116, 114, 105, 110, 103, 0,
+                             0, 0, 0, 0, 0, 0, 0, 0, 
+                             0, 0, 0, 8, 0, 116, 0, 101,
+                             0, 115, 0, 116};
+            MemoryStream sourceStream =
+                new MemoryStream(sourceContent);
+            
+            // create a connection context: this is needed for request deserialisation
+            GiopConnectionDesc conDesc = new GiopConnectionDesc(null, null);
+
+            // go to stream begin
+            sourceStream.Seek(0, SeekOrigin.Begin);
+            
+            SerializerFactory serFactory = new SerializerFactory();            
+            GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
+                                                new ArgumentsSerializerFactory(serFactory));
+            
+            CdrInputStreamImpl cdrSourceStream = 
+                new CdrInputStreamImpl(sourceStream);
+            cdrSourceStream.ConfigStream(0, new GiopVersion(1, 2));
+            cdrSourceStream.SetMaxLength((uint)sourceContent.Length);
+ 
+            IMessage result = null;
+            TestStringInterfaceImpl service = new TestStringInterfaceImpl();
+            try {
+                // object which should be called
+                string uri = "testuri";
+                RemotingServices.Marshal(service, uri);
+
+                // deserialise request message
+                result = ser.DeserialiseRequest(cdrSourceStream, new GiopVersion(1,2),
+                                                conDesc, InterceptorManager.EmptyInterceptorOptions);
+                Assertion.Fail("no exception, although code set not set");
+            } catch (RequestDeserializationException rde) {
+                Assertion.AssertNotNull("rde inner exception",
+                                        rde.Reason);
+                Assertion.AssertEquals("rde type",
+                                       typeof(BAD_PARAM), rde.Reason.GetType());
+            } finally {
+                RemotingServices.Disconnect(service);
+            }
+        }                
                 
     }
     
