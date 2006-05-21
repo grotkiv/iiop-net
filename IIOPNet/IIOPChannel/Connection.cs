@@ -482,3 +482,58 @@ namespace Ch.Elca.Iiop {
 
     
 }
+
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using System.IO;
+    using NUnit.Framework;
+    using Ch.Elca.Iiop;
+    using omg.org.CORBA;
+    
+	/// <summary>
+	/// Tests the CdrInputStream
+	/// </summary>
+	[TestFixture]
+	public class ConnectionTests {
+	    
+	    [Test]
+	    public void TestGiopConnectionDescCodeSetNotSet() {
+	        GiopConnectionDesc desc = 
+	            new GiopConnectionDesc(null, null);
+	        Assertion.Assert("Codeset not negotiated at construction time",
+	                         !desc.IsCodeSetNegotiated());
+	        
+	    }
+	    
+	    [Test]
+	    public void TestGiopConnectionDescSetCodeSet() {
+	        int charSet = 0x5010001;
+	        int wcharSet = 0x10100;
+	        GiopConnectionDesc desc =
+	            new GiopConnectionDesc(null, null);
+	        desc.SetNegotiatedCodeSets(charSet, wcharSet);
+	        Assertion.Assert("Codeset negotiated",
+	                         desc.IsCodeSetNegotiated());
+	        Assertion.AssertEquals("char set", charSet, desc.CharSet);
+	        Assertion.AssertEquals("wchar set", wcharSet, desc.WCharSet);	        
+	    }
+	    
+	    [Test]
+	    public void TestGiopConnectionDescSetCodeSetNegotiated() {
+	        GiopConnectionDesc desc =
+	            new GiopConnectionDesc(null, null);
+	        desc.SetCodeSetNegotiated();
+	        Assertion.Assert("Codeset negotiated",
+	                         desc.IsCodeSetNegotiated());
+	    }
+	    
+	    
+	    
+	}
+	
+}
+
+#endif
