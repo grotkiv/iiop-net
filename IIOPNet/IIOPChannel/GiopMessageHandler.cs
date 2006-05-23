@@ -463,7 +463,7 @@ namespace Ch.Elca.Iiop.Tests {
                                                                             new GiopRequestNumberGenerator(), null);
 
             // serialise            
-            GiopMessageHandler handler = new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
             MemoryStream targetStream = new MemoryStream();
             
             uint reqId = 5;
@@ -536,7 +536,7 @@ namespace Ch.Elca.Iiop.Tests {
             // create the reply
             ReturnMessage retMsg = new ReturnMessage((Int32) 3, new object[0], 0, null, msg);            
             
-            GiopMessageHandler handler = new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
             MemoryStream targetStream = new MemoryStream();
             
             handler.SerialiseOutgoingReplyMessage(retMsg, msg, version, 
@@ -632,7 +632,7 @@ namespace Ch.Elca.Iiop.Tests {
                 RemotingServices.Marshal(service, uri);
 
                 // deserialise request message
-                GiopMessageHandler handler = new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
                 result = handler.ParseIncomingRequestMessage(sourceStream, conDesc, InterceptorManager.EmptyInterceptorOptions);
             } catch (RequestDeserializationException e) {                
                 throw e;
@@ -690,7 +690,7 @@ namespace Ch.Elca.Iiop.Tests {
             cdrOut.WriteLong(3);
             // check deser of msg:
             sourceStream.Seek(0, SeekOrigin.Begin);
-            GiopMessageHandler handler = new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
             ReturnMessage result = (ReturnMessage) handler.ParseIncomingReplyMessage(sourceStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
             Assertion.AssertEquals(3, result.ReturnValue);
             Assertion.AssertEquals(0, result.OutArgCount);
@@ -717,7 +717,7 @@ namespace Ch.Elca.Iiop.Tests {
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,
                                                                target);
-                GiopMessageHandler handler = new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
                 ReturnMessage result = 
                     (ReturnMessage) handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
                 Assertion.AssertEquals(3, result.ReturnValue);
@@ -752,7 +752,7 @@ namespace Ch.Elca.Iiop.Tests {
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,
                                                                target);
-                GiopMessageHandler handler = new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
                 ReturnMessage result = 
                     (ReturnMessage) handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
                 Assertion.AssertEquals(true, result.ReturnValue);
@@ -851,7 +851,7 @@ namespace Ch.Elca.Iiop.Tests {
             sourceStream.Seek(0, SeekOrigin.Begin);            
             
             // deserialise request message
-            GiopMessageHandler handler = new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
             LocateRequestMessage result = handler.ParseIncomingLocateRequestMessage(sourceStream);
 
             // now check if values are correct
@@ -876,7 +876,7 @@ namespace Ch.Elca.Iiop.Tests {
             LocateStatus replyStatus = LocateStatus.OBJECT_HERE;
             LocateReplyMessage locReply = new LocateReplyMessage(replyStatus);
             
-            GiopMessageHandler handler = new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
             MemoryStream targetStream = new MemoryStream();
             
             handler.SerialiseOutgoingLocateReplyMessage(locReply, locReq, version, targetStream, conDesc);
