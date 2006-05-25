@@ -111,8 +111,11 @@ namespace Ch.Elca.Iiop.IntegrationTests {
             Ior ior = new Ior(iorString);
             Assertion.Assert("nr of profiles", ior.Profiles.Length > 0);
             IIorProfile profile = ior.Profiles[0];
+            omg.org.IOP.CodecFactory codecFactory = (omg.org.IOP.CodecFactory)
+                orb.resolve_initial_references("CodecFactory");
             object sslData = 
-                profile.TaggedComponents.GetComponentData(20, typeof(SSLComponentData));
+                profile.TaggedComponents.GetComponentData(20, codecFactory.create_codec(new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2)),
+                                                          SSLComponentData.TypeCode);
             Assertion.AssertNotNull(sslData);
             Assertion.AssertEquals((int)8087, ((SSLComponentData)sslData).GetPort());
         }

@@ -304,7 +304,7 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             if (profile.ProfileId != TAG_INTERNET_IOP.ConstVal) {
                 throw new INTERNAL(734, CompletionStatus.Completed_No);
             }
-            object sslComponentDataObject = GetSSLComponent(profile);            
+            object sslComponentDataObject = GetSSLComponent(profile, m_codec);            
             if (sslComponentDataObject == null) {
                 throw new INTERNAL(734, CompletionStatus.Completed_No);
             }
@@ -395,10 +395,10 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             return false;
         }
         
-        private SSLComponentData GetSSLComponent(Ior ior) {            
+        private SSLComponentData GetSSLComponent(Ior ior, Codec codec) {
             object result = null;
             for (int i = 0; i < ior.Profiles.Length; i++) {
-                result = GetSSLComponent(ior.Profiles[i]);                    
+                result = GetSSLComponent(ior.Profiles[i], codec);                    
                 if (result != null) {
                     break;
                 }
@@ -410,9 +410,10 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             }
         }
         
-        private object GetSSLComponent(IIorProfile profile) {
+        private object GetSSLComponent(IIorProfile profile, Codec codec) {
             if (profile.ProfileId == TAG_INTERNET_IOP.ConstVal) {
-                return profile.TaggedComponents.GetComponentData(TAG_SSL_SEC_TRANS.ConstVal, SSLComponentData.ClassType);
+                return profile.TaggedComponents.GetComponentData(TAG_SSL_SEC_TRANS.ConstVal, codec,
+                                                                 SSLComponentData.TypeCode);
             } else {
                 return null;
             }            
@@ -432,9 +433,9 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         }
         
         /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.GetEndpointKey(IIorProfile)"/></summary>
-        public string GetEndpointKey(IIorProfile target) {            
+        public string GetEndpointKey(IIorProfile target) {
             if (target.ProfileId ==  TAG_INTERNET_IOP.ConstVal) {
-                object sslComponent = GetSSLComponent(target);                
+                object sslComponent = GetSSLComponent(target, m_codec);
                 IInternetIiopProfile prof = (IInternetIiopProfile)target;
                 return "iiop-ssl://"+prof.HostName+":"+((SSLComponentData)sslComponent).Port;
             } else {
@@ -458,8 +459,8 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             for (int i = 0; i < chanData.AdditionalTaggedComponents.Length; i++) {
                 if (chanData.AdditionalTaggedComponents[i].tag == TAG_SSL_SEC_TRANS.ConstVal) {
                     SSLComponentData sslComp = 
-                        (SSLComponentData)TaggedComponent.DeserialiseComponentData(chanData.AdditionalTaggedComponents[i],
-                                                                                   SSLComponentData.ClassType);                    
+                        (SSLComponentData)m_codec.decode_value(chanData.AdditionalTaggedComponents[i].component_data,
+                                                               SSLComponentData.TypeCode);
                     listenpoints.Add(new omg.org.IIOP.ListenPoint(chanData.HostName, sslComp.Port));
                 }
             }

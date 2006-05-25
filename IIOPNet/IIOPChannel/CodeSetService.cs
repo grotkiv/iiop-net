@@ -39,6 +39,7 @@ using Ch.Elca.Iiop.Idl;
 using omg.org.CORBA;
 using omg.org.IOP;
 using Ch.Elca.Iiop.CodeSet;
+using Ch.Elca.Iiop.Util;
 
 namespace Ch.Elca.Iiop.Services {
     
@@ -49,6 +50,11 @@ namespace Ch.Elca.Iiop.Services {
         #region SFields
         
         public readonly static Type ClassType = typeof(CodeSetComponentData);
+        
+        public readonly static omg.org.CORBA.TypeCode TypeCode =
+            Repository.CreateTypeCodeForType(typeof(CodeSetComponentData),
+                                             AttributeExtCollection.EmptyCollection);
+        
         
         #endregion SFields        
         #region IFields
@@ -225,10 +231,11 @@ namespace Ch.Elca.Iiop.Services {
         /// <summary>
         /// returns the code set component data or null if not found
         /// </summary>
-        internal static object /* CodeSetComponentData */ FindCodeSetComponent(IIorProfile profile) {
+        internal static object /* CodeSetComponentData */ FindCodeSetComponent(IIorProfile profile, Codec codec) {
             TaggedComponentList list = profile.TaggedComponents;
             object result = 
-                list.GetComponentData(TAG_CODE_SETS.ConstVal, CodeSetComponentData.ClassType);
+                list.GetComponentData(TAG_CODE_SETS.ConstVal, codec,
+                                      CodeSetComponentData.TypeCode);
             if (result != null) {
                 return (CodeSetComponentData)result;
             }            

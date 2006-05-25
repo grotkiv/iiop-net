@@ -240,13 +240,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         /// creates a tagged profile from this profile.
         /// </summary>
         TaggedProfile CreateTaggedProfile();
-        
-        /// <summary>
-        /// deserialise the component data for the contained component with the specified id; if component
-        /// is not present, returns null.
-        /// </summary>
-        object GetTaggedComponentData(int tag, Type componentType);
-                
+                       
         /// <summary>
         /// returns true, if at least one tagged component with the given tag is present.
         /// </summary>
@@ -359,11 +353,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         public void AddTaggedComponents(TaggedComponent[] components) {
             m_taggedComponents.AddComponents(components);
         }        
-                
-        public object GetTaggedComponentData(int tag, Type componentType) {
-            return m_taggedComponents.GetComponentData(tag, componentType);
-        }
-                
+
         public bool ContainsTaggedComponent(int tag) {
             return m_taggedComponents.ContainsTaggedComponent(tag);
         }
@@ -673,8 +663,21 @@ namespace Ch.Elca.Iiop.Tests {
     /// </summary>
     [TestFixture]    
     public class IorTest {
+
+        private Codec m_codec;
         
         public IorTest() {
+        }                
+        
+        [SetUp]
+        public void SetUp() {
+    	    SerializerFactory serFactory =
+    	        new SerializerFactory();
+            CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(serFactory);
+            m_codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
         }
 
         [Test]
@@ -777,8 +780,8 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals("wrong minor", 2, iiopProf.Version.Minor);            
             Assertion.AssertEquals("wrong number of components in profile", 2, iiopProf.TaggedComponents.Count);
             Assertion.AssertNotNull("no ssl tagged component found",
-                                    iiopProf.GetTaggedComponentData(TAG_SSL_SEC_TRANS.ConstVal,
-                                                                           Ch.Elca.Iiop.Security.Ssl.SSLComponentData.ClassType));
+                                    iiopProf.TaggedComponents.GetComponentData(TAG_SSL_SEC_TRANS.ConstVal, m_codec,
+                                                                               Ch.Elca.Iiop.Security.Ssl.SSLComponentData.TypeCode));
         }
         
     }
@@ -839,8 +842,9 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.Assert("not found code set component", 
                              m_profile.ContainsTaggedComponent(TAG_CODE_SETS.ConstVal));
             CodeSetComponentData retrieved = 
-                (CodeSetComponentData)m_profile.GetTaggedComponentData(TAG_CODE_SETS.ConstVal,
-                                                                       typeof(CodeSetComponentData)); 
+                (CodeSetComponentData)m_profile.TaggedComponents.GetComponentData(TAG_CODE_SETS.ConstVal,
+                                                                       m_codec,
+                                                                       CodeSetComponentData.TypeCode);
             Assertion.AssertNotNull("not found code set component",
                                     retrieved);
             Assertion.AssertEquals("char set", codeSetCompVal.NativeCharSet, retrieved.NativeCharSet);

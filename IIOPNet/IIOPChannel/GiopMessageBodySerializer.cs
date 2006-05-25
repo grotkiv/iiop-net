@@ -112,13 +112,15 @@ namespace Ch.Elca.Iiop.MessageHandling {
 
         private ArgumentsSerializerFactory m_argSerFactory; 
         private SerializerFactory m_serFactory;
+        private CodecFactory m_codecFactory;
 
         #endregion IFields
         #region IConstructors
 
         internal GiopMessageBodySerialiser(ArgumentsSerializerFactory argSerFactory) {      
             m_serFactory = argSerFactory.SerializerFactory;
-            m_argSerFactory = argSerFactory;
+            m_argSerFactory = argSerFactory;   
+            m_codecFactory = new CodecFactoryImpl(m_serFactory);
         }
 
         #endregion IConstructors
@@ -135,8 +137,12 @@ namespace Ch.Elca.Iiop.MessageHandling {
             
             if (targetProfile.Version.IsAfterGiop1_0()) {
 
-                if (!conDesc.IsCodeSetNegotiated()) {                               
-                    object codeSetComponent = CodeSetService.FindCodeSetComponent(targetProfile);
+                if (!conDesc.IsCodeSetNegotiated()) {
+                    Codec codec =
+                        m_codecFactory.create_codec(new Encoding(ENCODING_CDR_ENCAPS.ConstVal,
+                                                                 targetProfile.Version.Major,
+                                                                 targetProfile.Version.Minor));
+                    object codeSetComponent = CodeSetService.FindCodeSetComponent(targetProfile, codec);
                     if (codeSetComponent != null) {
                         int charSet = CodeSetService.ChooseCharSet((CodeSetComponentData)codeSetComponent);
                         int wcharSet = CodeSetService.ChooseWCharSet((CodeSetComponentData)codeSetComponent);

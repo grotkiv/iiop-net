@@ -413,6 +413,8 @@ namespace Ch.Elca.Iiop.Tests {
     using Ch.Elca.Iiop.Idl;
     using Ch.Elca.Iiop.Util;
     using Ch.Elca.Iiop.Services;
+    using Ch.Elca.Iiop.Marshalling;
+    using Ch.Elca.Iiop.Interception;
     using omg.org.CORBA;
 
     
@@ -421,6 +423,19 @@ namespace Ch.Elca.Iiop.Tests {
     /// </summary>
     [TestFixture]    
     public class IiopUrlUtilTest {
+        
+        private omg.org.IOP.Codec m_codec;
+        
+    	[SetUp]
+    	public void SetUp() {
+    	    SerializerFactory serFactory =
+    	        new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new CodecFactoryImpl(serFactory);
+            m_codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+    	}        
         
         private void CheckIorForUrl(Ior iorForUrl, int expectedNumberOfComponents,
                                     bool shouldHaveCodeSetComponent) {
@@ -443,10 +458,11 @@ namespace Ch.Elca.Iiop.Tests {
                                        profile.TaggedComponents.Count);
                 Assertion.Assert("code set component present",
                                  profile.ContainsTaggedComponent(
-                                     CodeSetService.SERVICE_ID));
+                                     CodeSetService.SERVICE_ID));                
                 CodeSetComponentData data = (CodeSetComponentData)
-                    profile.GetTaggedComponentData(CodeSetService.SERVICE_ID,
-                                                   typeof(CodeSetComponentData));
+                    profile.TaggedComponents.GetComponentData(CodeSetService.SERVICE_ID,
+                                                              m_codec,
+                                                              CodeSetComponentData.TypeCode);
                 Assertion.AssertEquals("code set component: native char set",
                                        (int)CharSet.LATIN1,
                                        data.NativeCharSet);
