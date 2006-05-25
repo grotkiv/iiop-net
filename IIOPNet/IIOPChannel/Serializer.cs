@@ -454,7 +454,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 ior = IiopUrlUtil.CreateIorForUrl(url, repositoryID);
             } else {
                 // server object
-                ior = IiopUrlUtil.CreateIorForObjectFromThisDomain(target);
+                ior = IorUtil.CreateIorForObjectFromThisDomain(target);
             }
 
             Debug.WriteLine("connection information for objRef, nr of profiles: " + ior.Profiles.Length);

@@ -32,6 +32,7 @@
     <File name=".\IIOPTransport.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
     <File name=".\IIOPURLUtil.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
     <File name=".\IOR.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
+    <File name=".\IORUtil.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
     <File name=".\MappingPlugin.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
     <File name=".\PeekSupportingStream.cs" subtype="Code" buildaction="Compile" dependson="" data="" />
     <File name=".\ReflectUtil.cs" subtype="Code" buildaction="Compile" dependson="" data="" />

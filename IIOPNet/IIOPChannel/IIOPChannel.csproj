@@ -124,6 +124,7 @@
     <Compile Include="Messages.cs" />
     <Compile Include="TestUtil.cs" />
     <Compile Include="CdrStreamTests.cs" />
+    <Compile Include="IORUtil.cs" />
   </ItemGroup>
   <Import Project="$(SharpDevelopBinPath)\SharpDevelop.Build.CSharp.targets" />
 </Project>

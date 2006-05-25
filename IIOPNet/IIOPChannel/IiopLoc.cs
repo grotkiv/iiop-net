@@ -100,8 +100,8 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
                 m_objectUri = uri.PathAndQuery;
                 if ((m_objectUri != null) && (m_objectUri.StartsWith("/"))) {
                     m_objectUri = m_objectUri.Substring(1);
-                    string escaped = IiopUrlUtil.EscapeNonAscii(m_objectUri);
-                    m_keyBytes = IiopUrlUtil.GetKeyBytesForId(escaped);
+                    string escaped = IorUtil.EscapeNonAscii(m_objectUri);
+                    m_keyBytes = IorUtil.GetKeyBytesForId(escaped);
                 }                
             } catch (Exception) {
                 throw new INV_OBJREF(146, CompletionStatus.Completed_MayBe);
