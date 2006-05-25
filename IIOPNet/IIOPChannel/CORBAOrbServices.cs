@@ -298,16 +298,6 @@ namespace omg.org.CORBA {
                 return m_argSerializerFactory;
             }        
         }
-
-        /// <summary>
-        /// returns the factory responsible for creating Serializers for serializing/deserializing
-        /// instances.
-        /// </summary>
-        internal Ch.Elca.Iiop.Marshalling.SerializerFactory SerializerFactory {
-            get {
-                return m_serializerFactory;
-            }
-        }        
 		
         #endregion IProperties
         #region IMethods
