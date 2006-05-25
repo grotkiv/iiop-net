@@ -134,36 +134,6 @@ namespace omg.org.IOP {
         }
         
         #endregion IMethods
-        #region SMethods
-        
-        /// <summary>
-        /// serialise the component data as cdr encapsulation.
-        /// </summary>
-        private static byte[] SerialiseComponentData(object data,
-                                                     SerializerFactory serFactory) {
-            CdrEncapsulationOutputStream encap = new CdrEncapsulationOutputStream(0);
-            Serializer ser =
-                serFactory.Create(data.GetType(), 
-                                  AttributeExtCollection.EmptyCollection); 
-            ser.Serialize(data, encap);
-            return encap.GetEncapsulationData();
-        }                
-        
-        public static TaggedComponent CreateTaggedComponent(int tag, object componentData) {
-            return new TaggedComponent(tag, SerialiseComponentData(componentData,
-                                                                   OrbServices.GetSingleton().SerializerFactory));
-        }
-        
-        /// <summary>deserialise the component data of the given type; encoded as cdr encapsulation.</summary>        
-        public static object DeserialiseComponentData(TaggedComponent component, Type componentDataType) {
-            CdrEncapsulationInputStream encap = new CdrEncapsulationInputStream(component.component_data);
-            Serializer ser =
-                OrbServices.GetSingleton().SerializerFactory.Create(componentDataType, 
-                                                                    AttributeExtCollection.EmptyCollection); 
-            return ser.Deserialize(encap);
-        }        
-        
-        #endregion SMethods        
         
     }
     
@@ -287,11 +257,13 @@ namespace omg.org.IOP {
         /// Assumes, that the componentData is encapsulated in a cdr encapsulation. The secound argument
         /// specifies, how the data inside the encapsulation looks like.
         /// </summary>
-        public object GetComponentData(int tag, Type componentDataType) {
+        public object GetComponentData(int tag, Codec codec, 
+                                       omg.org.CORBA.TypeCode componentDataType) {
             object result = null;
             object resultComp = GetComponentInternal(tag);
             if (resultComp != null) {
-                return TaggedComponent.DeserialiseComponentData((TaggedComponent)resultComp, componentDataType);
+                return codec.decode_value(((TaggedComponent)resultComp).component_data,
+                                          componentDataType);
             }
             return result;
         }        

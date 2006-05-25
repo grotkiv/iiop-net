@@ -680,8 +680,21 @@ namespace Ch.Elca.Iiop.Tests {
     [TestFixture]
     public class OrbServicesCodeSetTest {
         
+        private Codec m_codec;
+        
         public OrbServicesCodeSetTest() {
         }
+        
+    	[SetUp]
+    	public void SetUp() {
+    	    SerializerFactory serFactory =
+    	        new SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(serFactory);
+            m_codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
+    	}
                        
         [Test]
         public void TestOverrideCodeSetsWhenAlreadySet() {
@@ -696,8 +709,8 @@ namespace Ch.Elca.Iiop.Tests {
             TaggedComponent defaultComponent = 
                 CodeSetService.CreateDefaultCodesetComponent(codec);
             CodeSetComponentData codeSetData = (CodeSetComponentData)
-                TaggedComponent.DeserialiseComponentData(defaultComponent,
-                                                         typeof(CodeSetComponentData));            
+                m_codec.decode_value(defaultComponent.component_data,
+                                     CodeSetComponentData.TypeCode);                
             Assertion.Assert(Enum.IsDefined(typeof(CharSet), codeSetData.NativeCharSet));
             Assertion.Assert(Enum.IsDefined(typeof(WCharSet), codeSetData.NativeWCharSet));
             
