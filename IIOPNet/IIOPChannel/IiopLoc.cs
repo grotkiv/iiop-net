@@ -62,13 +62,13 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         #region IConstructors
 
         /// <summary>creates the corbaloc from a corbaloc url string</summary>
-        public IiopLoc(string iiopUrl, IList /* TaggedComponent */ additionalComponents) {
-            Parse(iiopUrl, additionalComponents);
+        public IiopLoc(string iiopUrl, Codec codec, IList /* TaggedComponent */ additionalComponents) {
+            Parse(iiopUrl, codec, additionalComponents);
         }
         
         /// <summary>creates the corbaloc from a corbaloc url string</summary>
-        public IiopLoc(string iiopUrl) : this (iiopUrl,
-                                               s_defaultComponents) {
+        public IiopLoc(string iiopUrl, Codec codec) : this (iiopUrl, codec,
+                                                            s_defaultComponents) {
         }
 
         #endregion IConstructors
@@ -86,7 +86,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         #endregion IProperties
         #region IMethods
         
-        private void Parse(string iiopUrl,
+        private void Parse(string iiopUrl, Codec codec,
                            IList /* TaggedComponent */ additionalComponents) {
             Uri uri = new Uri(iiopUrl);            
             if (IiopLocIiopAddr.IsResponsibleForProtocol(uri.Scheme)) {
@@ -107,14 +107,14 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
                 throw new INV_OBJREF(146, CompletionStatus.Completed_MayBe);
             }
             m_profiles = new IorProfile[] { 
-            	GetProfileFor(m_objAddr, GetKeyAsByteArray(),
+            	GetProfileFor(m_objAddr, GetKeyAsByteArray(), codec,
             	              additionalComponents) };
         }
         
-	    private IorProfile GetProfileFor(IiopLocObjAddr objAddr, byte[] objKey,
+	    private IorProfile GetProfileFor(IiopLocObjAddr objAddr, byte[] objKey, Codec codec,
 	                                     IList /* TaggedComponent */ additionalComponents) {
 			IorProfile addrProfile = 
-	            objAddr.GetProfileForAddr(objKey);	            
+	            objAddr.GetProfileForAddr(objKey, codec);	            
 			for (int i = 0; i < additionalComponents.Count; i++) {
 		        addrProfile.AddTaggedComponent((TaggedComponent)additionalComponents[i]);
 		    }
@@ -147,7 +147,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         /// <summary>
         /// converts the address to IorProfiles
         /// </summary>
-        IorProfile GetProfileForAddr(byte[] objectKey);
+        IorProfile GetProfileForAddr(byte[] objectKey, Codec codec);
         
         /// <summary>
         /// parses the address into a .NET usable form
@@ -225,7 +225,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             }
         }
         
-        public abstract IorProfile GetProfileForAddr(byte[] objectKey);
+        public abstract IorProfile GetProfileForAddr(byte[] objectKey, Codec codec);
         
         public abstract Uri ParseUrl(string objectUri, out GiopVersion version);
 
@@ -248,7 +248,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             return 4;
         }
 
-        public override IorProfile GetProfileForAddr(byte[] objectKey) {
+        public override IorProfile GetProfileForAddr(byte[] objectKey, Codec codec) {
             InternetIiopProfile result = new InternetIiopProfile(Version, Host, (short)Port, objectKey);
             return result;
         }
@@ -292,12 +292,16 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
             return 8;
         }
         
-        public override IorProfile GetProfileForAddr(byte[] objectKey) {
+        public override IorProfile GetProfileForAddr(byte[] objectKey, Codec codec) {
             InternetIiopProfile result = new InternetIiopProfile(Version, Host, 0, objectKey);
-            result.AddTaggedComponentWithData(TAG_SSL_SEC_TRANS.ConstVal, 
-                                              new SSLComponentData(SecurityAssociationOptions.EstablishTrustInClient,
-                                                                   SecurityAssociationOptions.EstablishTrustInTarget,
-                                                                   (short)Port));
+            SSLComponentData sslComp = 
+                new SSLComponentData(SecurityAssociationOptions.EstablishTrustInClient,
+                                     SecurityAssociationOptions.EstablishTrustInTarget,
+                                     (short)Port);
+            TaggedComponent sslTaggedComp =
+                new TaggedComponent(TAG_SSL_SEC_TRANS.ConstVal,
+                                    codec.encode_value(sslComp));
+            result.AddTaggedComponent(sslTaggedComp);
             return result;
         }        
     
@@ -347,6 +351,7 @@ namespace Ch.Elca.Iiop.Tests {
     public class IioplocTest {
         
         private object m_defaultCodeSetTaggedComponent;
+        private Codec m_codec;
         
         public IioplocTest() {
         }
@@ -357,17 +362,17 @@ namespace Ch.Elca.Iiop.Tests {
     	        new SerializerFactory();
             CodecFactory codecFactory =
                 new CodecFactoryImpl(serFactory);
-            Codec codec = 
+            m_codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
             m_defaultCodeSetTaggedComponent = 
-                Services.CodeSetService.CreateDefaultCodesetComponent(codec);
+                Services.CodeSetService.CreateDefaultCodesetComponent(m_codec);
     	}        
         
         [Test]
         public void TestIiopLoc() {
             string testIiopLoc = "iiop://elca.ch:1234/test";
-            IiopLoc parsed = new IiopLoc(testIiopLoc,
+            IiopLoc parsed = new IiopLoc(testIiopLoc, m_codec,
                                          new object[] { m_defaultCodeSetTaggedComponent });
             Assertion.AssertEquals("test", parsed.ObjectUri);
             Assertion.AssertEquals(1, parsed.GetProfiles().Length);
@@ -379,7 +384,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(1234, prof.Port);
             
             testIiopLoc = "iiop1.1://elca.ch:1234/test";
-            parsed = new IiopLoc(testIiopLoc, 
+            parsed = new IiopLoc(testIiopLoc, m_codec,
                                  new object[] { m_defaultCodeSetTaggedComponent });
             Assertion.AssertEquals("test", parsed.ObjectUri);
             Assertion.AssertEquals(1, parsed.GetProfiles().Length);
@@ -396,7 +401,7 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestIiopSslLoc() {
             string testIiopLoc = "iiop-ssl://elca.ch:1234/test";
-            IiopLoc parsed = new IiopLoc(testIiopLoc, 
+            IiopLoc parsed = new IiopLoc(testIiopLoc, m_codec,
                                          new object[] { m_defaultCodeSetTaggedComponent });
             Assertion.AssertEquals("test", parsed.ObjectUri);
             Assertion.AssertEquals(1, parsed.GetProfiles().Length);
@@ -408,7 +413,7 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(0, prof.Port);
             
             testIiopLoc = "iiop-ssl1.1://elca.ch:1234/test";
-            parsed = new IiopLoc(testIiopLoc,
+            parsed = new IiopLoc(testIiopLoc, m_codec,
                                  new object[] { m_defaultCodeSetTaggedComponent });
             Assertion.AssertEquals("test", parsed.ObjectUri);
             Assertion.AssertEquals(1, parsed.GetProfiles().Length);
@@ -427,7 +432,7 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestParseUrl() {
             string testIiopLoc = "iiop://elca.ch:1234/test";
-            IiopLoc parsed = new IiopLoc(testIiopLoc, 
+            IiopLoc parsed = new IiopLoc(testIiopLoc, m_codec,
                                          new object[] { m_defaultCodeSetTaggedComponent });
             string objectUri;
             GiopVersion version;
@@ -442,7 +447,7 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestParseUrlSsl() {
             string testIiopLoc = "iiop-ssl://elca.ch:1234/test";
-            IiopLoc parsed = new IiopLoc(testIiopLoc, 
+            IiopLoc parsed = new IiopLoc(testIiopLoc, m_codec, 
                                          new object[] { m_defaultCodeSetTaggedComponent });
             string objectUri;
             GiopVersion version;
