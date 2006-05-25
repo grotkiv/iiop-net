@@ -163,7 +163,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
 	    private void CalculateKeyBytesFromKeyString() {
 	        string id = KeyString;	        
             // TODO: not really correct: need to resolve %HexHex escape sequences
-            m_keyBytes = IiopUrlUtil.GetKeyBytesForId(id);
+            m_keyBytes = IorUtil.GetKeyBytesForId(id);
 	    }
 	    
 	    /// <summary>converts the key string to a byte array, resolving escape sequences</summary>

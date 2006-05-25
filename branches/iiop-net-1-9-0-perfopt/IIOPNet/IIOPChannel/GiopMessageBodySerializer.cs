@@ -259,7 +259,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 }
             }
             // get the object-URI of the responsible object
-            return IiopUrlUtil.GetObjectUriForObjectKey(objectKey);
+            return IorUtil.GetObjectUriForObjectKey(objectKey);
         }
 
         private byte[] ReadTargetKey(CdrInputStream cdrStream) {

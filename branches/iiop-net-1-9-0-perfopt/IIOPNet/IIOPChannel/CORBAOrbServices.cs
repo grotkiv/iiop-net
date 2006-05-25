@@ -357,7 +357,7 @@ namespace omg.org.CORBA {
                 }
             } else {
                 // local object
-                return IiopUrlUtil.CreateIorForObjectFromThisDomain(mbr).ToString();
+                return IorUtil.CreateIorForObjectFromThisDomain(mbr).ToString();
             }
         }
 

@@ -781,7 +781,7 @@ namespace Ch.Elca.Iiop.Tests {
 
             
             // loc fwd ior
-            byte[] objectKey = IiopUrlUtil.GetObjectKeyForObj(target);
+            byte[] objectKey = IorUtil.GetObjectKeyForObj(target);
             string repositoryID = Repository.GetRepositoryID(target.GetType());
             // this server support GIOP 1.2 --> create an GIOP 1.2 profile
             InternetIiopProfile profile = new InternetIiopProfile(new GiopVersion(1, 2), host,
