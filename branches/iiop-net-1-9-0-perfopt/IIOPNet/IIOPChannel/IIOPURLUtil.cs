@@ -65,6 +65,12 @@ namespace Ch.Elca.Iiop.Util {
                         new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 
                                                  1, 2))) };
         
+        private readonly static omg.org.IOP.Codec s_codec =
+            OrbServices.GetSingleton().CodecFactory.create_codec(
+                        new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 
+                                                 1, 2));
+            
+        
         #endregion SFields
         #region IConstructors
         
@@ -98,7 +104,7 @@ namespace Ch.Elca.Iiop.Util {
                 // now create an IOR with the above information
                 ior = new Ior(repositoryId, iiopLoc.GetProfiles());
             } else if (url.StartsWith("corbaloc")) {
-                Corbaloc loc = new Corbaloc(url,
+                Corbaloc loc = new Corbaloc(url, s_codec,
                                             s_defaultAdditionalTaggedComponents);
                 IorProfile[] profiles = loc.GetProfiles();
                 ior = new Ior(repositoryId, profiles);
@@ -136,7 +142,7 @@ namespace Ch.Elca.Iiop.Util {
                     version = new GiopVersion(1,0);
                 }                
             } else if (url.StartsWith("corbaloc")) {
-                Corbaloc loc = new Corbaloc(url, 
+                Corbaloc loc = new Corbaloc(url, s_codec,
                                             s_defaultAdditionalTaggedComponents);
                 uri = loc.ParseUrl(out objectUri, out version);
             } else {
