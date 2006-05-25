@@ -672,6 +672,7 @@ namespace Ch.Elca.Iiop.Tests {
     using Ch.Elca.Iiop.Services;
     using Ch.Elca.Iiop;    
     using Ch.Elca.Iiop.Idl;
+    using Ch.Elca.Iiop.Marshalling;
     
     /// <summary>
     /// Unit-tests for orb services code set
@@ -684,8 +685,16 @@ namespace Ch.Elca.Iiop.Tests {
                        
         [Test]
         public void TestOverrideCodeSetsWhenAlreadySet() {
+    	    SerializerFactory serFactory =
+    	        new SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(serFactory);
+            Codec codec = 
+                codecFactory.create_codec(
+                    new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+                        
             TaggedComponent defaultComponent = 
-                CodeSetService.CreateDefaultCodesetComponent();
+                CodeSetService.CreateDefaultCodesetComponent(codec);
             CodeSetComponentData codeSetData = (CodeSetComponentData)
                 TaggedComponent.DeserialiseComponentData(defaultComponent,
                                                          typeof(CodeSetComponentData));            

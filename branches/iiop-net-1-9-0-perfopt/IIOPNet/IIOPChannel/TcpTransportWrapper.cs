@@ -262,8 +262,19 @@ namespace Ch.Elca.Iiop {
         
         private int m_receiveTimeOut = 0;
         private int m_sendTimeOut = 0;
+        private omg.org.IOP.Codec m_codec;
         
         #endregion IFields
+        #region IProperties
+        
+        /// <summary><see cref="Ch.Elca.Iiop.ITransportFactory.Codec"/></summary>
+        public omg.org.IOP.Codec Codec {
+            set {
+                m_codec = value;
+            }
+        }
+        
+        #endregion IProperties
         #region IMethods
         
         /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.CreateTransport(IIorProfile)"/></summary>

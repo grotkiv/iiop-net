@@ -770,14 +770,23 @@ namespace Ch.Elca.Iiop.Tests {
         
         private Stream PrepareLocationFwdStream(string host, short port,
                                                 MarshalByRefObject target) {
-                       
+
+            SerializerFactory serFactory =
+    	        new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new CodecFactoryImpl(serFactory);
+            omg.org.IOP.Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+
+            
             // loc fwd ior
             byte[] objectKey = IiopUrlUtil.GetObjectKeyForObj(target);
             string repositoryID = Repository.GetRepositoryID(target.GetType());
             // this server support GIOP 1.2 --> create an GIOP 1.2 profile
             InternetIiopProfile profile = new InternetIiopProfile(new GiopVersion(1, 2), host,
                                                                   port, objectKey);
-            profile.AddTaggedComponent(Services.CodeSetService.CreateDefaultCodesetComponent());
+            profile.AddTaggedComponent(Services.CodeSetService.CreateDefaultCodesetComponent(codec));
             Ior locFwdTarget = new Ior(repositoryID, new IorProfile[] { profile });
             CdrOutputStreamImpl iorStream = new CdrOutputStreamImpl(new MemoryStream(), 
                                                                     0, new GiopVersion(1, 2));

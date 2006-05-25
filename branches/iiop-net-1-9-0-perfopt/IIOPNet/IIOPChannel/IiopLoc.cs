@@ -336,7 +336,9 @@ namespace Ch.Elca.Iiop.Tests {
     using NUnit.Framework;
     using Ch.Elca.Iiop.CorbaObjRef;
     using Ch.Elca.Iiop.Services;
-    using Ch.Elca.Iiop.Security.Ssl;    
+    using Ch.Elca.Iiop.Security.Ssl;  
+    using Ch.Elca.Iiop.Marshalling;
+    using Ch.Elca.Iiop.Interception;
     
     /// <summary>
     /// Unit-test for class Corbaloc
@@ -351,8 +353,15 @@ namespace Ch.Elca.Iiop.Tests {
 
     	[SetUp]
     	public void SetUp() {
+    	    SerializerFactory serFactory =
+    	        new SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(serFactory);
+            Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
             m_defaultCodeSetTaggedComponent = 
-                Services.CodeSetService.CreateDefaultCodesetComponent();    		
+                Services.CodeSetService.CreateDefaultCodesetComponent(codec);
     	}        
         
         [Test]

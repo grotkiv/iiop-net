@@ -340,7 +340,7 @@ namespace Ch.Elca.Iiop.Services {
         /// creates the tagged codeset component to insert into an IOR
         /// </summary>
         /// <returns></returns>
-        internal static TaggedComponent CreateDefaultCodesetComponent() {
+        internal static TaggedComponent CreateDefaultCodesetComponent(Codec codec) {
             Array wCharSets = Enum.GetValues(s_wCharSetType);
             Array charSets = Enum.GetValues(s_charSetType);
             int[] wCharSetCodes = new int[wCharSets.Length];
@@ -351,11 +351,13 @@ namespace Ch.Elca.Iiop.Services {
             for (int i = 0; i < charSets.Length; i++) { // Array.CopyTo doesn't work with mono for this case
                 charSetCodes[i] = (int)charSets.GetValue(i);
             }
-            return TaggedComponent.CreateTaggedComponent(TAG_CODE_SETS.ConstVal, 
-                                                         new Services.CodeSetComponentData(Services.CodeSetService.DefaultCharSet,
-                                                                                           charSetCodes,
-                                                                                           Services.CodeSetService.DefaultWCharSet,
-                                                                                           wCharSetCodes));
+            Services.CodeSetComponentData codeSetCompData =
+                new Services.CodeSetComponentData(Services.CodeSetService.DefaultCharSet,
+                                                  charSetCodes,
+                                                  Services.CodeSetService.DefaultWCharSet,
+                                                  wCharSetCodes);            
+            return new TaggedComponent(TAG_CODE_SETS.ConstVal,
+                                       codec.encode_value(codeSetCompData));
         }
         
         /// <summary>

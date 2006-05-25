@@ -337,6 +337,8 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
     /// <summary>represents an iiop ssl obj_addr in a corbaloc</summary>
     internal class CorbaLocIiopSslAddr : CorbaLocIiopAddrBase {
 
+        #region IFields
+        #endregion IFields
         #region IConstructors
 
         public CorbaLocIiopSslAddr(string addr) : base(addr) {
@@ -395,6 +397,8 @@ namespace Ch.Elca.Iiop.Tests {
     using Ch.Elca.Iiop.CorbaObjRef;
     using Ch.Elca.Iiop.Services;
     using Ch.Elca.Iiop.Security.Ssl;
+    using Ch.Elca.Iiop.Marshalling;
+    using Ch.Elca.Iiop.Interception;
     
     /// <summary>
     /// Unit-test for class Corbaloc
@@ -409,8 +413,15 @@ namespace Ch.Elca.Iiop.Tests {
     	
     	[SetUp]
     	public void SetUp() {
+    	    SerializerFactory serFactory =
+    	        new SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(serFactory);
+            Codec codec = 
+                codecFactory.create_codec(
+                    new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
             m_defaultCodeSetTaggedComponent = 
-                Services.CodeSetService.CreateDefaultCodesetComponent();    		
+                Services.CodeSetService.CreateDefaultCodesetComponent(codec);    		
     	}
 
         [Test]
