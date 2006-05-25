@@ -507,6 +507,15 @@ namespace Ch.Elca.Iiop {
                                  int unusedClientConnectionTimeOut, bool isBidir, IInterceptionOption[] interceptionOptions,
                                  int maxNumberOfConnections, bool allowMultiplex, int maxNumberOfMultplexedRequests ) {
             
+            Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =            
+                omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(argumentSerializerFactory.SerializerFactory);
+            omg.org.IOP.Codec codec = codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
+                                             1, 2));
+            transportFactory.Codec = codec;
+            
             if (!isBidir) {
                 m_conManager = new GiopClientConnectionManager(transportFactory, requestTimeOut,
                                                                unusedClientConnectionTimeOut, maxNumberOfConnections,
@@ -530,7 +539,7 @@ namespace Ch.Elca.Iiop {
                 m_providerChain = formatterProv;
             }            
             GiopMessageHandler messageHandler = 
-                new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+                new GiopMessageHandler(argumentSerializerFactory);
             ConfigureSinkProviderChain(m_conManager, messageHandler, interceptionOptions);
         }
 
@@ -657,6 +666,8 @@ namespace Ch.Elca.Iiop {
         
         private GiopBidirectionalConnectionManager m_bidirConnectionManager = null;
         private IServerTransportFactory m_transportFactory;
+        
+        private omg.org.IOP.Codec m_codec;
 
 
         #endregion IFields
@@ -812,9 +823,17 @@ namespace Ch.Elca.Iiop {
             if (m_port < 0) {
                 throw new ArgumentException("illegal port to listen on: " + m_port); 
             }
+            Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =            
+                omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(argumentSerializerFactory.SerializerFactory);
+            m_codec = codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
+                                             1, 2));
+            transportFactory.Codec = m_codec;
             m_transportFactory = transportFactory;
             m_hostNameToUse = DetermineMachineNameToUse();
-            SetupChannelData(m_hostNameToUse, m_port, null);
+            SetupChannelData(m_hostNameToUse, m_port, m_codec, null);
             m_connectionListener =
                 transportFactory.CreateConnectionListener(new ClientAccepted(this.ProcessClientMessages));
             
@@ -823,7 +842,7 @@ namespace Ch.Elca.Iiop {
                 m_providerChain = new IiopServerFormatterSinkProvider();
             }
             GiopMessageHandler messageHandler = 
-                new GiopMessageHandler(omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory);
+                new GiopMessageHandler(argumentSerializerFactory);
             ConfigureSinkProviderChain(messageHandler, interceptionOptions);            
             
             IServerChannelSink sinkChain = ChannelServices.CreateServerChannelSinkChain(m_providerChain, this);
@@ -865,10 +884,11 @@ namespace Ch.Elca.Iiop {
             return hostNameToUse;
         }
 
-        private void SetupChannelData(string hostName, int port, TaggedComponent[] additionalComponents) {
+        private void SetupChannelData(string hostName, int port, omg.org.IOP.Codec codec,
+                                      TaggedComponent[] additionalComponents) {
             IiopChannelData newChannelData = new IiopChannelData(hostName, port);
             newChannelData.AddAdditionalTaggedComponent(
-                Services.CodeSetService.CreateDefaultCodesetComponent());
+                Services.CodeSetService.CreateDefaultCodesetComponent(codec));
             if ((additionalComponents != null) && (additionalComponents.Length > 0)){
                 newChannelData.AddAdditionalTaggedComponents(additionalComponents);
             }
@@ -883,7 +903,7 @@ namespace Ch.Elca.Iiop {
                 // use IPAddress.Any and not a specific ip-address, to allow connections to loopback and normal ip; but if forcedBind use the specified one
                 IPAddress bindTo = (m_forcedBind == null ? IPAddress.Any : m_forcedBind);
                 int listeningPort = m_connectionListener.StartListening(bindTo, m_port, out additionalComponents);
-                SetupChannelData(m_hostNameToUse, listeningPort, additionalComponents);
+                SetupChannelData(m_hostNameToUse, listeningPort, m_codec, additionalComponents);
                 // register endpoints for bidirectional connections (if bidir enabled)
                 if (m_bidirConnectionManager != null) {                
                     object[] listenPoints = m_transportFactory.GetListenPoints(m_channelData);
@@ -1082,12 +1102,22 @@ namespace Ch.Elca.Iiop.Tests {
         
         [Test]
         public void AddComponent() {
+    	    Ch.Elca.Iiop.Marshalling.SerializerFactory serFactory =
+    	        new Ch.Elca.Iiop.Marshalling.SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(serFactory);
+            Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
+            
+            
             TaggedComponent comp = 
-                TaggedComponent.CreateTaggedComponent(TAG_CODE_SETS.ConstVal,
-                                                      new Services.CodeSetComponentData(10000,
-                                                                                        new int[0],
-                                                                                        20000,
-                                                                                        new int[0]));                                    
+                new TaggedComponent(TAG_CODE_SETS.ConstVal,
+                                    codec.encode_value(
+                                        new Services.CodeSetComponentData(10000,
+                                                                          new int[0],
+                                                                          20000,
+                                                                          new int[0])));
             m_channelData.AddAdditionalTaggedComponent(comp);
             Assertion.AssertEquals("Component not added correctly", 1, 
                                    m_channelData.AdditionalTaggedComponents.Length);

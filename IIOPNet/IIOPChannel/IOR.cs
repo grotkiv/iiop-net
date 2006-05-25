@@ -799,6 +799,7 @@ namespace Ch.Elca.Iiop.Tests {
         private short m_port;
         private byte[] m_objectKey;
         private GiopVersion m_version;
+        private Codec m_codec;
 
         [SetUp]
         public void Setup() {
@@ -807,6 +808,14 @@ namespace Ch.Elca.Iiop.Tests {
             m_port = 8089;
             m_objectKey = new byte[] { 65 };
             m_profile = new InternetIiopProfile(m_version, m_hostName, m_port, m_objectKey);
+            
+    	    SerializerFactory serFactory =
+    	        new SerializerFactory();
+            CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(serFactory);
+            m_codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
         }
 
         [Test]
@@ -826,8 +835,10 @@ namespace Ch.Elca.Iiop.Tests {
                                          new int[] { (int)CharSet.LATIN1 },
                                          (int)WCharSet.UTF16,
                                          new int[] { (int)WCharSet.UTF16 });
-            m_profile.AddTaggedComponentWithData(TAG_CODE_SETS.ConstVal,
-                                                 codeSetCompVal);
+            TaggedComponent codeSetComponent =
+                new TaggedComponent(TAG_CODE_SETS.ConstVal,
+                                    m_codec.encode_value(codeSetCompVal));
+            m_profile.AddTaggedComponent(codeSetComponent);
             Assertion.AssertEquals("tagged components one entry", 1, m_profile.TaggedComponents.Count);
             Assertion.Assert("not found code set component", 
                              m_profile.ContainsTaggedComponent(TAG_CODE_SETS.ConstVal));

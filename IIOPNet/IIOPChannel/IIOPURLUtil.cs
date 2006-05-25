@@ -59,7 +59,11 @@ namespace Ch.Elca.Iiop.Util {
         private static ASCIIEncoding s_asciiEncoder = new ASCIIEncoding();
                        
         private readonly static object[] s_defaultAdditionalTaggedComponents =
-            new object[] { Services.CodeSetService.CreateDefaultCodesetComponent() };
+            new object[] { 
+                Services.CodeSetService.CreateDefaultCodesetComponent(
+                    OrbServices.GetSingleton().CodecFactory.create_codec(
+                        new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 
+                                                 1, 2))) };
         
         #endregion SFields
         #region IConstructors

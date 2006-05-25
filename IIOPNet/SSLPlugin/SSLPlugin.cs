@@ -278,8 +278,26 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         private int m_receiveTimeOut = 0;
         private int m_sendTimeOut = 0;
         
-        #endregion IFields        
+        private omg.org.IOP.Codec m_codec;
         
+        #endregion IFields        
+        #region IConstructors
+        
+        public SslTransportFactory() {            
+        }
+        
+        #endregion IConstructors
+        #region IProperties
+        
+        /// <summary><see cref="Ch.Elca.Iiop.ITransportFactory.Codec"/></summary>
+        public omg.org.IOP.Codec Codec {
+            set {
+                m_codec = value;
+            }
+        }
+        
+        #endregion IProperties        
+        #region IMethods
         
         /// <summary><see cref="Ch.Elca.Iiop.IClientTransportFactory.CreateTransport(IIorProfile)"/></summary>
         public IClientTransport CreateTransport(IIorProfile profile) {
@@ -451,7 +469,7 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         /// <summary><see cref="Ch.Elca.Iiop.IServerTransportFactory.CreateConnectionListener"/></summary>
         public IServerConnectionListener CreateConnectionListener(ClientAccepted clientAcceptCallBack) {
             IServerConnectionListener result = new SslConnectionListener(m_server_required_opts, m_server_supported_opts,
-                                                                         m_serverAuth);
+                                                                         m_serverAuth, m_codec);
             result.Setup(clientAcceptCallBack);
             return result;
         }
@@ -502,6 +520,8 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             m_receiveTimeOut = receiveTimeOut;
             m_sendTimeOut = sendTimeOut;
         }
+        
+        #endregion IMethods
                 
     }
     
@@ -525,12 +545,17 @@ namespace Ch.Elca.Iiop.Security.Ssl {
         private SecurityAssociationOptions m_supportedOptions;
         private SecurityAssociationOptions m_requiredOptions;
         
+        private omg.org.IOP.Codec m_codec;
+        
         #endregion IFields
         #region IConstructors
         
         internal SslConnectionListener(SecurityAssociationOptions requiredOptions, 
                                        SecurityAssociationOptions supportedOptions,
-                                       IServerSideAuthentication serverAuth) {
+                                       IServerSideAuthentication serverAuth,
+                                       omg.org.IOP.Codec codec) {
+            m_codec = codec;
+            
             if (((requiredOptions & SecurityAssociationOptions.NoProtection) > 0) && 
                 (((supportedOptions & SecurityAssociationOptions.EstablishTrustInTarget) > 0) ||
                  ((supportedOptions & SecurityAssociationOptions.EstablishTrustInClient) > 0))) {
@@ -648,8 +673,9 @@ namespace Ch.Elca.Iiop.Security.Ssl {
                 SSLComponentData sslData = new SSLComponentData(Convert.ToInt16(m_supportedOptions),
                                                                 Convert.ToInt16(m_requiredOptions),
                                                                 (short)resultPort);
-                taggedComponents = new TaggedComponent[] { 
-                    TaggedComponent.CreateTaggedComponent(TAG_SSL_SEC_TRANS.ConstVal, sslData) };
+                taggedComponents = new TaggedComponent[] {
+                    new TaggedComponent(TAG_SSL_SEC_TRANS.ConstVal,
+                                        m_codec.encode_value(sslData)) };
                 resultPort = 0; // don't allow unsecured connections -> port is in ssl components
             } else {
                 taggedComponents = new TaggedComponent[0];
