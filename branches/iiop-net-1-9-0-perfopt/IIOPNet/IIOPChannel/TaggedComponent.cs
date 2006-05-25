@@ -253,11 +253,11 @@ namespace omg.org.IOP {
         /// serialise the given component data and adds it to the list of components.
         /// The data is encoded in a cdr encapsulation.
         /// </summary>
-        public TaggedComponent AddComponentWithData(int tag, object data) {
-            if (data == null) {
+        public TaggedComponent AddComponentWithData(int tag, object data, Codec codec) {
+            if ((data == null) || (codec == null)) {
                 throw new BAD_PARAM(80, CompletionStatus.Completed_MayBe);
             }                        
-            TaggedComponent result = TaggedComponent.CreateTaggedComponent(tag, data);
+            TaggedComponent result = new TaggedComponent(tag, codec.encode_value(data));
             AddComponent(result);
             return result;
         }

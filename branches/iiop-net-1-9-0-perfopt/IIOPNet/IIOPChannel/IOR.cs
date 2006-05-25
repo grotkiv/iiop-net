@@ -359,11 +359,7 @@ namespace Ch.Elca.Iiop.CorbaObjRef {
         public void AddTaggedComponents(TaggedComponent[] components) {
             m_taggedComponents.AddComponents(components);
         }        
-        
-        public void AddTaggedComponentWithData(int tag, object componentData) {
-            m_taggedComponents.AddComponentWithData(tag, componentData);
-        }
-        
+                
         public object GetTaggedComponentData(int tag, Type componentType) {
             return m_taggedComponents.GetComponentData(tag, componentType);
         }
