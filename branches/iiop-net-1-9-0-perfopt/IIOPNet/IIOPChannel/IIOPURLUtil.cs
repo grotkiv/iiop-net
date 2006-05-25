@@ -99,7 +99,7 @@ namespace Ch.Elca.Iiop.Util {
                 ior = new Ior(url);
             } else if (url.StartsWith("iiop")) {
                 // iiop1.0, iiop1.1, iiop1.2 (=iiop); extract version in protocol tag
-                IiopLoc iiopLoc = new IiopLoc(url, 
+                IiopLoc iiopLoc = new IiopLoc(url, s_codec,
                                               s_defaultAdditionalTaggedComponents);
                 // now create an IOR with the above information
                 ior = new Ior(repositoryId, iiopLoc.GetProfiles());
@@ -125,7 +125,7 @@ namespace Ch.Elca.Iiop.Util {
                                      out GiopVersion version) {
             Uri uri = null;
             if (url.StartsWith("iiop")) {
-                IiopLoc iiopLoc = new IiopLoc(url, 
+                IiopLoc iiopLoc = new IiopLoc(url, s_codec,
                                               s_defaultAdditionalTaggedComponents);
                 uri = iiopLoc.ParseUrl(out objectUri, out version);
             } else if (url.StartsWith("IOR")) {
