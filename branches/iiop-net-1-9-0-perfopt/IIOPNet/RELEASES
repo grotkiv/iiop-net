@@ -1,3 +1,12 @@
+version 1.9.0 ??? (in progress)
+-------------------------------
+
+standard compliance:
+- improved usage of TRANSIENT/COMM_FAILURE:
+  replaced COMM_FAILURE by TRANSIENT exception, if the target is
+  unreachable or connection has been dropped, before the sending has started
+
+
 version 1.9.0 beta3 (26 march 2006)
 -----------------------------------
 

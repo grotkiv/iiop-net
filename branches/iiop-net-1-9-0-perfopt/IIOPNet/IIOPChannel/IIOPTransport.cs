@@ -99,7 +99,8 @@ namespace Ch.Elca.Iiop {
             if (!con.CheckConnected()) {
                 // a new connection must not be opened, because this would require a remarshal 
                 // of the message (service-contexts) -> Therefore connection must already be open
-                throw new omg.org.CORBA.COMM_FAILURE(999, omg.org.CORBA.CompletionStatus.Completed_No);
+                throw new omg.org.CORBA.TRANSIENT(CorbaSystemExceptionCodes.TRANSIENT_CONNECTION_DROPPED, 
+                                                  omg.org.CORBA.CompletionStatus.Completed_No);
             }
             return con;
         }

@@ -1079,6 +1079,7 @@ namespace Ch.Elca.Iiop.Tests {
     using Ch.Elca.Iiop.Services;
     using Ch.Elca.Iiop;
     using Ch.Elca.Iiop.Idl;
+    using omg.org.CORBA;
     
     /// <summary>
     /// Unit-test for class IiopChannelData
@@ -1195,6 +1196,63 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }
     }
+    
+    
+    /// <summary>
+    /// Simple Unit-test for whole Channel functionality in case of 
+    /// exception conditions.
+    /// </summary>
+    [TestFixture]
+    public class ChannelExceptionTests {
+
+        private const int TEST_PORT = 8090;
+        
+        private IiopChannel m_channel;
+        private MarshalByRefObject m_mbr;
+        
+        [SetUp]
+        public void SetUp() {                       
+            m_channel = new IiopChannel(TEST_PORT);
+            ChannelServices.RegisterChannel(m_channel);
+            
+            m_mbr = new SimpleCallTestOnChannelImpl();
+            string uri = "TestSimpleCallOnChannel";            
+            RemotingServices.Marshal(m_mbr, uri);
+        }
+        
+        [TearDown]
+        public void TearDown() {            
+            if (m_mbr != null) {
+                try {
+                    RemotingServices.Disconnect(m_mbr);
+                } catch {
+                    // ignore
+                }
+                m_mbr = null;
+            }
+            if (m_channel != null) {
+                ChannelServices.UnregisterChannel(m_channel);
+            }
+            m_channel = null;
+        }
+            
+        [Test]
+        public void TestUnreachableServer() {
+            try {
+                string url = "iiop://localhost:8091/TestSimpleCallOnChannel";
+                ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+                    RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                             url);
+                proxy.EchoByte(1); // should fail
+                Assertion.Fail("not detected, that connectivity to server is not available");
+            } catch (TRANSIENT tEx) {
+                Assertion.AssertEquals("minor code", 
+                                       CorbaSystemExceptionCodes.TRANSIENT_CANTCONNECT,
+                                       tEx.Minor);
+            }
+        }
+    }
+    
     
     
 }
