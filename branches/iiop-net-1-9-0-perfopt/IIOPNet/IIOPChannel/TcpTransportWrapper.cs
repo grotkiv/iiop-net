@@ -339,7 +339,8 @@ namespace Ch.Elca.Iiop {
         public string GetEndpointKey(IIorProfile target) {            
             if (target.ProfileId ==  TAG_INTERNET_IOP.ConstVal) {
                 IInternetIiopProfile prof = (IInternetIiopProfile)target;
-                return "iiop://"+prof.HostName+":"+prof.Port;
+                return "iiop" + prof.Version.Major + "." +
+                       prof.Version.Minor + "://"+prof.HostName+":"+prof.Port;
             } else {
                 return String.Empty;
             }
