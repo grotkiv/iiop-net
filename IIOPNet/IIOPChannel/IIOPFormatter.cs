@@ -203,7 +203,8 @@ namespace Ch.Elca.Iiop {
                     }
                 }
             }
-            throw new COMM_FAILURE(4000, CompletionStatus.Completed_No); // can't connect to ior.            
+            throw new TRANSIENT(CorbaSystemExceptionCodes.TRANSIENT_CANTCONNECT, 
+                                CompletionStatus.Completed_No); // can't connect to ior at the moment.
         }
         
         private Ior DetermineTarget(IMessage msg) {

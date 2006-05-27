@@ -649,7 +649,10 @@ namespace Ch.Elca.Iiop {
                     foreach (DictionaryEntry entry in m_waitingForResponse) {
                         try {
                             IResponseWaiter waiter = (IResponseWaiter)entry.Value;
-                            waiter.Problem = new omg.org.CORBA.COMM_FAILURE(209, CompletionStatus.Completed_MayBe);
+                            waiter.Problem = 
+                                new omg.org.CORBA.COMM_FAILURE(
+                                        CorbaSystemExceptionCodes.COMM_FAILURE_CONNECTION_DROPPED, 
+                                        CompletionStatus.Completed_MayBe);
                             waiter.Notify();
                         } catch (Exception ex) {
                             Debug.WriteLine("exception while aborting message: " + ex);
