@@ -84,6 +84,9 @@ build-ssl:
     @if not defined JAVA_HOME echo JAVA_HOME not set, skipping JBOSS SSL integration test
     @if defined JBOSS_HOME_3_2_5 @if defined JAVA_HOME $(MAKE) /C build-with-setup 
     cd ..
+    cd DotnetDotNetSsl
+    $(MAKE) build
+    cd ..
 
 
 test: nunit-var junit-var
@@ -165,7 +168,9 @@ test-ssl:
     @if not defined JAVA_HOME echo JAVA_HOME not set, skipping JBOSS SSL integration test
     @if defined JBOSS_HOME_3_2_5 @if defined JAVA_HOME $(MAKE) test
     cd ..
-    
+    cd DotnetDotNetSsl
+    $(MAKE) test
+    cd ..    
 
 clean:
     cd Basic
@@ -234,3 +239,7 @@ clean:
     cd GacTest
     $(MAKE) clean
     cd ..
+    cd DotnetDotNetSsl
+    $(MAKE) clean
+    cd ..    
+
