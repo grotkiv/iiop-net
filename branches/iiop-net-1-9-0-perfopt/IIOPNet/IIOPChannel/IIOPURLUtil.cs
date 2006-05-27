@@ -31,6 +31,7 @@
 using System;
 using omg.org.CORBA;
 using Ch.Elca.Iiop.CorbaObjRef;
+using omg.org.IOP;
 
 namespace Ch.Elca.Iiop.Util {
 
@@ -47,55 +48,59 @@ namespace Ch.Elca.Iiop.Util {
 
         #endregion Constants
         #region SFields
-                      
-        private readonly static object[] s_defaultAdditionalTaggedComponents =
-            new object[] { 
-                Services.CodeSetService.CreateDefaultCodesetComponent(
-                    OrbServices.GetSingleton().CodecFactory.create_codec(
-                        new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 
-                                                 1, 2))) };
         
-        private readonly static omg.org.IOP.Codec s_codec =
-            OrbServices.GetSingleton().CodecFactory.create_codec(
-                        new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 
-                                                 1, 2));
-            
+        private readonly static object[] s_emptyAdditionalTaggedComponents =
+            new object[0];
         
         #endregion SFields
-        #region IConstructors
+        #region IFields
         
-        private IiopUrlUtil() {
+        private object[] m_defaultAdditionalTaggedComponents;
+        
+        private Codec m_codec;
+        
+        #endregion IFields
+        #region IConstructors
+                
+        /// <summary>
+        /// Default constructor. To Create an instance,
+        /// use the factory methods provided.
+        /// </summary>
+        private IiopUrlUtil(Codec codec) {
+            m_codec = codec;
+            m_defaultAdditionalTaggedComponents =
+                s_emptyAdditionalTaggedComponents;            
         }
 
         #endregion IConstructors
-        #region SMethods
+        #region IMethods
         
-        /// <summary>checks if data is an URL for the IIOP-channel </summary>
-        public static bool IsUrl(string data) {
-            return (data.StartsWith("iiop") || IsIorString(data) ||
-                    data.StartsWith("corbaloc"));
+        /// <summary>
+        /// This method instructs the IiopUrlUtil to add a default codeset
+        /// component, when creating an ior for a corbaloc or iiop url.
+        /// </summary>
+        private void EnableDefaultCodeSetComponent() {
+            m_defaultAdditionalTaggedComponents = 
+                new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec) };
         }
-
-        public static bool IsIorString(string url) {
-            return url.StartsWith("IOR");
-        }
-
+        
         /// <summary>creates an IOR for the object described by the Url url</summary>
         /// <param name="url">an url of the form IOR:--hex-- or iiop://addr/key</param>
         /// <param name="targetType">if the url contains no info about the target type, use this type</param>
-        public static Ior CreateIorForUrl(string url, string repositoryId) {
+        public Ior CreateIorForUrl(string url, string repositoryId) {
             Ior ior = null;
             if (IsIorString(url)) {
                 ior = new Ior(url);
             } else if (url.StartsWith("iiop")) {
                 // iiop1.0, iiop1.1, iiop1.2 (=iiop); extract version in protocol tag
-                IiopLoc iiopLoc = new IiopLoc(url, s_codec,
-                                              s_defaultAdditionalTaggedComponents);
+                IiopLoc iiopLoc = new IiopLoc(url, m_codec,
+                                              m_defaultAdditionalTaggedComponents);
                 // now create an IOR with the above information
                 ior = new Ior(repositoryId, iiopLoc.GetProfiles());
             } else if (url.StartsWith("corbaloc")) {
-                Corbaloc loc = new Corbaloc(url, s_codec,
-                                            s_defaultAdditionalTaggedComponents);
+                Corbaloc loc = new Corbaloc(url, m_codec,
+                                            m_defaultAdditionalTaggedComponents);
                 IorProfile[] profiles = loc.GetProfiles();
                 ior = new Ior(repositoryId, profiles);
             } else {
@@ -111,12 +116,12 @@ namespace Ch.Elca.Iiop.Util {
         /// <param name="url">the url to parse</param>
         /// <param name="objectURI">the objectURI</param>
         /// <returns>the channel-Uri</returns>
-        internal static Uri ParseUrl(string url, out string objectUri, 
-                                     out GiopVersion version) {
+        internal Uri ParseUrl(string url, out string objectUri, 
+                              out GiopVersion version) {
             Uri uri = null;
             if (url.StartsWith("iiop")) {
-                IiopLoc iiopLoc = new IiopLoc(url, s_codec,
-                                              s_defaultAdditionalTaggedComponents);
+                IiopLoc iiopLoc = new IiopLoc(url, m_codec,
+                                              m_defaultAdditionalTaggedComponents);
                 uri = iiopLoc.ParseUrl(out objectUri, out version);
             } else if (url.StartsWith("IOR")) {
                 Ior ior = new Ior(url);
@@ -132,8 +137,8 @@ namespace Ch.Elca.Iiop.Util {
                     version = new GiopVersion(1,0);
                 }                
             } else if (url.StartsWith("corbaloc")) {
-                Corbaloc loc = new Corbaloc(url, s_codec,
-                                            s_defaultAdditionalTaggedComponents);
+                Corbaloc loc = new Corbaloc(url, m_codec,
+                                            m_defaultAdditionalTaggedComponents);
                 uri = loc.ParseUrl(out objectUri, out version);
             } else {
                 // not possible
@@ -143,6 +148,19 @@ namespace Ch.Elca.Iiop.Util {
             }
             return uri;
         }
+        
+        #endregion IMethods
+        #region SMethods
+        
+        /// <summary>checks if data is an URL for the IIOP-channel </summary>
+        public static bool IsUrl(string data) {
+            return (data.StartsWith("iiop") || IsIorString(data) ||
+                    data.StartsWith("corbaloc"));
+        }
+
+        public static bool IsIorString(string url) {
+            return url.StartsWith("IOR");
+        }
 
         /// <summary>
         /// creates an URL from host, port and objectURI
@@ -150,7 +168,17 @@ namespace Ch.Elca.Iiop.Util {
         internal static string GetUrl(string host, int port, string objectUri) {
             return "iiop" + Uri.SchemeDelimiter + host + ":" + port + "/" + objectUri;
         }
-
+        
+        /// <summary>
+        /// Create an instance of IiopUrlUtil, which adds default codeset components to
+        /// created iors.
+        /// </summary>
+        public static IiopUrlUtil CreateWithDefaultCodeSetComponent(Codec codec) {
+            IiopUrlUtil result = new IiopUrlUtil(codec);
+            result.EnableDefaultCodeSetComponent();
+            return result;
+        }
+        
         #endregion SMethods
 
     }
@@ -182,6 +210,7 @@ namespace Ch.Elca.Iiop.Tests {
     public class IiopUrlUtilTest {
         
         private omg.org.IOP.Codec m_codec;
+        private IiopUrlUtil m_iiopUrlUtil;
         
     	[SetUp]
     	public void SetUp() {
@@ -192,6 +221,7 @@ namespace Ch.Elca.Iiop.Tests {
             m_codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+            m_iiopUrlUtil = IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec);;
     	}        
         
         private void CheckIorForUrl(Ior iorForUrl, int expectedNumberOfComponents,
@@ -237,7 +267,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void CreateIorForCorbaLocUrlWithCodeSetComponent() {
             string testCorbaLoc = "corbaloc:iiop:1.2@elca.ch:1234/test";
             Ior iorForUrl = 
-                IiopUrlUtil.CreateIorForUrl(testCorbaLoc, String.Empty);
+                m_iiopUrlUtil.CreateIorForUrl(testCorbaLoc, String.Empty);
             CheckIorForUrl(iorForUrl, 1, true);
         }
         
@@ -245,7 +275,7 @@ namespace Ch.Elca.Iiop.Tests {
         public void CreateIorForIiopLocUrlWithCodeSetComponent() {
             string testIiopLoc = "iiop1.2://localhost:1234/test";
             Ior iorForUrl = 
-                IiopUrlUtil.CreateIorForUrl(testIiopLoc, String.Empty);
+                m_iiopUrlUtil.CreateIorForUrl(testIiopLoc, String.Empty);
             CheckIorForUrl(iorForUrl, 1, true);
         }
         
@@ -255,7 +285,7 @@ namespace Ch.Elca.Iiop.Tests {
             string testIorLoc = 
                 "IOR:000000000000000100000000000000010000000000000050000102000000000A6C6F63616C686F73740004D2000000047465737400000001000000010000002800000000000100010000000300010001000100200501000100010109000000020001010000010109";            
             Ior iorForUrl = 
-                IiopUrlUtil.CreateIorForUrl(testIorLoc, String.Empty);
+                m_iiopUrlUtil.CreateIorForUrl(testIorLoc, String.Empty);
             CheckIorForUrl(iorForUrl, 1, true);
         }                
         

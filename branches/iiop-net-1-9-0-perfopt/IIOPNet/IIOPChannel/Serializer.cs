@@ -411,12 +411,14 @@ namespace Ch.Elca.Iiop.Marshalling {
         #region IFields
         
         private Type m_forType;
+        private IiopUrlUtil m_iiopUrlUtil;
         
         #endregion IFields
         #region IConstructors
         
-        public ObjRefSerializer(Type forType) {
+        public ObjRefSerializer(Type forType, IiopUrlUtil iiopUrlUtil) {
             m_forType = forType;
+            m_iiopUrlUtil = iiopUrlUtil;
         }
         
         #endregion IConstructors
@@ -451,7 +453,7 @@ namespace Ch.Elca.Iiop.Marshalling {
                 if (actualType.Equals(ReflectionHelper.MarshalByRefObjectType)) { 
                     repositoryID = ""; 
                 } // CORBA::Object has "" repository id
-                ior = IiopUrlUtil.CreateIorForUrl(url, repositoryID);
+                ior = m_iiopUrlUtil.CreateIorForUrl(url, repositoryID);
             } else {
                 // server object
                 ior = IorUtil.CreateIorForObjectFromThisDomain(target);
@@ -1811,9 +1813,10 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IFields
         #region IConstructors
         
-        internal AbstractInterfaceSerializer(Type forType, SerializerFactory serFactory) {
+        internal AbstractInterfaceSerializer(Type forType, SerializerFactory serFactory,
+                                             IiopUrlUtil iiopUrlUtil) {
             m_forType = forType;
-            m_objRefSer = new ObjRefSerializer(forType);
+            m_objRefSer = new ObjRefSerializer(forType, iiopUrlUtil);
             m_valueSer = new ValueObjectSerializer(forType, serFactory);
         }
         
@@ -2577,6 +2580,20 @@ namespace Ch.Elca.Iiop.Tests {
 	/// </summary>
 	[TestFixture]
 	public class SerializerTestObjRef : AbstractSerializerTest {
+	    
+	    private omg.org.IOP.Codec m_codec;
+	    
+    	[SetUp]
+    	public void SetUp() {
+    	    SerializerFactory serFactory =
+    	        new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(serFactory);
+            m_codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
+                                             1, 2));
+    	}
         
 		[Test]
         public void TestIorDeserialisation() {
@@ -2613,7 +2630,8 @@ namespace Ch.Elca.Iiop.Tests {
             CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(inStream);
             cdrIn.ConfigStream(0, new GiopVersion(1, 2));            
             
-            Serializer ser = new ObjRefSerializer(typeof(omg.org.CosNaming.NamingContext));
+            Serializer ser = new ObjRefSerializer(typeof(omg.org.CosNaming.NamingContext),
+                                                  IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec));
             object result = ser.Deserialize(cdrIn);
             Assertion.AssertNotNull("not correctly deserialised proxy for ior", result);
             Assertion.Assert(RemotingServices.IsTransparentProxy(result));

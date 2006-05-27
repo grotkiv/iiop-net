@@ -107,6 +107,8 @@ namespace Ch.Elca.Iiop {
         
         private GiopMessageHandler m_messageHandler;
         
+        private IiopUrlUtil m_iiopUrlUtil;
+        
         private IInterceptionOption[] m_interceptionOptions;
         
         private Hashtable m_typesVerified = new Hashtable(); // contains the verified types for this proxy
@@ -120,11 +122,13 @@ namespace Ch.Elca.Iiop {
         /// IiopClientTransportSink must be present.</param>
         internal IiopClientFormatterSink(IClientChannelSink nextSink, GiopClientConnectionManager conManager,
                                          GiopMessageHandler messageHandler,
+                                         IiopUrlUtil iiopUrlUtil,
                                          IInterceptionOption[] interceptionOptions) {
             m_nextSink = nextSink;            
             m_conManager = conManager;
             m_messageHandler = messageHandler;
             m_interceptionOptions = interceptionOptions;            
+            m_iiopUrlUtil = iiopUrlUtil;
         }
 
         #endregion IConstructors
@@ -210,7 +214,7 @@ namespace Ch.Elca.Iiop {
             // for urls, which are not stringified iors, no very accurate type information,
             // because pass as repository id information base type of all corba interfaces: Object;
             // for urls, which are stringified iors, the type information is extracted from the ior directly
-            Ior target = IiopUrlUtil.CreateIorForUrl(methodMsg.Uri, "");
+            Ior target = m_iiopUrlUtil.CreateIorForUrl(methodMsg.Uri, "");
             if (target == null) {
                 throw new INTERNAL(319, CompletionStatus.Completed_No);
             }
@@ -703,6 +707,11 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         private GiopMessageHandler m_messageHandler;
         
+        /// <summary>
+        /// helper class to convert from url to ior.
+        /// </summary>
+        private IiopUrlUtil m_iiopUrlUtil;
+        
         private IInterceptionOption[] m_interceptionOptions = InterceptorManager.EmptyInterceptorOptions;
         
         #endregion IFields
@@ -746,15 +755,18 @@ namespace Ch.Elca.Iiop {
             }
             
             return new IiopClientFormatterSink(nextSink, m_conManager, m_messageHandler,
+                                               m_iiopUrlUtil,
                                                m_interceptionOptions);
         }
 
         #endregion
 
         internal void Configure(GiopClientConnectionManager conManager, GiopMessageHandler messageHandler,
+                                IiopUrlUtil iiopUrlUtil,
                                 IInterceptionOption[] interceptionOptions) {
             m_conManager = conManager;
             m_messageHandler = messageHandler;
+            m_iiopUrlUtil = iiopUrlUtil;
             m_interceptionOptions = interceptionOptions;
         }        
         

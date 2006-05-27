@@ -230,6 +230,7 @@ namespace omg.org.CORBA {
         private Ch.Elca.Iiop.Interception.PICurrentManager m_piCurrentManager;
         private Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory m_argSerializerFactory;
         private Ch.Elca.Iiop.Marshalling.SerializerFactory m_serializerFactory;
+        private Codec m_iiopUrlUtilCodec;
 		
         #endregion IFields
         #region IConstructors
@@ -242,6 +243,10 @@ namespace omg.org.CORBA {
             m_interceptorManager = new InterceptorManager(this);            
             m_argSerializerFactory = 
                 new Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory(m_serializerFactory);
+            m_iiopUrlUtilCodec =                 
+                    m_codecFactory.create_codec(
+                                       new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 
+                                                    1, 2));
         }
         
         #endregion IConstructors
@@ -325,8 +330,9 @@ namespace omg.org.CORBA {
         /// <summary>takes an IOR or a corbaloc and returns a proxy</summary>
         public object string_to_object([StringValue] string uri) {
             CheckIsValidUri(uri);
-            
-            Ior ior = IiopUrlUtil.CreateIorForUrl(uri, String.Empty);
+            IiopUrlUtil iiopUrlUtil = 
+                IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_iiopUrlUtilCodec);
+            Ior ior = iiopUrlUtil.CreateIorForUrl(uri, String.Empty);
             // performance opt: if an ior passed in, use it
             string iorString = uri;         
             if (!IiopUrlUtil.IsIorString(uri)) {
@@ -353,7 +359,9 @@ namespace omg.org.CORBA {
                     return uri;
                 } else {
                     // create an IOR assuming type is CORBA::Object
-                    return IiopUrlUtil.CreateIorForUrl(uri, "").ToString();
+                    IiopUrlUtil iiopUrlUtil = 
+                        IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_iiopUrlUtilCodec);                    
+                    return iiopUrlUtil.CreateIorForUrl(uri, String.Empty).ToString();
                 }
             } else {
                 // local object
