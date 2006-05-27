@@ -437,7 +437,8 @@ namespace Ch.Elca.Iiop.Security.Ssl {
             if (target.ProfileId ==  TAG_INTERNET_IOP.ConstVal) {
                 object sslComponent = GetSSLComponent(target, m_codec);
                 IInternetIiopProfile prof = (IInternetIiopProfile)target;
-                return "iiop-ssl://"+prof.HostName+":"+((SSLComponentData)sslComponent).Port;
+                return "iiop-ssl" + prof.Version.Major + "." + 
+                       prof.Version.Minor + "://"+prof.HostName+":"+((SSLComponentData)sslComponent).Port;
             } else {
                 return String.Empty;
             }                        
