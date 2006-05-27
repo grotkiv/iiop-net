@@ -668,6 +668,11 @@ namespace omg.org.CORBA {
         public TRANSIENT(int minor, CompletionStatus status) : 
             base(System.Reflection.MethodInfo.GetCurrentMethod().DeclaringType.FullName, minor, status) { }
         
+        public TRANSIENT(int minor, CompletionStatus status, string additionalDetail) : 
+            base(System.Reflection.MethodInfo.GetCurrentMethod().DeclaringType.FullName +
+			    " ["+additionalDetail+"] ", minor, status) { }
+        
+        
         protected TRANSIENT(System.Runtime.Serialization.SerializationInfo info,
                             System.Runtime.Serialization.StreamingContext context) : base(info, context) {
         }

@@ -204,7 +204,7 @@ namespace Ch.Elca.Iiop {
                 }
             }
             throw new TRANSIENT(CorbaSystemExceptionCodes.TRANSIENT_CANTCONNECT, 
-                                CompletionStatus.Completed_No); // can't connect to ior at the moment.
+                                CompletionStatus.Completed_No, "Unable to connect to target."); // can't connect to ior at the moment.
         }
         
         private Ior DetermineTarget(IMessage msg) {
