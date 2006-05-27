@@ -3,6 +3,14 @@ Prerequisites
 
 For running this integration test, you need NUnit V2.0 or newer.
 
+The client and the server expects, that the provided certificate are installed in the windows certificate store as following:
+- TestServer\server.p12 in the personal certificate store of localuser (password is demo)
+- TestClient\client.p12 in the personal certificate store of localuser (password is demo)
+- cacert.cer in the root certificate store of localuser
+
+NOTE:
+This test does only work under windows, because the ssl library used makes heavy use of the windows crypto library.
+
 Building the test
 -----------------
 
