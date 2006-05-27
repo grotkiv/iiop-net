@@ -426,6 +426,22 @@ namespace Ch.Elca.Iiop.Tests {
     public class RequestReplySerialisationTest {
     
         private byte[] m_giopMagic = { 71, 73, 79, 80 };    
+        
+        private IiopUrlUtil m_iiopUrlUtil;
+        
+        [SetUp]
+        public void SetUp() {
+            SerializerFactory serFactory =
+    	        new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(serFactory);
+            omg.org.IOP.Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
+                                             1, 2));
+            m_iiopUrlUtil = 
+                IiopUrlUtil.CreateWithDefaultCodeSetComponent(codec);            
+        }
                 
         /// <summary>
         /// asserts that the expected byte sequence is following in the stream
@@ -456,7 +472,7 @@ namespace Ch.Elca.Iiop.Tests {
             MethodInfo methodToCall = typeof(TestService).GetMethod("Add");
             object[] args = new object[] { ((Int32) 1), ((Int32) 2) };
             string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
-            Ior target = IiopUrlUtil.CreateIorForUrl(uri, "");
+            Ior target = m_iiopUrlUtil.CreateIorForUrl(uri, "");
             TestMessage msg = new TestMessage(methodToCall, args, uri);
             // prepare connection context
             GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, 

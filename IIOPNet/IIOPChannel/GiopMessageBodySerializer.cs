@@ -847,6 +847,21 @@ namespace Ch.Elca.Iiop.Tests {
     [TestFixture]    
     public class MessageBodySerialiserTest {
         
+        private IiopUrlUtil m_iiopUrlUtil;
+        
+        [SetUp]
+        public void SetUp() {
+            SerializerFactory serFactory =
+    	        new SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(serFactory);
+            Codec codec = 
+                codecFactory.create_codec(
+                    new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
+            m_iiopUrlUtil = 
+                IiopUrlUtil.CreateWithDefaultCodeSetComponent(codec);            
+        }
+        
         [Test]
         public void TestSameServiceIdMultiple() {
             // checks if service contexts with the same id, doesn't throw an exception
@@ -880,7 +895,7 @@ namespace Ch.Elca.Iiop.Tests {
             object[] args = new object[] { "test" };            
             string uri = 
                 "IOR:000000000000000100000000000000010000000000000020000102000000000A6C6F63616C686F73740004D2000000047465737400000000";
-            Ior target = IiopUrlUtil.CreateIorForUrl(uri, "");
+            Ior target = m_iiopUrlUtil.CreateIorForUrl(uri, "");
             IIorProfile targetProfile = target.Profiles[0];
             TestMessage msg = new TestMessage(methodToCall, args, uri);
             msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = (uint)5; // set request-id
@@ -908,7 +923,7 @@ namespace Ch.Elca.Iiop.Tests {
                 typeof(TestStringInterface).GetMethod("EchoWString");
             object[] args = new object[] { "test" };
             string uri = "iiop://localhost:8087/testuri"; // Giop 1.2 will be used because no version spec in uri
-            Ior target = IiopUrlUtil.CreateIorForUrl(uri, "");
+            Ior target = m_iiopUrlUtil.CreateIorForUrl(uri, "");
             IIorProfile targetProfile = target.Profiles[0];
             TestMessage msg = new TestMessage(methodToCall, args, uri);
             msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = (uint)5; // set request-id

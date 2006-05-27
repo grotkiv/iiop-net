@@ -32,7 +32,9 @@ using System.Collections;
 using System.Diagnostics;
 using Ch.Elca.Iiop.Util;
 using Ch.Elca.Iiop.Idl;
+using Ch.Elca.Iiop.Interception;
 using omg.org.CORBA;
+using omg.org.IOP;
 
 namespace Ch.Elca.Iiop.Marshalling {
     
@@ -89,6 +91,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         private IDictionary /* Type, ValueConcreteInstanceSerializer */ 
             m_concValueInstanceSer = new Hashtable();
         
+        private Codec m_codec;
+        
         #endregion IFields
         #region IConstructors
         
@@ -104,12 +108,15 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                               false, this);
                                                               
             m_boxedStringValueSer = new BoxedValueSerializer(ReflectionHelper.StringValueType,
-                                                             false, this);
+                                                             false, this);            
+            
+            m_codec = new Ch.Elca.Iiop.Interception.CodecFactoryImpl(this).
+                    create_codec(new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
         }
         
         #endregion IConstructors
         #region IMethods
-        
+                
         /// <summary>determines the serialiser responsible for a specified formal type and the parameterattributes attributes</summary>
         /// <param name="formal">The formal type. If formal is modified through mapper, result is returned in this parameter</param>
         /// <param name="attributes">the parameter/field attributes</param>
@@ -189,11 +196,13 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         public object MapToIdlAbstractInterface(System.Type clsType) {
             // could be cached ...
-            return new AbstractInterfaceSerializer(clsType, this);
+            return new AbstractInterfaceSerializer(clsType, this, 
+                                                   IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec));
         }
         public object MapToIdlConcreteInterface(System.Type clsType) {
              // can be cached, but because not expensive to create not (yet?) done
-            return new ObjRefSerializer(clsType);
+            return new ObjRefSerializer(clsType, 
+                                        IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec));
         }
         public object MapToIdlLocalInterface(System.Type clsType) {
             // local interfaces are non-marshable

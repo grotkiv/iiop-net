@@ -333,6 +333,8 @@ namespace Ch.Elca.Iiop {
         
         private IClientChannelSinkProvider m_providerChain;                
         private GiopClientConnectionManager m_conManager;
+        
+        private IiopUrlUtil m_iiopUrlUtil;
 
         #endregion IFields
         #region SConstructor
@@ -490,11 +492,12 @@ namespace Ch.Elca.Iiop {
         /// <param name="interceptionOptions"></param>
         private void ConfigureSinkProviderChain(GiopClientConnectionManager conManager,
                                                 GiopMessageHandler messageHandler,
+                                                IiopUrlUtil iiopUrlUtil,
                                                 IInterceptionOption[] interceptionOptions) {
             IClientChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopClientFormatterSinkProvider) {
-                    ((IiopClientFormatterSinkProvider)prov).Configure(conManager, messageHandler,
+                    ((IiopClientFormatterSinkProvider)prov).Configure(conManager, messageHandler, iiopUrlUtil,
                                                                       interceptionOptions);
                     break;
                 }
@@ -515,6 +518,8 @@ namespace Ch.Elca.Iiop {
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
                                              1, 2));
             transportFactory.Codec = codec;
+            m_iiopUrlUtil = 
+                IiopUrlUtil.CreateWithDefaultCodeSetComponent(codec);
             
             if (!isBidir) {
                 m_conManager = new GiopClientConnectionManager(transportFactory, requestTimeOut,
@@ -540,7 +545,8 @@ namespace Ch.Elca.Iiop {
             }            
             GiopMessageHandler messageHandler = 
                 new GiopMessageHandler(argumentSerializerFactory);
-            ConfigureSinkProviderChain(m_conManager, messageHandler, interceptionOptions);
+            ConfigureSinkProviderChain(m_conManager, messageHandler, m_iiopUrlUtil,
+                                       interceptionOptions);
         }
 
         #region Implementation of IChannelSender
@@ -551,9 +557,9 @@ namespace Ch.Elca.Iiop {
         public IMessageSink CreateMessageSink(string url, object remoteChannelData, out string objectURI) {
             objectURI = null;
             if ((url != null) && IiopUrlUtil.IsUrl(url) && 
-                (m_conManager.CanConnectToIor(IiopUrlUtil.CreateIorForUrl(url, "")))) {
+                (m_conManager.CanConnectToIor(m_iiopUrlUtil.CreateIorForUrl(url, "")))) {
                 GiopVersion version = new GiopVersion(1, 0);
-                IiopUrlUtil.ParseUrl(url, out objectURI, out version);
+                m_iiopUrlUtil.ParseUrl(url, out objectURI, out version);
             
                 IClientChannelSink sink = m_providerChain.CreateSink(this, url, remoteChannelData);
                 if (!(sink is IMessageSink)) { 
@@ -579,10 +585,10 @@ namespace Ch.Elca.Iiop {
         #region Implementation of IChannel
         public string Parse(string url, out string objectURI) {
             string result;
-            if (IiopUrlUtil.IsUrl(url) && (m_conManager.CanConnectToIor(IiopUrlUtil.CreateIorForUrl(url, "")))) {
+            if (IiopUrlUtil.IsUrl(url) && (m_conManager.CanConnectToIor(m_iiopUrlUtil.CreateIorForUrl(url, "")))) {
                 GiopVersion version;
                 objectURI = null;
-                Uri uri = IiopUrlUtil.ParseUrl(url, out objectURI, out version);
+                Uri uri = m_iiopUrlUtil.ParseUrl(url, out objectURI, out version);
                 result = uri.ToString();
             } else {
                 // is either no corba url or is not usable by transport factory, 
@@ -668,6 +674,7 @@ namespace Ch.Elca.Iiop {
         private IServerTransportFactory m_transportFactory;
         
         private omg.org.IOP.Codec m_codec;
+        private IiopUrlUtil m_iiopUrlUtil;
 
 
         #endregion IFields
@@ -832,6 +839,7 @@ namespace Ch.Elca.Iiop {
                                              1, 2));
             transportFactory.Codec = m_codec;
             m_transportFactory = transportFactory;
+            m_iiopUrlUtil = IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec);            
             m_hostNameToUse = DetermineMachineNameToUse();
             SetupChannelData(m_hostNameToUse, m_port, m_codec, null);
             m_connectionListener =
@@ -978,7 +986,7 @@ namespace Ch.Elca.Iiop {
         public string Parse(string url, out string objectURI) {
             objectURI = null;
             GiopVersion version;
-            return IiopUrlUtil.ParseUrl(url, out objectURI, out version).ToString();
+            return m_iiopUrlUtil.ParseUrl(url, out objectURI, out version).ToString();
         }
 
         #endregion Implementation of IChannel
