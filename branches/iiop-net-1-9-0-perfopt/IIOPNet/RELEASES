@@ -1,10 +1,27 @@
 version 1.9.0 ??? (in progress)
 -------------------------------
 
+bug fixed:
+- improved object_to_string, string_to_object implementation to support more
+  cases (interface type unknown, ...), see also bug #1470735
+- corrected misspelling of ORBInitializer (bug #1471200)
+- Too optimistic connection reusing (bug #1496479)
+
+new features:
+- improved IDL to CLS compiler command line: added support for -lib: option.
+
 standard compliance:
 - improved usage of TRANSIENT/COMM_FAILURE:
   replaced COMM_FAILURE by TRANSIENT exception, if the target is
   unreachable or connection has been dropped, before the sending has started
+
+Tests:
+- support for multiple versions of the .NET Framework
+- Updated to new NUnit Version 2.2.x
+- added new test for ssl between .NET client and .NET server
+
+IDE support:
+- Added project files for #Develop 2.0
 
 
 version 1.9.0 beta3 (26 march 2006)
