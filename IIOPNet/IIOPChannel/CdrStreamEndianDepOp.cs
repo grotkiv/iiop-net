@@ -37,7 +37,7 @@ using Ch.Elca.Iiop.CodeSet;
 using omg.org.CORBA;
 
 namespace Ch.Elca.Iiop.Cdr {
-
+    
     /// <summary>
     /// this is a big-endian implementation for the endian dependent operation for CDRInput-streams
     /// </summary>
@@ -62,6 +62,17 @@ namespace Ch.Elca.Iiop.Cdr {
 
         #endregion IConstructors
         #region IMethods
+        
+        /// <summary>
+        /// retrieved the wchar encoding to use for wchar/wstring operations.
+        /// </summary>        
+        private Encoding GetWCharEncoding(int wcharSet) {
+            Encoding encoding = CodeSetService.GetCharEncodingBigEndian(wcharSet, true);
+            if (encoding == null) {
+                throw new BAD_PARAM(987, CompletionStatus.Completed_MayBe, "WChar Codeset either not specified or not supported.");
+            }
+            return encoding;
+        }        
         
         #region read methods depenant on byte ordering
 
@@ -123,10 +134,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
         
         public char ReadWChar() {
-            Encoding encoding = CodeSetService.GetCharEncodingBigEndian(m_stream.WCharSet, true);
-            if (encoding == null) {
-                throw new INTERNAL(987, CompletionStatus.Completed_MayBe);
-            }
+            Encoding encoding = GetWCharEncoding(m_stream.WCharSet);
             byte[] data;
             if ((m_version.Major == 1) && (m_version.Minor <= 1)) { // GIOP 1.1 / 1.0
                 data = new byte[] { m_stream.ReadOctet() };
@@ -142,10 +150,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         public string ReadWString()    {
-            Encoding encoding = CodeSetService.GetCharEncodingBigEndian(m_stream.WCharSet, true);
-            if (encoding == null) {
-                throw new INTERNAL(987, CompletionStatus.Completed_MayBe);
-            }
+            Encoding encoding = GetWCharEncoding(m_stream.WCharSet);
             uint length = ReadULong(); 
             byte[] data;
             if ((m_version.Major == 1) && (m_version.Minor <= 1)) { // GIOP 1.1 / 1.0
@@ -192,6 +197,17 @@ namespace Ch.Elca.Iiop.Cdr {
         #endregion IConstructors
         #region IMethods
         
+        /// <summary>
+        /// retrieved the wchar encoding to use for wchar/wstring operations.
+        /// </summary>        
+        private Encoding GetWCharEncoding(int wcharSet) {
+            Encoding encoding = CodeSetService.GetCharEncodingBigEndian(wcharSet, true);
+            if (encoding == null) {
+                throw new BAD_PARAM(987, CompletionStatus.Completed_MayBe, "WChar Codeset either not specified or not supported.");
+            }
+            return encoding;
+        }        
+        
         #region write methods dependant on byte ordering
 
     	private void Write(byte[] data, int count, Aligns align) {
@@ -235,10 +251,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         public void WriteWChar(char data) {
-            Encoding encoding = CodeSetService.GetCharEncodingBigEndian(m_stream.WCharSet, true);
-            if (encoding == null) {
-                throw new INTERNAL(987, CompletionStatus.Completed_MayBe);
-            }            
+            Encoding encoding = GetWCharEncoding(m_stream.WCharSet);
             byte[] toSend = encoding.GetBytes(new char[] { data } );
             if (!((m_version.Major == 1) && (m_version.Minor <= 1))) { // GIOP 1.2
                 m_stream.WriteOctet((byte)toSend.Length);
@@ -247,10 +260,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         public void WriteWString(string data) {
-            Encoding encoding = CodeSetService.GetCharEncodingBigEndian(m_stream.WCharSet, true);
-            if (encoding == null) {
-                throw new INTERNAL(987, CompletionStatus.Completed_MayBe);
-            }
+            Encoding encoding = GetWCharEncoding(m_stream.WCharSet);
             byte[] toSend = encoding.GetBytes(data);
             if ((m_version.Major == 1) && (m_version.Minor <= 1)) { // GIOP 1.0, 1.1
                 byte[] sendNew = new byte[toSend.Length + 2];
@@ -296,6 +306,17 @@ namespace Ch.Elca.Iiop.Cdr {
 
         #endregion IConstructors
         #region IMethods
+        
+        /// <summary>
+        /// retrieved the wchar encoding to use for wchar/wstring operations.
+        /// </summary>        
+        private Encoding GetWCharEncoding(int wcharSet) {
+            Encoding encoding = CodeSetService.GetCharEncodingLittleEndian(wcharSet, true);
+            if (encoding == null) {
+                throw new BAD_PARAM(987, CompletionStatus.Completed_MayBe, "WChar Codeset either not specified or not supported.");
+            }
+            return encoding;
+        }        
         
         #region read methods depenant on byte ordering
 
@@ -357,11 +378,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
         
         public char ReadWChar() {
-            Encoding encoding = CodeSetService.GetCharEncodingLittleEndian(m_stream.WCharSet, true);
-            if (encoding == null) {
-                throw new INTERNAL(987, CompletionStatus.Completed_MayBe);
-            }
-
+            Encoding encoding = GetWCharEncoding(m_stream.WCharSet);
             byte[] data;
             if ((m_version.Major == 1) && (m_version.Minor <= 1)) { // GIOP 1.1 / 1.0
                 data = new byte[] { m_stream.ReadOctet() };
@@ -377,7 +394,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         public string ReadWString()    {
-            Encoding encoding = CodeSetService.GetCharEncodingLittleEndian(m_stream.WCharSet, true);
+            Encoding encoding = GetWCharEncoding(m_stream.WCharSet);
             uint length = ReadULong(); 
             byte[] data;
             if ((m_version.Major == 1) && (m_version.Minor <= 1)) { // GIOP 1.1 / 1.0
@@ -424,6 +441,17 @@ namespace Ch.Elca.Iiop.Cdr {
         #endregion IConstructors
         #region IMethods
         
+        /// <summary>
+        /// retrieved the wchar encoding to use for wchar/wstring operations.
+        /// </summary>        
+        private Encoding GetWCharEncoding(int wcharSet) {
+            Encoding encoding = CodeSetService.GetCharEncodingLittleEndian(wcharSet, true);
+            if (encoding == null) {
+                throw new BAD_PARAM(987, CompletionStatus.Completed_MayBe, "WChar Codeset either not specified or not supported.");
+            }
+            return encoding;
+        }        
+        
         #region write methods dependant on byte ordering
 
        	private void Write(byte[] data, int count, Aligns align) {
@@ -467,7 +495,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         public void WriteWChar(char data) {
-            Encoding encoding = CodeSetService.GetCharEncodingLittleEndian(m_stream.WCharSet, true);
+            Encoding encoding = GetWCharEncoding(m_stream.WCharSet);
             byte[] toSend = encoding.GetBytes(new char[] { data } );
             if (!((m_version.Major == 1) && (m_version.Minor <= 1))) { // GIOP 1.2
                 m_stream.WriteOctet((byte)toSend.Length);
@@ -476,7 +504,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         public void WriteWString(string data) {
-            Encoding encoding = CodeSetService.GetCharEncodingLittleEndian(m_stream.WCharSet, true);
+            Encoding encoding = GetWCharEncoding(m_stream.WCharSet);
             byte[] toSend = encoding.GetBytes(data);
             if ((m_version.Major == 1) && (m_version.Minor <= 1)) { // GIOP 1.0, 1.1
                 byte[] sendNew = new byte[toSend.Length + 2];

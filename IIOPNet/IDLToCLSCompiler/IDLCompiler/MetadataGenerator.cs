@@ -170,6 +170,8 @@ public class MetaDataGenerator : IDLParserVisitor {
 
     private TypesInAssemblyManager m_typesInRefAsms;
 
+    private Type m_interfaceToInheritFrom = null;
+
     /** is the generator initalized for parsing a file */
     private bool m_initalized = false;
 
@@ -194,7 +196,7 @@ public class MetaDataGenerator : IDLParserVisitor {
     /// </param>
     /// <param name="signKey">the key to use to sign the generated assembly; pass null to not sign the assembly</param>
     public MetaDataGenerator(AssemblyName targetAssemblyName, String targetDir,
-                             ArrayList refAssemblies) {
+                             IList refAssemblies) {
         m_targetAsmName = targetAssemblyName;        
         // define a persistent assembly
         CreateResultAssembly(targetDir);
@@ -216,7 +218,19 @@ public class MetaDataGenerator : IDLParserVisitor {
             m_mapAnyToAnyContainer = value;
         }
     }
-    
+
+    /// <summary>
+    /// optionally defines an base interface for the generated interface.
+    /// </summary>
+    public Type InheritedInterface {
+        get {
+            return m_interfaceToInheritFrom;
+        }
+        set {
+            m_interfaceToInheritFrom = value;
+        }
+    }
+
     #if UnitTest
     
     public Assembly ResultAssembly {
@@ -250,11 +264,12 @@ public class MetaDataGenerator : IDLParserVisitor {
     
     /// <summary>initalizes the assemblies, which contains type to use
     /// instead of generating them</summary>
-    private void InitalizeRefAssemblies(ArrayList refAssemblies) {
+    private void InitalizeRefAssemblies(IList refAssemblies) {
         // add the IIOPChannel dll; IIdlAttribute is in channel assembly
         Type typeInChannel = typeof(IIdlAttribute);
-        refAssemblies.Add(typeInChannel.Assembly);
-        m_typesInRefAsms = new TypesInAssemblyManager(refAssemblies);
+        ArrayList refAssembliesWithChannelAsm = new ArrayList(refAssemblies);
+        refAssembliesWithChannelAsm.Add(typeInChannel.Assembly);
+        m_typesInRefAsms = new TypesInAssemblyManager(refAssembliesWithChannelAsm);
     }    
 
     ///<summary>
@@ -366,7 +381,6 @@ public class MetaDataGenerator : IDLParserVisitor {
             }
             result.Add(resultType.GetCompactClsType());
         }
-        
         return (System.Type[])result.ToArray(typeof(Type));
     }
 
@@ -541,11 +555,16 @@ public class MetaDataGenerator : IDLParserVisitor {
      */
     public Object visit(ASTinterface_header node, Object data) {
         Type[] result = new Type[0];
+        ArrayList resList = new ArrayList();
         if (node.jjtGetNumChildren() > 0) {
             ASTinterface_inheritance_spec inheritSpec = (ASTinterface_inheritance_spec) node.jjtGetChild(0);
             result = (Type[])inheritSpec.jjtAccept(this, data);
+            resList.AddRange(result);
         }
-        return result;
+        if (m_interfaceToInheritFrom != null && !node.isLocal()) {
+            resList.Add(m_interfaceToInheritFrom);
+        }
+        return resList.ToArray(typeof(Type));
     }
 
     /**
