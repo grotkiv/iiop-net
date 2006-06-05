@@ -269,73 +269,85 @@ namespace Ch.Elca.Iiop {
         }
             
         #region Implementation of IMessageSink
-        public IMessage SyncProcessMessage(IMessage msg) {
-            // allocate (reserve) connection
+        
+        private IMessage SyncProcessMessageOnce(IMessage msg,
+                                                Ior target) {
+            
+            IIorProfile selectedProfile;
+            uint reqId;            
+            try {
+                // allocate (reserve) connection
+                GiopClientConnectionDesc conDesc = 
+                    AllocateConnection(msg, target, out selectedProfile, out reqId);
+                ITransportHeaders requestHeaders;
+                Stream requestStream;
+                SerialiseRequest(msg, selectedProfile, conDesc, reqId,
+                                 out requestHeaders, out requestStream);
+
+                // pass the serialised GIOP-request to the first stream handling sink
+                // when the call returns, the response message has been received
+                ITransportHeaders responseHeaders;                                
+                Stream responseStream;
+                m_nextSink.ProcessMessage(msg, requestHeaders, requestStream, 
+                                          out responseHeaders, out responseStream);
+
+                // now deserialise the response
+                return DeserialiseResponse(responseStream, 
+                                           responseHeaders, msg, conDesc);
+            } finally {
+                m_conManager.RequestOnConnectionCompleted(msg); // release the connection, because this interaction is complete
+            }
+        }
+        
+        public IMessage SyncProcessMessage(IMessage msg) {            
             Ior target = DetermineTarget(msg);
             VerifyInterfaceCompatible(target, msg);
-            IIorProfile selectedProfile;
-            uint reqId;
             // serialise
             IMessage result;
             try {
-                try {
-                    GiopClientConnectionDesc conDesc = 
-                        AllocateConnection(msg, target, out selectedProfile, out reqId);
-                    ITransportHeaders requestHeaders;
-                    Stream requestStream;
-                    SerialiseRequest(msg, selectedProfile, conDesc, reqId,
-                                     out requestHeaders, out requestStream);
-
-                    // pass the serialised GIOP-request to the first stream handling sink
-                    // when the call returns, the response message has been received
-                    ITransportHeaders responseHeaders;                                
-                    Stream responseStream;
-                    m_nextSink.ProcessMessage(msg, requestHeaders, requestStream, 
-                                              out responseHeaders, out responseStream);
-
-                    // now deserialise the response
-                    result = DeserialiseResponse(responseStream, 
-                                                 responseHeaders, msg, conDesc);
-                } finally {
-                    m_conManager.RequestOnConnectionCompleted(msg); // release the connection, because this interaction is complete
-                }
+                result = SyncProcessMessageOnce(msg, target);                
             } catch (Exception e) {
                 result = new ReturnMessage(e, (IMethodCallMessage) msg);
             }
             return result;
         }
-
-        public IMessageCtrl AsyncProcessMessage(IMessage msg, IMessageSink replySink) {
-            // allocate (reserve) connection
-            Ior target = DetermineTarget(msg);
-            VerifyInterfaceCompatible(target, msg);
+        
+        private void AsyncProcessMessageOnce(IMessage msg,
+                                                 Ior target, IMessageSink replySink) {
             IIorProfile selectedProfile;
             uint reqId;
             try {
-                try {
-                    GiopClientConnectionDesc conDesc = AllocateConnection(msg, target, out selectedProfile, out reqId);
-                    SimpleGiopMsg.SetMessageAsyncRequest(msg); // mark message as async, needed for portable interceptors
-                    ITransportHeaders requestHeaders;
-                    Stream requestStream;
-                    SerialiseRequest(msg, selectedProfile, conDesc, reqId,
-                                     out requestHeaders, out requestStream);
-                    // pass the serialised GIOP-request to the first stream handling sink
-                    // this sink is the last sink in the message handling sink chain, therefore the reply sink chain of all the previous message handling
-                    // sink is passed to the ClientChannelSinkStack, which will inform this chain of the received reply
-                    ClientChannelSinkStack clientSinkStack = new ClientChannelSinkStack(replySink);
-                    AsyncProcessingData asyncData = new AsyncProcessingData(msg, conDesc);
-                    clientSinkStack.Push(this, asyncData); // push the formatter onto the sink stack, to get the chance to handle the incoming reply stream
-                    // forward the message to the next sink
-                    m_nextSink.AsyncProcessRequest(clientSinkStack, msg, requestHeaders, requestStream);
-                    // for oneway messages, release the connections for future use
-                    if ((msg is IMethodCallMessage) && GiopMessageHandler.IsOneWayCall((IMethodCallMessage)msg)) {
-                        m_conManager.RequestOnConnectionCompleted(msg); // release the connection, because this interaction is complete
-                    }
-                } catch (Exception) {
-                    // release the connection, if something went wrong during connection allocation and send
-                    m_conManager.RequestOnConnectionCompleted(msg); // release the connection, because this interaction is complete
-                    throw;
+                // allocate (reserve) connection
+                GiopClientConnectionDesc conDesc = AllocateConnection(msg, target, out selectedProfile, out reqId);
+                SimpleGiopMsg.SetMessageAsyncRequest(msg); // mark message as async, needed for portable interceptors
+                ITransportHeaders requestHeaders;
+                Stream requestStream;
+                SerialiseRequest(msg, selectedProfile, conDesc, reqId,
+                                 out requestHeaders, out requestStream);
+                // pass the serialised GIOP-request to the first stream handling sink
+                // this sink is the last sink in the message handling sink chain, therefore the reply sink chain of all the previous message handling
+                // sink is passed to the ClientChannelSinkStack, which will inform this chain of the received reply
+                ClientChannelSinkStack clientSinkStack = new ClientChannelSinkStack(replySink);
+                AsyncProcessingData asyncData = new AsyncProcessingData(msg, conDesc);
+                clientSinkStack.Push(this, asyncData); // push the formatter onto the sink stack, to get the chance to handle the incoming reply stream
+                // forward the message to the next sink
+                m_nextSink.AsyncProcessRequest(clientSinkStack, msg, requestHeaders, requestStream);
+                // for oneway messages, release the connections for future use
+                if ((msg is IMethodCallMessage) && GiopMessageHandler.IsOneWayCall((IMethodCallMessage)msg)) {
+                     m_conManager.RequestOnConnectionCompleted(msg); // release the connection, because this interaction is complete
                 }
+            } catch {
+                // release the connection, if something went wrong during connection allocation and send
+                m_conManager.RequestOnConnectionCompleted(msg); // release the connection, because this interaction is complete
+                throw;
+            }
+        }
+
+        public IMessageCtrl AsyncProcessMessage(IMessage msg, IMessageSink replySink) {            
+            Ior target = DetermineTarget(msg);
+            VerifyInterfaceCompatible(target, msg);
+            try {
+                AsyncProcessMessageOnce(msg, target, replySink);
             } catch (Exception e) {
                 // formulate an exception reply for an non-oneway call
                 if ( ((msg is IMethodCallMessage) && (!GiopMessageHandler.IsOneWayCall((IMethodCallMessage)msg))) ||
