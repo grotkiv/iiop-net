@@ -1421,8 +1421,8 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestNoRetryForcedSync() {
             Setup("NoRt", 0);
             ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
-            RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
-                                     m_targetIor.ToString());
+                RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                         m_targetIor.ToString());
             byte arg = 1;
             Assertion.AssertEquals(1, proxy.EchoByte(arg));            
         }
@@ -1431,11 +1431,45 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestOneRetryForcedSync() {
             Setup("OneRt", 1);
             ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
-            RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
-                                     m_targetIor.ToString());
+                RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                        m_targetIor.ToString());
             byte arg = 1;
             Assertion.AssertEquals(1, proxy.EchoByte(arg));            
         }        
+        
+        delegate System.Byte TestEchoByteDelegate(System.Byte arg);
+        
+        [Test]
+        public void TestNoRetryForcedASync() {
+            Setup("NoRtAsync", 0);
+            ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+                RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                        m_targetIor.ToString());            
+            byte arg = 1;            
+            TestEchoByteDelegate ebd = 
+                new TestEchoByteDelegate(proxy.EchoByte);
+            // async call
+            IAsyncResult ar = ebd.BeginInvoke(arg, null, null);
+            // wait for response
+            System.Byte result = ebd.EndInvoke(ar);                                    
+            Assertion.AssertEquals(arg, result);
+        }
+        
+        [Test]
+        public void TestOneRetryForcedASync() {
+            Setup("OneRtAsync", 1);
+            ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+                RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                        m_targetIor.ToString());
+            byte arg = 1;            
+            TestEchoByteDelegate ebd = 
+                new TestEchoByteDelegate(proxy.EchoByte);
+            // async call
+            IAsyncResult ar = ebd.BeginInvoke(arg, null, null);
+            // wait for response
+            System.Byte result = ebd.EndInvoke(ar);                                    
+            Assertion.AssertEquals(arg, result);
+        }
         
     }
     
