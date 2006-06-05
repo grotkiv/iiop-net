@@ -111,6 +111,8 @@ namespace Ch.Elca.Iiop {
         
         private IInterceptionOption[] m_interceptionOptions;
         
+        private int m_maxNumberOfRetries;
+        
         private Hashtable m_typesVerified = new Hashtable(); // contains the verified types for this proxy
         
         delegate bool Is_a_delegate(string repId);
@@ -123,12 +125,14 @@ namespace Ch.Elca.Iiop {
         internal IiopClientFormatterSink(IClientChannelSink nextSink, GiopClientConnectionManager conManager,
                                          GiopMessageHandler messageHandler,
                                          IiopUrlUtil iiopUrlUtil,
-                                         IInterceptionOption[] interceptionOptions) {
+                                         IInterceptionOption[] interceptionOptions,
+                                         int maxNumberOfRetries) {
             m_nextSink = nextSink;            
             m_conManager = conManager;
             m_messageHandler = messageHandler;
             m_interceptionOptions = interceptionOptions;            
             m_iiopUrlUtil = iiopUrlUtil;
+            m_maxNumberOfRetries = maxNumberOfRetries;
         }
 
         #endregion IConstructors
@@ -270,6 +274,20 @@ namespace Ch.Elca.Iiop {
             
         #region Implementation of IMessageSink
         
+        private bool CanRetryOnException(Exception ex, int numberOfRetriesDone) {
+            TRANSIENT tEx = ex as TRANSIENT;
+            if (tEx == null || tEx.Status != CompletionStatus.Completed_No) {
+                return false;
+            }
+            if (numberOfRetriesDone >= m_maxNumberOfRetries) {
+                // check, that number of retries not yet exceeded, i.e
+                // is a retry allowed or not;
+                // >=, because of case no retries.
+                return false;
+            }
+            return true;
+        }
+        
         private IMessage SyncProcessMessageOnce(IMessage msg,
                                                 Ior target) {
             
@@ -297,17 +315,25 @@ namespace Ch.Elca.Iiop {
             } finally {
                 m_conManager.RequestOnConnectionCompleted(msg); // release the connection, because this interaction is complete
             }
-        }
+        }                
         
         public IMessage SyncProcessMessage(IMessage msg) {            
             Ior target = DetermineTarget(msg);
             VerifyInterfaceCompatible(target, msg);
             // serialise
             IMessage result;
-            try {
-                result = SyncProcessMessageOnce(msg, target);                
-            } catch (Exception e) {
-                result = new ReturnMessage(e, (IMethodCallMessage) msg);
+            int numberOfRetries = 0;
+            while (true) {
+                try {
+                    result = SyncProcessMessageOnce(msg, target);
+                    break;
+                } catch (Exception e) {                    
+                    if (!CanRetryOnException(e, numberOfRetries)) {                        
+                        result = new ReturnMessage(e, (IMethodCallMessage) msg);
+                        break;
+                    }
+                    numberOfRetries++;
+                }
             }
             return result;
         }
@@ -346,17 +372,25 @@ namespace Ch.Elca.Iiop {
         public IMessageCtrl AsyncProcessMessage(IMessage msg, IMessageSink replySink) {            
             Ior target = DetermineTarget(msg);
             VerifyInterfaceCompatible(target, msg);
-            try {
-                AsyncProcessMessageOnce(msg, target, replySink);
-            } catch (Exception e) {
-                // formulate an exception reply for an non-oneway call
-                if ( ((msg is IMethodCallMessage) && (!GiopMessageHandler.IsOneWayCall((IMethodCallMessage)msg))) ||
-                     (!(msg is IMethodCallMessage))) {
+            int numberOfRetries = 0;
+            while (true) {
+                try {
+                    AsyncProcessMessageOnce(msg, target, replySink);
+                    break;
+                } catch (Exception e) {
+                    if (!CanRetryOnException(e, numberOfRetries)) {
+                        // formulate an exception reply for an non-oneway call
+                        if ( ((msg is IMethodCallMessage) && (!GiopMessageHandler.IsOneWayCall((IMethodCallMessage)msg))) ||
+                             (!(msg is IMethodCallMessage))) {
                 
-                    IMessage retMsg = new ReturnMessage(e, (IMethodCallMessage) msg);
-                    if (replySink != null) {
-                        replySink.SyncProcessMessage(retMsg); // process the return message in the reply sink chain
+                            IMessage retMsg = new ReturnMessage(e, (IMethodCallMessage) msg);
+                            if (replySink != null) {
+                                replySink.SyncProcessMessage(retMsg); // process the return message in the reply sink chain
+                            }
+                        }
+                        break;
                     }
+                    numberOfRetries++;
                 }
             }
             return null;  // TODO, it would be possible to return a possiblity to cancel a message ...
@@ -727,6 +761,8 @@ namespace Ch.Elca.Iiop {
         
         private IInterceptionOption[] m_interceptionOptions = InterceptorManager.EmptyInterceptorOptions;
         
+        private int m_maxNumberOfRetries;
+        
         #endregion IFields
         #region IConstructors
         
@@ -769,18 +805,20 @@ namespace Ch.Elca.Iiop {
             
             return new IiopClientFormatterSink(nextSink, m_conManager, m_messageHandler,
                                                m_iiopUrlUtil,
-                                               m_interceptionOptions);
+                                               m_interceptionOptions, m_maxNumberOfRetries);
         }
 
         #endregion
 
         internal void Configure(GiopClientConnectionManager conManager, GiopMessageHandler messageHandler,
                                 IiopUrlUtil iiopUrlUtil,
-                                IInterceptionOption[] interceptionOptions) {
+                                IInterceptionOption[] interceptionOptions,
+                                int maxNumberOfRetries) {
             m_conManager = conManager;
             m_messageHandler = messageHandler;
             m_iiopUrlUtil = iiopUrlUtil;
             m_interceptionOptions = interceptionOptions;
+            m_maxNumberOfRetries = maxNumberOfRetries;
         }        
         
         #endregion IMethods

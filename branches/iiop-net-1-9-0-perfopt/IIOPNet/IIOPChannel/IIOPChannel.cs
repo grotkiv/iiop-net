@@ -313,6 +313,11 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         public const string CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY = "unusedConnectionKeepAlive";   
         
+        /// <summary>
+        /// the maximum number of retries after a TRANSIENT exception.
+        /// </summary>
+        public const string MAX_NUMBER_OF_RETRIES_KEY = "maxNumberOfRetries";
+        
         private const int UNUSED_CLIENT_CONNECTION_TIMEOUT = 300000;
         
         /// <summary>allow multiplexing of request, i.e. send a request before the response has been arrived.</summary>
@@ -324,6 +329,8 @@ namespace Ch.Elca.Iiop {
         /// <summary>the maximum number of connections open to the same target.</summary>
         private const int NUMBER_OF_CLIENT_CONNECTION_TO_SAME_TARGET = 5;
                 
+        /// <summary>the maximum number of retries to perform after a TRANSIENT exception</summary>
+        private const int MAX_NUMBER_OF_RETRIES = 0;
         
         #endregion Constants
         #region IFields
@@ -359,7 +366,7 @@ namespace Ch.Elca.Iiop {
         public IiopClientChannel() {
             InitChannel(new TcpTransportFactory(), MessageTimeout.Infinite, UNUSED_CLIENT_CONNECTION_TIMEOUT, false,
                         InterceptorManager.EmptyInterceptorOptions, NUMBER_OF_CLIENT_CONNECTION_TO_SAME_TARGET, 
-                        ALLOW_MULTIPLEX_REQUEST, NUMBER_OF_MULTIPLEXED_MAX);
+                        ALLOW_MULTIPLEX_REQUEST, NUMBER_OF_MULTIPLEXED_MAX, MAX_NUMBER_OF_RETRIES);
         }
         
         public IiopClientChannel(IDictionary properties) : 
@@ -384,6 +391,7 @@ namespace Ch.Elca.Iiop {
             int maxNumberOfConnections = NUMBER_OF_CLIENT_CONNECTION_TO_SAME_TARGET;
             bool allowMultiplex = ALLOW_MULTIPLEX_REQUEST;
             int maxNumberOfMultplexedRequests = NUMBER_OF_MULTIPLEXED_MAX;
+            int maxNumberOfRetries = MAX_NUMBER_OF_RETRIES;
             
             if (properties != null) {
                 foreach (DictionaryEntry entry in properties) {
@@ -421,6 +429,9 @@ namespace Ch.Elca.Iiop {
                         case IiopClientChannel.MAX_NUMBER_OF_MULTIPLEXED_REQUESTS_KEY:
                             maxNumberOfMultplexedRequests = Convert.ToInt32(entry.Value);
                             break;
+                        case IiopClientChannel.MAX_NUMBER_OF_RETRIES_KEY:
+                            maxNumberOfRetries = Convert.ToInt32(entry.Value);
+                            break;
                         case IiopChannel.BIDIR_KEY:
                             isBidir = Convert.ToBoolean(entry.Value);
                             interceptionOptions.Add(new BiDirIiopInterceptionOption());
@@ -439,7 +450,8 @@ namespace Ch.Elca.Iiop {
             InitChannel(clientTransportFactory, requestTimeOut, 
                         unusedClientConnectionTimeout, isBidir, 
                         (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption)),
-                        maxNumberOfConnections, allowMultiplex, maxNumberOfMultplexedRequests);
+                        maxNumberOfConnections, allowMultiplex, maxNumberOfMultplexedRequests, 
+                        maxNumberOfRetries);
         }
 
         #endregion IConstructors
@@ -493,12 +505,13 @@ namespace Ch.Elca.Iiop {
         private void ConfigureSinkProviderChain(GiopClientConnectionManager conManager,
                                                 GiopMessageHandler messageHandler,
                                                 IiopUrlUtil iiopUrlUtil,
-                                                IInterceptionOption[] interceptionOptions) {
+                                                IInterceptionOption[] interceptionOptions,
+                                                int maxNumberOfRetries) {
             IClientChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopClientFormatterSinkProvider) {
                     ((IiopClientFormatterSinkProvider)prov).Configure(conManager, messageHandler, iiopUrlUtil,
-                                                                      interceptionOptions);
+                                                                      interceptionOptions, maxNumberOfRetries);
                     break;
                 }
                 prov = prov.Next;
@@ -508,7 +521,8 @@ namespace Ch.Elca.Iiop {
         /// <summary>initalize this channel</summary>
         private void InitChannel(IClientTransportFactory transportFactory, MessageTimeout requestTimeOut,
                                  int unusedClientConnectionTimeOut, bool isBidir, IInterceptionOption[] interceptionOptions,
-                                 int maxNumberOfConnections, bool allowMultiplex, int maxNumberOfMultplexedRequests ) {
+                                 int maxNumberOfConnections, bool allowMultiplex, int maxNumberOfMultplexedRequests,
+                                 int maxNumberOfRetries) {
             
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =            
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
@@ -546,7 +560,7 @@ namespace Ch.Elca.Iiop {
             GiopMessageHandler messageHandler = 
                 new GiopMessageHandler(argumentSerializerFactory);
             ConfigureSinkProviderChain(m_conManager, messageHandler, m_iiopUrlUtil,
-                                       interceptionOptions);
+                                       interceptionOptions, maxNumberOfRetries);
         }
 
         #region Implementation of IChannelSender
@@ -1394,7 +1408,8 @@ namespace Ch.Elca.Iiop.Tests {
         
         private void Setup(string idSuffix, int retryNumber) {
             IDictionary props = new Hashtable();
-            props[IiopServerChannel.PORT_KEY] = TEST_PORT.ToString();                        
+            props[IiopServerChannel.PORT_KEY] = TEST_PORT.ToString();
+            props[IiopClientChannel.MAX_NUMBER_OF_RETRIES_KEY] = "1";
             IClientChannelSinkProvider clientSinkProvider = 
                 new IiopClientFormatterSinkProvider();
             m_testerProvider = new RetryingClientTransportTesterProvider();
