@@ -1437,6 +1437,17 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(1, proxy.EchoByte(arg));            
         }        
         
+        [Test]
+        [ExpectedException(typeof(TRANSIENT))]
+        public void TestExceededRetryForcedSync() {
+            Setup("ExceededRt", 5);
+            ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+                RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                        m_targetIor.ToString());
+            byte arg = 1;
+            Assertion.AssertEquals(1, proxy.EchoByte(arg));            
+        }        
+        
         delegate System.Byte TestEchoByteDelegate(System.Byte arg);
         
         [Test]
