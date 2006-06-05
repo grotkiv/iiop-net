@@ -1303,8 +1303,8 @@ namespace Ch.Elca.Iiop.Tests {
         /// </summary>
         private class RetryingClientTransportTester : IClientChannelSink {
                                     
-            private const string REQUEST_HEADER_RETRY_COUNT =
-                "RequestHeaderRetryCount";
+            private const string MESSAGE_RETRY_COUNT =
+                "MessageRetryCount";
             
             private IDictionary m_properties = new Hashtable();
             private IClientChannelSink m_nextSink;
@@ -1328,10 +1328,10 @@ namespace Ch.Elca.Iiop.Tests {
 				}
 			}
             
-            private void ForceRetryIfNeeded(ITransportHeaders requestHeaders) {
+            private void ForceRetryIfNeeded(IMessage msg) {
                 int numberOfForcedRetrys = 0;
-                if (requestHeaders[REQUEST_HEADER_RETRY_COUNT] != null) {
-                    numberOfForcedRetrys = (int)requestHeaders[REQUEST_HEADER_RETRY_COUNT];                    
+                if (msg.Properties[MESSAGE_RETRY_COUNT] != null) {
+                    numberOfForcedRetrys = (int)msg.Properties[MESSAGE_RETRY_COUNT];                    
                 }
                 try {
                     if (numberOfForcedRetrys < m_forceNumberOfErrorCount) {
@@ -1340,21 +1340,21 @@ namespace Ch.Elca.Iiop.Tests {
                                             CompletionStatus.Completed_No);
                     }
                 } finally {
-                    requestHeaders[REQUEST_HEADER_RETRY_COUNT] = 
+                    msg.Properties[MESSAGE_RETRY_COUNT] = 
                         numberOfForcedRetrys;                
                 }                                                    
             }
         	
 			public void ProcessMessage(IMessage msg, ITransportHeaders requestHeaders, Stream requestStream, 
                                        out ITransportHeaders responseHeaders, out Stream responseStream) {
-                ForceRetryIfNeeded(requestHeaders);
+                ForceRetryIfNeeded(msg);
                 m_nextSink.ProcessMessage(msg, requestHeaders, requestStream,
                                           out responseHeaders, out responseStream);
 			}
         	
 			public void AsyncProcessRequest(IClientChannelSinkStack sinkStack, IMessage msg, 
                                             ITransportHeaders headers, Stream stream) {
-                ForceRetryIfNeeded(headers);
+                ForceRetryIfNeeded(msg);
                 m_nextSink.AsyncProcessRequest(sinkStack, msg, headers, stream);
 			}               
         	
