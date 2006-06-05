@@ -1482,6 +1482,24 @@ namespace Ch.Elca.Iiop.Tests {
             Assertion.AssertEquals(arg, result);
         }
         
+        [Test]
+        [ExpectedException(typeof(TRANSIENT))]
+        public void TestExceededRetryForcedASync() {
+            Setup("ExceededRtAsync", 5);
+            ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+                RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                        m_targetIor.ToString());
+            byte arg = 1;            
+            TestEchoByteDelegate ebd = 
+                new TestEchoByteDelegate(proxy.EchoByte);
+            // async call
+            IAsyncResult ar = ebd.BeginInvoke(arg, null, null);
+            // wait for response
+            System.Byte result = ebd.EndInvoke(ar);                                    
+            Assertion.AssertEquals(arg, result);
+        }
+        
+        
     }
     
     
