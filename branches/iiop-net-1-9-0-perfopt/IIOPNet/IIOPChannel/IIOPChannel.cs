@@ -1075,6 +1075,7 @@ namespace Ch.Elca.Iiop.Tests {
     
     using System.Runtime.Remoting.Channels;
     using System.Runtime.Remoting;
+    using System.IO;
     using NUnit.Framework;
     using Ch.Elca.Iiop.Services;
     using Ch.Elca.Iiop;
@@ -1252,6 +1253,192 @@ namespace Ch.Elca.Iiop.Tests {
             }
         }
     }
+    
+    
+
+    /// <summary>
+    /// Unit-test for testing channel retry functionality.
+    /// </summary>
+    [TestFixture]    
+    public class IiopClientChannelRetryTest {
+        
+        /// <summary>
+        /// class used to inject errors after formatter sink.
+        /// </summary>
+        private class RetryingClientTransportTesterProvider : IClientChannelSinkProvider {
+            
+        	private IClientChannelSinkProvider m_nextProvider;
+        	private int m_forceNumberOfErrorCount;
+            
+            
+			public IClientChannelSinkProvider Next {
+				get {
+					return m_nextProvider;
+				}
+				set {
+                    m_nextProvider = value;
+				}
+			}
+        	
+        	public int ForceNumberOfErrorCount {
+        	    get {
+        	        return m_forceNumberOfErrorCount;
+        	    }
+        	    set {
+        	        m_forceNumberOfErrorCount = value;
+        	    }
+        	}
+        	
+			public IClientChannelSink CreateSink(IChannelSender channel, string url, object remoteChannelData) {
+        	    IClientChannelSink nextSink =
+        	        m_nextProvider.CreateSink(channel, url, remoteChannelData);
+        	    return new RetryingClientTransportTester(nextSink, 
+        	                                             m_forceNumberOfErrorCount);
+			}
+        }
+        
+
+        /// <summary>
+        /// class used to inject errors after formatter sink.
+        /// </summary>
+        private class RetryingClientTransportTester : IClientChannelSink {
+                                    
+            private const string REQUEST_HEADER_RETRY_COUNT =
+                "RequestHeaderRetryCount";
+            
+            private IDictionary m_properties = new Hashtable();
+            private IClientChannelSink m_nextSink;
+            private int m_forceNumberOfErrorCount;
+            
+            public RetryingClientTransportTester(IClientChannelSink nextSink,
+                                                 int forceNumberOfErrorCount) {
+                m_nextSink = nextSink;
+                m_forceNumberOfErrorCount = forceNumberOfErrorCount;
+            }
+        	
+			public IClientChannelSink NextChannelSink {
+				get {
+					return m_nextSink;
+				}
+			}
+        	
+			public IDictionary Properties {
+				get {
+					return m_properties;
+				}
+			}
+            
+            private void ForceRetryIfNeeded(ITransportHeaders requestHeaders) {
+                int numberOfForcedRetrys = 0;
+                if (requestHeaders[REQUEST_HEADER_RETRY_COUNT] != null) {
+                    numberOfForcedRetrys = (int)requestHeaders[REQUEST_HEADER_RETRY_COUNT];                    
+                }
+                try {
+                    if (numberOfForcedRetrys < m_forceNumberOfErrorCount) {
+                        numberOfForcedRetrys++;
+                        throw new TRANSIENT(CorbaSystemExceptionCodes.TRANSIENT_CONNECTION_DROPPED, 
+                                            CompletionStatus.Completed_No);
+                    }
+                } finally {
+                    requestHeaders[REQUEST_HEADER_RETRY_COUNT] = 
+                        numberOfForcedRetrys;                
+                }                                                    
+            }
+        	
+			public void ProcessMessage(IMessage msg, ITransportHeaders requestHeaders, Stream requestStream, 
+                                       out ITransportHeaders responseHeaders, out Stream responseStream) {
+                ForceRetryIfNeeded(requestHeaders);
+                m_nextSink.ProcessMessage(msg, requestHeaders, requestStream,
+                                          out responseHeaders, out responseStream);
+			}
+        	
+			public void AsyncProcessRequest(IClientChannelSinkStack sinkStack, IMessage msg, 
+                                            ITransportHeaders headers, Stream stream) {
+                ForceRetryIfNeeded(headers);
+                m_nextSink.AsyncProcessRequest(sinkStack, msg, headers, stream);
+			}               
+        	
+			public void AsyncProcessResponse(IClientResponseChannelSinkStack sinkStack, object state, ITransportHeaders headers, Stream stream) {
+				throw new NotSupportedException(); // this should not be called, because this sink is the first in the chain, receiving the response
+			}
+        	
+			public Stream GetRequestStream(IMessage msg, ITransportHeaders headers) {
+				return null;
+			}
+        }
+        
+        private const int TEST_PORT = 8090;
+        private const string TEST_URI = "TestSimpleCallOnChannel";
+        
+        private IiopChannel m_channel;
+        private RetryingClientTransportTesterProvider m_testerProvider;
+        private MarshalByRefObject m_mbr;        
+        private Ior m_targetIor;        
+        
+        [TearDown]
+        public void TearDown() {    
+            if (m_mbr != null) {
+                try {
+                    RemotingServices.Disconnect(m_mbr);
+                } catch {
+                    // ignore
+                }
+                m_mbr = null;
+            }            
+            if (m_channel != null) {
+                ChannelServices.UnregisterChannel(m_channel);
+            }
+            m_channel = null;
+        }
+        
+        private void Setup(string idSuffix, int retryNumber) {
+            IDictionary props = new Hashtable();
+            props[IiopServerChannel.PORT_KEY] = TEST_PORT.ToString();                        
+            IClientChannelSinkProvider clientSinkProvider = 
+                new IiopClientFormatterSinkProvider();
+            m_testerProvider = new RetryingClientTransportTesterProvider();
+            m_testerProvider.ForceNumberOfErrorCount = retryNumber;
+            clientSinkProvider.Next = m_testerProvider;
+            IServerChannelSinkProvider serverSinkProvider = 
+                new IiopServerFormatterSinkProvider();
+            m_channel = new IiopChannel(props,
+                                        clientSinkProvider,
+                                        serverSinkProvider);
+            ChannelServices.RegisterChannel(m_channel);                        
+            
+            m_targetIor = new Ior(Repository.GetRepositoryID(typeof(ISimpleCallTestOnChannel)),
+                                  new IorProfile[] {
+                                      new InternetIiopProfile(new GiopVersion(1,2),
+                                                            "localhost", (short)TEST_PORT,
+                                                            IorUtil.GetKeyBytesForId(TEST_URI + idSuffix))
+                                  });
+            
+            m_mbr = new SimpleCallTestOnChannelImpl();            
+            RemotingServices.Marshal(m_mbr, TEST_URI + idSuffix);            
+        }
+        
+        [Test]
+        public void TestNoRetryForcedSync() {
+            Setup("NoRt", 0);
+            ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+            RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                     m_targetIor.ToString());
+            byte arg = 1;
+            Assertion.AssertEquals(1, proxy.EchoByte(arg));            
+        }
+        
+        [Test]
+        public void TestOneRetryForcedSync() {
+            Setup("OneRt", 1);
+            ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+            RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                     m_targetIor.ToString());
+            byte arg = 1;
+            Assertion.AssertEquals(1, proxy.EchoByte(arg));            
+        }        
+        
+    }
+    
     
     
     
