@@ -1373,7 +1373,8 @@ namespace Ch.Elca.Iiop.Tests {
         private IiopChannel m_channel;
         private RetryingClientTransportTesterProvider m_testerProvider;
         private MarshalByRefObject m_mbr;        
-        private Ior m_targetIor;        
+        private Ior m_targetIor; 
+        private string m_targetIiopLoc;
         
         [TearDown]
         public void TearDown() {    
@@ -1412,7 +1413,7 @@ namespace Ch.Elca.Iiop.Tests {
                                                             "localhost", (short)TEST_PORT,
                                                             IorUtil.GetKeyBytesForId(TEST_URI + idSuffix))
                                   });
-            
+            m_targetIiopLoc = "iiop://localhost:" + TEST_PORT + "/" + TEST_URI + idSuffix; 
             m_mbr = new SimpleCallTestOnChannelImpl();            
             RemotingServices.Marshal(m_mbr, TEST_URI + idSuffix);            
         }
@@ -1498,6 +1499,18 @@ namespace Ch.Elca.Iiop.Tests {
             System.Byte result = ebd.EndInvoke(ar);                                    
             Assertion.AssertEquals(arg, result);
         }
+        
+        
+        [Test]
+        public void TestOneRetryForcedSyncIsA() {
+            Setup("OneRtIsA", 1);
+            ISimpleCallTestOnChannel proxy = (ISimpleCallTestOnChannel)
+                RemotingServices.Connect(typeof(ISimpleCallTestOnChannel),
+                                         m_targetIiopLoc);
+            byte arg = 1;
+            Assertion.AssertEquals(1, proxy.EchoByte(arg));            
+        }        
+
         
         
     }
