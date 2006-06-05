@@ -177,15 +177,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 if (value == null) {
                     throw new INTERNAL(200, CompletionStatus.Completed_MayBe);
                 }
-                string result = (string)
-                    m_requestMessage.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY];
-                if (result == null) {
-                    m_requestMessage.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY] =
+                m_requestMessage.Properties[SimpleGiopMsg.IDL_METHOD_NAME_KEY] =
                         value;
-                } else {
-                    // not changable after set
-                    throw new BAD_OPERATION(200, CompletionStatus.Completed_MayBe);
-                }            
             }        
         }
         
