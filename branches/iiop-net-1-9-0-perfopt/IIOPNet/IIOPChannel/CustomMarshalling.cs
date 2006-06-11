@@ -797,13 +797,28 @@ namespace Ch.Elca.Iiop.Tests {
     using System.IO;
     using NUnit.Framework;
     using omg.org.CORBA;
+    using omg.org.IOP;
     using Corba;
+    using Ch.Elca.Iiop.Interception;
     
     /// <summary>
     /// Unit-tests for testing DataInputStream
     /// </summary>
     [TestFixture]
     public class DataInputStreamTest {
+        
+        private SerializerFactory m_serFactory;
+        
+        [SetUp]
+        public void SetUp() {
+            m_serFactory = new SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(m_serFactory);
+            Codec codec = 
+                codecFactory.create_codec(
+                    new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+            m_serFactory.Initalize(IiopUrlUtil.Create(codec));
+        }
     	
     	private DataInputStream CreateInputStream(byte[] content) {
     		MemoryStream contentStream = new MemoryStream(content);
@@ -811,7 +826,7 @@ namespace Ch.Elca.Iiop.Tests {
     		inputStream.ConfigStream(0, new GiopVersion(1, 2));
     		inputStream.SetMaxLength((uint)content.Length);
     		DataInputStreamImpl di = 
-    			new DataInputStreamImpl(inputStream, new SerializerFactory());
+    			new DataInputStreamImpl(inputStream, m_serFactory);
     		return di;
     	}
     	
@@ -830,7 +845,19 @@ namespace Ch.Elca.Iiop.Tests {
     /// </summary>
     [TestFixture]
     public class DataOutputStreamTest {
-    	    	
+
+        private SerializerFactory m_serFactory;
+        
+        [SetUp]
+        public void SetUp() {
+            m_serFactory = new SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(m_serFactory);
+            Codec codec = 
+                codecFactory.create_codec(
+                    new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+            m_serFactory.Initalize(IiopUrlUtil.Create(codec));
+        }        
     	
     	[Test]
     	public void TestWriteOctet() {
@@ -838,7 +865,7 @@ namespace Ch.Elca.Iiop.Tests {
     		MemoryStream outputStream = new MemoryStream();
     		CdrOutputStream cdrOut = new CdrOutputStreamImpl(outputStream, 0, new GiopVersion(1,2));
     		DataOutputStream doStream = new DataOutputStreamImpl(cdrOut,
-    		                                                     new SerializerFactory());
+    		                                                     m_serFactory);
     		doStream.write_octet(val);
     		outputStream.Seek(0, SeekOrigin.Begin);
     		Assertion.AssertEquals("written", val, outputStream.ReadByte());

@@ -2290,14 +2290,27 @@ namespace Ch.Elca.Iiop.Tests {
 	/// </summary>
 	[TestFixture]
     public class SerializerTestEnumFalgs : AbstractSerializerTest {
+	    
+	    private SerializerFactory m_serFactory;
+	    
+	    [SetUp]
+	    public void SetUp() {
+	        m_serFactory = new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(m_serFactory);
+            omg.org.IOP.Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+            m_serFactory.Initalize(IiopUrlUtil.Create(codec));	        
+	    }
         
         private void FlagsGenericSerTest(Type flagsType, object actual, byte[] expected) {
-            GenericSerTest(new FlagsSerializer(flagsType, new SerializerFactory()),
+            GenericSerTest(new FlagsSerializer(flagsType, m_serFactory),
                            actual, expected);
         }
         
         private void FlagsGenericDeserTest(Type flagsType, byte[] actual, object expected) {
-            GenericDeserTest(new FlagsSerializer(flagsType, new SerializerFactory()),
+            GenericDeserTest(new FlagsSerializer(flagsType, m_serFactory),
                              actual, expected);
         }        
         
@@ -2582,17 +2595,23 @@ namespace Ch.Elca.Iiop.Tests {
 	public class SerializerTestObjRef : AbstractSerializerTest {
 	    
 	    private omg.org.IOP.Codec m_codec;
+	    private SerializerFactory m_serFactory;
+	    private IiopUrlUtil m_iiopUrlUtil;
 	    
     	[SetUp]
     	public void SetUp() {
-    	    SerializerFactory serFactory =
+    	    m_serFactory =
     	        new SerializerFactory();
             omg.org.IOP.CodecFactory codecFactory =
-                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(serFactory);
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(m_serFactory);
             m_codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
                                              1, 2));
+            m_iiopUrlUtil = 
+                IiopUrlUtil.Create(m_codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});
+            m_serFactory.Initalize(m_iiopUrlUtil);
     	}
         
 		[Test]
@@ -2631,7 +2650,7 @@ namespace Ch.Elca.Iiop.Tests {
             cdrIn.ConfigStream(0, new GiopVersion(1, 2));            
             
             Serializer ser = new ObjRefSerializer(typeof(omg.org.CosNaming.NamingContext),
-                                                  IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec));
+                                                  m_iiopUrlUtil);
             object result = ser.Deserialize(cdrIn);
             Assertion.AssertNotNull("not correctly deserialised proxy for ior", result);
             Assertion.Assert(RemotingServices.IsTransparentProxy(result));
@@ -2648,30 +2667,48 @@ namespace Ch.Elca.Iiop.Tests {
 	/// </summary>
 	[TestFixture]
 	public class SerializerTestAny : AbstractSerializerTest {
+	    
+	    private SerializerFactory m_serFactory;
+	    
+    	[SetUp]
+    	public void SetUp() {
+    	    m_serFactory =
+    	        new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(m_serFactory);
+            omg.org.IOP.Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
+                                             1, 2));
+            IiopUrlUtil iiopUrlUtil = 
+                IiopUrlUtil.Create(codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(codec)});            
+            m_serFactory.Initalize(iiopUrlUtil);
+    	}	    
 
 		[Test]
         public void TestSerLongAsAnyNoAnyContainer() {
             int val = 2;
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 3, 0, 0, 0, 2 });
         }
 
         [Test]
         public void TestDeSerLongAsAnyNoAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             GenericDeserTest(anySer, new byte[] { 0, 0, 0, 3, 0, 0, 0, 2 }, (int)2);
         }
 
         [Test]
         public void TestSerULongAsAnyNoAnyContainer() {            
             uint val = 4;
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 5, 0, 0, 0, 4 });            
         }
 
         [Test]
         public void TestDeSerULongAsAnyNoAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             object deser;
             GenericDeserTest(anySer, new byte[] { 0, 0, 0, 5, 0, 0, 0, 4 }, (int)4,
                              out deser);
@@ -2682,13 +2719,13 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestSerSbyteAsAnyNoAnyContainer() {            
             sbyte val = 2;
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 10, 2 });            
         }
 
         [Test]
         public void TestDeSerSByteAsAnyNoAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             object deser;
             GenericDeserTest(anySer, new byte[] { 0, 0, 0, 10, 2 }, (sbyte)2,
                              out deser);
@@ -2699,7 +2736,7 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestSerBoxedStringAsAnyNoAnyContainer() {            
             string val = "test";
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 30, // tc-kind
                                                      0, 0, 0, 72, // encap length
                                                      0, 0, 0, 0, // flags
@@ -2723,7 +2760,7 @@ namespace Ch.Elca.Iiop.Tests {
 
         [Test]
         public void TestDeSerBoxedStringAsAnyNoAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             object deser;
             GenericDeserTest(anySer, new byte[] { 0, 0, 0, 30, // tc-kind
                                                   0, 0, 0, 72, // encap length
@@ -2752,14 +2789,14 @@ namespace Ch.Elca.Iiop.Tests {
         
         [Test]
         public void TestSerNullAsAnyNoAnyContainer() {            
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             object val = null;
             GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 0 });
         }
 
         [Test]
         public void TestDeSerNullAsAnyNoAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), false);
+            AnySerializer anySer = new AnySerializer(m_serFactory, false);
             object val = null;
             GenericDeserTest(anySer, new byte[] { 0, 0, 0, 0 }, val);
         }        
@@ -2767,55 +2804,55 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestSerLongAsAnyAnyContainer() {
             Any any = new Any((int)2);
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             GenericSerTest(anySer, any, new byte[] { 0, 0, 0, 3, 0, 0, 0, 2 });
         }
 
         [Test]
         public void TestDeSerLongAsAnyAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             Any any = new Any((int)2);
             GenericDeserTest(anySer, new byte[] { 0, 0, 0, 3, 0, 0, 0, 2 }, any);
         }
 
         [Test]
         public void TestSerULongAsAnyAnyContainer() {            
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             Any any = new Any((uint)4);
             GenericSerTest(anySer, any, new byte[] { 0, 0, 0, 5, 0, 0, 0, 4 });
         }
 
         [Test]
         public void TestDeSerULongAsAnyAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             Any any = new Any((uint)4);
             GenericDeserTest(anySer, new byte[] { 0, 0, 0, 5, 0, 0, 0, 4 }, any);
         }
         
         [Test]
         public void TestSerNullAsAnyAnyContainer() {            
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             Any any = new Any(null);
             GenericSerTest(anySer, any, new byte[] { 0, 0, 0, 0 });
         }
 
         [Test]
         public void TestDeSerNullAsAnyAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             Any any = new Any(null);
             GenericDeserTest(anySer, new byte[] { 0, 0, 0, 0 }, any);
         }
         
         [Test]
         public void TestSerNullAsAnyWithVoidTcAnyContainer() {            
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             Any any = new Any(null, new VoidTC());
             GenericSerTest(anySer, any, new byte[] { 0, 0, 0, 1 });
         }        
         
         [Test]
         public void TestDeSerNullAsAnyWithVoidTcAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             Any any = new Any(null, new VoidTC());
             GenericDeserTest(anySer, new byte[] { 0, 0, 0, 1 }, any);
         }
@@ -2823,7 +2860,7 @@ namespace Ch.Elca.Iiop.Tests {
         [Test]
         public void TestSerBoxedStringAsAnyAnyContainer() {            
             Any val = new Any("test");
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             GenericSerTest(anySer, val, new byte[] { 0, 0, 0, 30, // tc-kind
                                                      0, 0, 0, 72, // encap length
                                                      0, 0, 0, 0, // flags
@@ -2847,7 +2884,7 @@ namespace Ch.Elca.Iiop.Tests {
 
         [Test]
         public void TestDeSerBoxedStringAsAnyAnyContainer() {
-            AnySerializer anySer = new AnySerializer(new SerializerFactory(), true);
+            AnySerializer anySer = new AnySerializer(m_serFactory, true);
             Any val = new Any("test");
             object deser =
                 GenericDeserForTest(anySer, new byte[] { 0, 0, 0, 30, // tc-kind
@@ -2930,11 +2967,25 @@ namespace Ch.Elca.Iiop.Tests {
 	[TestFixture]
 	public class SerializerTestValueTypes : AbstractSerializerTest {
     
+	    private SerializerFactory m_serFactory;
+	    
+    	[SetUp]
+    	public void SetUp() {
+    	    m_serFactory =
+    	        new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(m_serFactory);
+            omg.org.IOP.Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
+                                             1, 2));
+            m_serFactory.Initalize(IiopUrlUtil.Create(codec));
+    	}	    
 
 		[Test]
 		public void TestSerWStringValue() {
 			Serializer ser = new ValueObjectSerializer(typeof(WStringValue),
-			                                           new SerializerFactory());
+			                                           m_serFactory);
             string testVal = "test";
             WStringValue toSer = new WStringValue(testVal);
             GenericSerTest(ser, toSer, new byte[] { 127, 255, 255, 2, // start value tag
@@ -2951,7 +3002,7 @@ namespace Ch.Elca.Iiop.Tests {
 		[Test]
 		public void TestDeSerWStringValue() {
 			Serializer ser = new ValueObjectSerializer(typeof(WStringValue),
-			                                           new SerializerFactory());
+			                                           m_serFactory);
             string testVal = "test";
             WStringValue deser = (WStringValue)
 	            GenericDeserForTest(ser, new byte[] { 127, 255, 255, 2, // start value tag
@@ -2969,7 +3020,7 @@ namespace Ch.Elca.Iiop.Tests {
 		[Test]
 		public void TestSerBasicContainingValueType() {
 			Serializer ser = new ValueObjectSerializer(typeof(SimpleValueTypeWith2Ints),
-			                                           new SerializerFactory());
+			                                           m_serFactory);
 			
 			SimpleValueTypeWith2Ints toSer = new SimpleValueTypeWith2Ints(1, 2);
             	
@@ -2988,7 +3039,7 @@ namespace Ch.Elca.Iiop.Tests {
 		[Test]
 		public void TestDeserBasicContainingValueType() {
 			Serializer ser = new ValueObjectSerializer(typeof(SimpleValueTypeWith2Ints),
-			                                           new SerializerFactory());
+			                                           m_serFactory);
 			
 			SimpleValueTypeWith2Ints toDeser = new SimpleValueTypeWith2Ints(1, 2);
             	

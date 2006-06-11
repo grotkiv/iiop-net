@@ -593,13 +593,13 @@ namespace Ch.Elca.Iiop {
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =            
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
             CodecFactory codecFactory =
-                new CodecFactoryImpl(argumentSerializerFactory.SerializerFactory);
+                omg.org.CORBA.OrbServices.GetSingleton().CodecFactory;
             omg.org.IOP.Codec codec = codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
                                              1, 2));
             transportFactory.Codec = codec;
             m_iiopUrlUtil = 
-                IiopUrlUtil.CreateWithDefaultCodeSetComponent(codec);
+                omg.org.CORBA.OrbServices.GetSingleton().IiopUrlUtil;
             
             if (!isBidir) {
                 m_conManager = new GiopClientConnectionManager(transportFactory, requestTimeOut,
@@ -913,13 +913,13 @@ namespace Ch.Elca.Iiop {
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =            
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
             CodecFactory codecFactory =
-                new CodecFactoryImpl(argumentSerializerFactory.SerializerFactory);
+                omg.org.CORBA.OrbServices.GetSingleton().CodecFactory;
             m_codec = codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
                                              1, 2));
             transportFactory.Codec = m_codec;
             m_transportFactory = transportFactory;
-            m_iiopUrlUtil = IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec);            
+            m_iiopUrlUtil = omg.org.CORBA.OrbServices.GetSingleton().IiopUrlUtil;            
             m_hostNameToUse = DetermineMachineNameToUse();
             SetupChannelData(m_hostNameToUse, m_port, m_codec, null);
             m_connectionListener =
@@ -1172,10 +1172,22 @@ namespace Ch.Elca.Iiop.Tests {
         private const int PORT = 8087;
         
         private IiopChannelData m_channelData;
+        private Ch.Elca.Iiop.Marshalling.SerializerFactory m_serFactory;
+        private Codec m_codec;
         
         [SetUp]
         public void Setup() {
             m_channelData = new IiopChannelData(HOST, PORT);
+            m_serFactory = new Ch.Elca.Iiop.Marshalling.SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(m_serFactory);
+            m_codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+            IiopUrlUtil iiopUrlUtil =
+                IiopUrlUtil.Create(m_codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});                
+            m_serFactory.Initalize(iiopUrlUtil);
         }
         
         [Test]
@@ -1191,19 +1203,10 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
         [Test]
-        public void AddComponent() {
-    	    Ch.Elca.Iiop.Marshalling.SerializerFactory serFactory =
-    	        new Ch.Elca.Iiop.Marshalling.SerializerFactory();
-            CodecFactory codecFactory =
-                new CodecFactoryImpl(serFactory);
-            Codec codec = 
-                codecFactory.create_codec(
-                    new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
-            
-            
+        public void AddComponent() {            
             TaggedComponent comp = 
                 new TaggedComponent(TAG_CODE_SETS.ConstVal,
-                                    codec.encode_value(
+                                    m_codec.encode_value(
                                         new Services.CodeSetComponentData(10000,
                                                                           new int[0],
                                                                           20000,

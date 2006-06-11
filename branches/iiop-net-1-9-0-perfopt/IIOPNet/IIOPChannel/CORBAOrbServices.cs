@@ -230,23 +230,16 @@ namespace omg.org.CORBA {
         private Ch.Elca.Iiop.Interception.PICurrentManager m_piCurrentManager;
         private Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory m_argSerializerFactory;
         private Ch.Elca.Iiop.Marshalling.SerializerFactory m_serializerFactory;
-        private Codec m_iiopUrlUtilCodec;
+        private IiopUrlUtil m_iiopUrlUtil;
+        private bool m_isInitialized = false;
 		
         #endregion IFields
         #region IConstructors
         
         private OrbServices() {         
-            m_serializerFactory = new Ch.Elca.Iiop.Marshalling.SerializerFactory();
             m_orbInitalizers = new ArrayList();
-            m_codecFactory = new CodecFactoryImpl(m_serializerFactory);
             m_piCurrentManager = new PICurrentManager();
             m_interceptorManager = new InterceptorManager(this);            
-            m_argSerializerFactory = 
-                new Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory(m_serializerFactory);
-            m_iiopUrlUtilCodec =                 
-                    m_codecFactory.create_codec(
-                                       new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 
-                                                    1, 2));
         }
         
         #endregion IConstructors
@@ -273,6 +266,7 @@ namespace omg.org.CORBA {
         /// </summary>
         internal CodecFactory CodecFactory {
             get {
+                EnsureInitialized();
                 return m_codecFactory;
             }
         }
@@ -300,13 +294,47 @@ namespace omg.org.CORBA {
         /// </summary>
         internal Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory ArgumentsSerializerFactory {
             get {
+                EnsureInitialized();
                 return m_argSerializerFactory;
             }        
+        }
+        
+        /// <summary>
+        /// returns the IiopUrlUtil responsible for parsing urls.
+        /// </summary>
+        internal IiopUrlUtil IiopUrlUtil {
+            get {
+                EnsureInitialized();
+                return m_iiopUrlUtil;
+            }
         }
 		
         #endregion IProperties
         #region IMethods
         
+        private void Initalize() {
+            m_serializerFactory = new Ch.Elca.Iiop.Marshalling.SerializerFactory();
+            m_codecFactory = new CodecFactoryImpl(m_serializerFactory);                        
+            m_argSerializerFactory = 
+                new Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory(m_serializerFactory);
+            Codec iiopUrlUtilCodec =                 
+                    m_codecFactory.create_codec(
+                                       new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 
+                                                    1, 2));
+            m_iiopUrlUtil = 
+                IiopUrlUtil.Create(iiopUrlUtilCodec, new object[] { 
+                    Ch.Elca.Iiop.Services.CodeSetService.CreateDefaultCodesetComponent(iiopUrlUtilCodec)});
+            m_serializerFactory.Initalize(m_iiopUrlUtil);
+        }
+        
+        private void EnsureInitialized() {
+            lock(this) {
+                if (!m_isInitialized) {
+                    Initalize();
+                    m_isInitialized = true;
+                }
+            }
+        }
         
         private void CheckIsValidUri(string uri) {
             if (!IiopUrlUtil.IsUrl(uri)) {
@@ -329,10 +357,8 @@ namespace omg.org.CORBA {
         
         /// <summary>takes an IOR or a corbaloc and returns a proxy</summary>
         public object string_to_object([StringValue] string uri) {
-            CheckIsValidUri(uri);
-            IiopUrlUtil iiopUrlUtil = 
-                IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_iiopUrlUtilCodec);
-            Ior ior = iiopUrlUtil.CreateIorForUrl(uri, String.Empty);
+            CheckIsValidUri(uri);            
+            Ior ior = IiopUrlUtil.CreateIorForUrl(uri, String.Empty);
             // performance opt: if an ior passed in, use it
             string iorString = uri;         
             if (!IiopUrlUtil.IsIorString(uri)) {
@@ -359,9 +385,7 @@ namespace omg.org.CORBA {
                     return uri;
                 } else {
                     // create an IOR assuming type is CORBA::Object
-                    IiopUrlUtil iiopUrlUtil = 
-                        IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_iiopUrlUtilCodec);                    
-                    return iiopUrlUtil.CreateIorForUrl(uri, String.Empty).ToString();
+                    return IiopUrlUtil.CreateIorForUrl(uri, String.Empty).ToString();
                 }
             } else {
                 // local object
@@ -679,33 +703,30 @@ namespace Ch.Elca.Iiop.Tests {
     public class OrbServicesCodeSetTest {
         
         private Codec m_codec;
+        private SerializerFactory m_serFactory;
         
         public OrbServicesCodeSetTest() {
         }
         
     	[SetUp]
     	public void SetUp() {
-    	    SerializerFactory serFactory =
+    	    m_serFactory =
     	        new SerializerFactory();
             CodecFactory codecFactory =
-                new CodecFactoryImpl(serFactory);
+                new CodecFactoryImpl(m_serFactory);
             m_codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
+            IiopUrlUtil iiopUrlUtil = 
+                IiopUrlUtil.Create(m_codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});            
+            m_serFactory.Initalize(iiopUrlUtil);
     	}
                        
         [Test]
-        public void TestOverrideCodeSetsWhenAlreadySet() {
-    	    SerializerFactory serFactory =
-    	        new SerializerFactory();
-            CodecFactory codecFactory =
-                new CodecFactoryImpl(serFactory);
-            Codec codec = 
-                codecFactory.create_codec(
-                    new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
-                        
+        public void TestOverrideCodeSetsWhenAlreadySet() {    	                            
             TaggedComponent defaultComponent = 
-                CodeSetService.CreateDefaultCodesetComponent(codec);
+                CodeSetService.CreateDefaultCodesetComponent(m_codec);
             CodeSetComponentData codeSetData = (CodeSetComponentData)
                 m_codec.decode_value(defaultComponent.component_data,
                                      CodeSetComponentData.TypeCode);                

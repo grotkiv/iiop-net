@@ -365,6 +365,10 @@ namespace Ch.Elca.Iiop.Tests {
             m_codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
+            IiopUrlUtil iiopUrlUtil = 
+                IiopUrlUtil.Create(m_codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});                        
+            serFactory.Initalize(iiopUrlUtil);
             m_defaultCodeSetTaggedComponent = 
                 Services.CodeSetService.CreateDefaultCodesetComponent(m_codec);
     	}        
