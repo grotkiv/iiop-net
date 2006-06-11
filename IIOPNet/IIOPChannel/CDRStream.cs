@@ -1373,7 +1373,7 @@ namespace Ch.Elca.Iiop.Cdr {
             }
         }
 
-        private bool isChunked(uint valueTag) {
+        private bool IsChunked(uint valueTag) {
             return ((valueTag & 0x00000008) > 0);
         }
 
@@ -1382,7 +1382,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         public void BeginReadValueBody(uint valueTag) {
-            if (isChunked(valueTag)) {
+            if (IsChunked(valueTag)) {
                 m_chunkLevel++;
                 // add a chunkinfo for this value type
                 ChunkInfo info = new ChunkInfo(0, this);
@@ -1394,7 +1394,7 @@ namespace Ch.Elca.Iiop.Cdr {
         }
 
         public void EndReadValue(uint valueTag) {
-            if (isChunked(valueTag)) {
+            if (IsChunked(valueTag)) {
                 EndChunk(); 
                 if (m_chunkLevel == 1) {
                     // outermost value: no chunks must be on the stack
