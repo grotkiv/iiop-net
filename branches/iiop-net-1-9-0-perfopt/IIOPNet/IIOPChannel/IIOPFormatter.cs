@@ -321,7 +321,7 @@ namespace Ch.Elca.Iiop {
             Ior target = DetermineTarget(msg);
             VerifyInterfaceCompatible(target, msg);
             // serialise
-            IMessage result;
+            IMessage result = null;
             int numberOfRetries = 0;
             while (true) {
                 try {
