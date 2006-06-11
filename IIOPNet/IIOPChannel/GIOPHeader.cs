@@ -164,6 +164,18 @@ namespace Ch.Elca.Iiop {
         }
 
         #endregion IConstructors
+        #region SProperties
+        
+        /// <summary>
+        /// the default header flags to use.
+        /// </summary>
+        internal static byte DefaultHeaderFlags {
+            get {
+                return 0; // big endian
+            }
+        }
+        
+        #endregion SProperties
         #region IProperties
 
         internal GiopVersion Version {

@@ -326,11 +326,6 @@ namespace Ch.Elca.Iiop {
     /// </summary>
     public class GiopTransportMessageHandler {
         
-        #region Constants
-        
-        private const byte HEADER_FLAGS = 0;
-        
-        #endregion Constants        
         #region ResponseWaiter-Types
         
         /// <summary>
@@ -542,6 +537,7 @@ namespace Ch.Elca.Iiop {
         private MessageSendTask m_messageSendTask;
         
         private GiopReceivedRequestMessageDispatcher m_reiceivedRequestDispatcher;
+        private byte m_headerFlags = GiopHeader.DefaultHeaderFlags;
         
         #endregion IFields
         #region IConstructors
@@ -725,7 +721,7 @@ namespace Ch.Elca.Iiop {
         private Stream PrepareMessageErrorMessage(GiopVersion version) {
             Debug.WriteLine("create a message error message");
             Stream targetStream = new MemoryStream();            
-            GiopHeader header = new GiopHeader(version.Major, version.Minor, HEADER_FLAGS, GiopMsgTypes.MessageError);
+            GiopHeader header = new GiopHeader(version.Major, version.Minor, m_headerFlags, GiopMsgTypes.MessageError);
             header.WriteToStream(targetStream, 0);
             targetStream.Seek(0, SeekOrigin.Begin);
             return targetStream;
@@ -739,7 +735,7 @@ namespace Ch.Elca.Iiop {
         private Stream PrepareMessageCloseMessage(GiopVersion version) {
             Debug.WriteLine("create a close connection message");
             Stream targetStream = new MemoryStream();            
-            GiopHeader header = new GiopHeader(version.Major, version.Minor, HEADER_FLAGS, GiopMsgTypes.CloseConnection);
+            GiopHeader header = new GiopHeader(version.Major, version.Minor, m_headerFlags, GiopMsgTypes.CloseConnection);
             header.WriteToStream(targetStream, 0);
             targetStream.Seek(0, SeekOrigin.Begin);
             return targetStream;            
