@@ -111,7 +111,7 @@ namespace Ch.Elca.Iiop {
         
         private IInterceptionOption[] m_interceptionOptions;
         
-        private int m_maxNumberOfRetries;
+        private RetryConfig m_retries;
         
         private Hashtable m_typesVerified = new Hashtable(); // contains the verified types for this proxy
         
@@ -126,13 +126,13 @@ namespace Ch.Elca.Iiop {
                                          GiopMessageHandler messageHandler,
                                          IiopUrlUtil iiopUrlUtil,
                                          IInterceptionOption[] interceptionOptions,
-                                         int maxNumberOfRetries) {
+                                         RetryConfig retries) {
             m_nextSink = nextSink;            
             m_conManager = conManager;
             m_messageHandler = messageHandler;
             m_interceptionOptions = interceptionOptions;            
             m_iiopUrlUtil = iiopUrlUtil;
-            m_maxNumberOfRetries = maxNumberOfRetries;
+            m_retries = retries;
         }
 
         #endregion IConstructors
@@ -279,7 +279,7 @@ namespace Ch.Elca.Iiop {
             if (tEx == null || tEx.Status != CompletionStatus.Completed_No) {
                 return false;
             }
-            if (numberOfRetriesDone >= m_maxNumberOfRetries) {
+            if (numberOfRetriesDone >= m_retries.MaxNumberOfRetries) {
                 // check, that number of retries not yet exceeded, i.e
                 // is a retry allowed or not;
                 // >=, because of case no retries.
@@ -333,6 +333,7 @@ namespace Ch.Elca.Iiop {
                         break;
                     }
                     numberOfRetries++;
+                    m_retries.DelayNextRetryIfNeeded();
                 }
             }
             return result;
@@ -390,6 +391,7 @@ namespace Ch.Elca.Iiop {
                         }
                         break;
                     }
+                    m_retries.DelayNextRetryIfNeeded();
                     numberOfRetries++;
                 }
             }
@@ -761,7 +763,7 @@ namespace Ch.Elca.Iiop {
         
         private IInterceptionOption[] m_interceptionOptions = InterceptorManager.EmptyInterceptorOptions;
         
-        private int m_maxNumberOfRetries;
+        private RetryConfig m_retries;
         
         #endregion IFields
         #region IConstructors
@@ -805,7 +807,7 @@ namespace Ch.Elca.Iiop {
             
             return new IiopClientFormatterSink(nextSink, m_conManager, m_messageHandler,
                                                m_iiopUrlUtil,
-                                               m_interceptionOptions, m_maxNumberOfRetries);
+                                               m_interceptionOptions, m_retries);
         }
 
         #endregion
@@ -813,12 +815,12 @@ namespace Ch.Elca.Iiop {
         internal void Configure(GiopClientConnectionManager conManager, GiopMessageHandler messageHandler,
                                 IiopUrlUtil iiopUrlUtil,
                                 IInterceptionOption[] interceptionOptions,
-                                int maxNumberOfRetries) {
+                                RetryConfig retries) {
             m_conManager = conManager;
             m_messageHandler = messageHandler;
             m_iiopUrlUtil = iiopUrlUtil;
             m_interceptionOptions = interceptionOptions;
-            m_maxNumberOfRetries = maxNumberOfRetries;
+            m_retries = retries;
         }        
         
         #endregion IMethods
