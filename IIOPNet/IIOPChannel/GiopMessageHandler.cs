@@ -54,6 +54,11 @@ namespace Ch.Elca.Iiop.MessageHandling {
     /// </remarks>
     internal class GiopMessageHandler {
         
+        #region Constants
+        
+        private const byte HEADER_FLAGS = 0; // big endian
+        
+        #endregion Constants        
         #region IFields
         
         private GiopMessageBodySerialiser m_ser;
@@ -192,7 +197,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                 GiopVersion version = target.Version;
                 // write a CORBA request message into the stream targetStream
                 GiopHeader header = new GiopHeader(version.Major, version.Minor,
-                                                   0, GiopMsgTypes.Request);
+                                                   HEADER_FLAGS, GiopMsgTypes.Request);
                 CdrMessageOutputStream msgOutput = new CdrMessageOutputStream(targetStream, header);
                 // serialize the message, this insert some data into msg, e.g. request-id
                 msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY] = requestId; // set request-id
@@ -219,7 +224,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
                                                     IInterceptionOption[] interceptionOptions) {
             if (replyMsg is ReturnMessage) {
                 // write a CORBA response message into the stream targetStream
-                GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.Reply);
+                GiopHeader header = new GiopHeader(version.Major, version.Minor, HEADER_FLAGS, GiopMsgTypes.Reply);
                 CdrMessageOutputStream msgOutput = new CdrMessageOutputStream(targetStream, header);
                 GiopServerRequest request = new GiopServerRequest(requestMsg, 
                                                                   (ReturnMessage)replyMsg, conDesc, 
@@ -261,7 +266,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal Stream SerialiseOutgoingLocateReplyMessage(LocateReplyMessage replyMsg, LocateRequestMessage requestMsg,
                                                             GiopVersion version,
                                                             Stream targetStream, GiopConnectionDesc conDesc) {            
-            GiopHeader header = new GiopHeader(version.Major, version.Minor, 0, GiopMsgTypes.LocateReply);
+            GiopHeader header = new GiopHeader(version.Major, version.Minor, HEADER_FLAGS, GiopMsgTypes.LocateReply);
             CdrMessageOutputStream msgOutput = new CdrMessageOutputStream(targetStream, header);
             // serialize the message
             m_ser.SerialiseLocateReply(msgOutput.GetMessageContentWritingStream(), version, 
