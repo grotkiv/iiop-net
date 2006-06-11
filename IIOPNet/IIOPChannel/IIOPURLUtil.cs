@@ -74,15 +74,13 @@ namespace Ch.Elca.Iiop.Util {
 
         #endregion IConstructors
         #region IMethods
-        
+                
         /// <summary>
-        /// This method instructs the IiopUrlUtil to add a default codeset
-        /// component, when creating an ior for a corbaloc or iiop url.
+        /// This method instructs the IiopUrlUtil to add the given
+        /// components, when creating an ior for a corbaloc or iiop url.
         /// </summary>
-        private void EnableDefaultCodeSetComponent() {
-            m_defaultAdditionalTaggedComponents = 
-                new object[] { 
-                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec) };
+        private void SetDefaultComponents(object[] taggedComponents) {
+            m_defaultAdditionalTaggedComponents = taggedComponents;
         }
         
         /// <summary>creates an IOR for the object described by the Url url</summary>
@@ -168,15 +166,24 @@ namespace Ch.Elca.Iiop.Util {
         internal static string GetUrl(string host, int port, string objectUri) {
             return "iiop" + Uri.SchemeDelimiter + host + ":" + port + "/" + objectUri;
         }
-        
+                
         /// <summary>
-        /// Create an instance of IiopUrlUtil, which adds default codeset components to
+        /// Create an instance of IiopUrlUtil, which adds the given tagged components to
         /// created iors.
         /// </summary>
-        public static IiopUrlUtil CreateWithDefaultCodeSetComponent(Codec codec) {
+        public static IiopUrlUtil Create(Codec codec,
+                                         object[] additionalComponents) {
             IiopUrlUtil result = new IiopUrlUtil(codec);
-            result.EnableDefaultCodeSetComponent();
+            result.SetDefaultComponents(additionalComponents);
             return result;
+        }
+
+        /// <summary>
+        /// Create an instance of IiopUrlUtil, without adding any tagged components to
+        /// created iors.
+        /// </summary>        
+        public static IiopUrlUtil Create(Codec codec) {
+            return new IiopUrlUtil(codec);
         }
         
         #endregion SMethods
@@ -211,17 +218,21 @@ namespace Ch.Elca.Iiop.Tests {
         
         private omg.org.IOP.Codec m_codec;
         private IiopUrlUtil m_iiopUrlUtil;
+        private SerializerFactory m_serFactory;
         
     	[SetUp]
     	public void SetUp() {
-    	    SerializerFactory serFactory =
+    	    m_serFactory =
     	        new SerializerFactory();
             omg.org.IOP.CodecFactory codecFactory =
-                new CodecFactoryImpl(serFactory);
+                new CodecFactoryImpl(m_serFactory);
             m_codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
-            m_iiopUrlUtil = IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec);;
+            m_iiopUrlUtil = 
+                IiopUrlUtil.Create(m_codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});
+            m_serFactory.Initalize(m_iiopUrlUtil);
     	}        
         
         private void CheckIorForUrl(Ior iorForUrl, int expectedNumberOfComponents,

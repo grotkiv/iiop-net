@@ -428,19 +428,23 @@ namespace Ch.Elca.Iiop.Tests {
         private byte[] m_giopMagic = { 71, 73, 79, 80 };    
         
         private IiopUrlUtil m_iiopUrlUtil;
+        private SerializerFactory m_serFactory;
+        private omg.org.IOP.Codec m_codec;
         
         [SetUp]
         public void SetUp() {
-            SerializerFactory serFactory =
+            m_serFactory =
     	        new SerializerFactory();
             omg.org.IOP.CodecFactory codecFactory =
-                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(serFactory);
-            omg.org.IOP.Codec codec = 
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(m_serFactory);
+            m_codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
                                              1, 2));
             m_iiopUrlUtil = 
-                IiopUrlUtil.CreateWithDefaultCodeSetComponent(codec);            
+                IiopUrlUtil.Create(m_codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});
+            m_serFactory.Initalize(m_iiopUrlUtil);
         }
                 
         /// <summary>
@@ -479,7 +483,7 @@ namespace Ch.Elca.Iiop.Tests {
                                                                             new GiopRequestNumberGenerator(), null);
 
             // serialise            
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
             MemoryStream targetStream = new MemoryStream();
             
             uint reqId = 5;
@@ -552,7 +556,7 @@ namespace Ch.Elca.Iiop.Tests {
             // create the reply
             ReturnMessage retMsg = new ReturnMessage((Int32) 3, new object[0], 0, null, msg);            
             
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
             MemoryStream targetStream = new MemoryStream();
             
             handler.SerialiseOutgoingReplyMessage(retMsg, msg, version, 
@@ -648,7 +652,7 @@ namespace Ch.Elca.Iiop.Tests {
                 RemotingServices.Marshal(service, uri);
 
                 // deserialise request message
-                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
+                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
                 result = handler.ParseIncomingRequestMessage(sourceStream, conDesc, InterceptorManager.EmptyInterceptorOptions);
             } catch (RequestDeserializationException e) {                
                 throw e;
@@ -706,7 +710,7 @@ namespace Ch.Elca.Iiop.Tests {
             cdrOut.WriteLong(3);
             // check deser of msg:
             sourceStream.Seek(0, SeekOrigin.Begin);
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
             ReturnMessage result = (ReturnMessage) handler.ParseIncomingReplyMessage(sourceStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
             Assertion.AssertEquals(3, result.ReturnValue);
             Assertion.AssertEquals(0, result.OutArgCount);
@@ -733,7 +737,7 @@ namespace Ch.Elca.Iiop.Tests {
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,
                                                                target);
-                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
+                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
                 ReturnMessage result = 
                     (ReturnMessage) handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
                 Assertion.AssertEquals(3, result.ReturnValue);
@@ -768,7 +772,7 @@ namespace Ch.Elca.Iiop.Tests {
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,
                                                                target);
-                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
+                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
                 ReturnMessage result = 
                     (ReturnMessage) handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
                 Assertion.AssertEquals(true, result.ReturnValue);
@@ -785,24 +789,14 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
         private Stream PrepareLocationFwdStream(string host, short port,
-                                                MarshalByRefObject target) {
-
-            SerializerFactory serFactory =
-    	        new SerializerFactory();
-            omg.org.IOP.CodecFactory codecFactory =
-                new CodecFactoryImpl(serFactory);
-            omg.org.IOP.Codec codec = 
-                codecFactory.create_codec(
-                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
-
-            
+                                                MarshalByRefObject target) {           
             // loc fwd ior
             byte[] objectKey = IorUtil.GetObjectKeyForObj(target);
             string repositoryID = Repository.GetRepositoryID(target.GetType());
             // this server support GIOP 1.2 --> create an GIOP 1.2 profile
             InternetIiopProfile profile = new InternetIiopProfile(new GiopVersion(1, 2), host,
                                                                   port, objectKey);
-            profile.AddTaggedComponent(Services.CodeSetService.CreateDefaultCodesetComponent(codec));
+            profile.AddTaggedComponent(Services.CodeSetService.CreateDefaultCodesetComponent(m_codec));
             Ior locFwdTarget = new Ior(repositoryID, new IorProfile[] { profile });
             CdrOutputStreamImpl iorStream = new CdrOutputStreamImpl(new MemoryStream(), 
                                                                     0, new GiopVersion(1, 2));
@@ -876,7 +870,7 @@ namespace Ch.Elca.Iiop.Tests {
             sourceStream.Seek(0, SeekOrigin.Begin);            
             
             // deserialise request message
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
             LocateRequestMessage result = handler.ParseIncomingLocateRequestMessage(sourceStream);
 
             // now check if values are correct
@@ -901,7 +895,7 @@ namespace Ch.Elca.Iiop.Tests {
             LocateStatus replyStatus = LocateStatus.OBJECT_HERE;
             LocateReplyMessage locReply = new LocateReplyMessage(replyStatus);
             
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(new SerializerFactory()));
+            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
             MemoryStream targetStream = new MemoryStream();
             
             handler.SerialiseOutgoingLocateReplyMessage(locReply, locReq, version, targetStream, conDesc);

@@ -848,27 +848,29 @@ namespace Ch.Elca.Iiop.Tests {
     public class MessageBodySerialiserTest {
         
         private IiopUrlUtil m_iiopUrlUtil;
+        private SerializerFactory m_serFactory;
         
         [SetUp]
         public void SetUp() {
-            SerializerFactory serFactory =
+            m_serFactory =
     	        new SerializerFactory();
             CodecFactory codecFactory =
-                new CodecFactoryImpl(serFactory);
+                new CodecFactoryImpl(m_serFactory);
             Codec codec = 
                 codecFactory.create_codec(
                     new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
             m_iiopUrlUtil = 
-                IiopUrlUtil.CreateWithDefaultCodeSetComponent(codec);            
+                IiopUrlUtil.Create(codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(codec)});
+            m_serFactory.Initalize(m_iiopUrlUtil);
         }
         
         [Test]
         public void TestSameServiceIdMultiple() {
             // checks if service contexts with the same id, doesn't throw an exception
             // checks, that the first service context is considered, others are thrown away
-            SerializerFactory serFactory = new SerializerFactory();            
             GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
-                                                new ArgumentsSerializerFactory(serFactory));
+                                                new ArgumentsSerializerFactory(m_serFactory));
             MemoryStream stream = new MemoryStream();
             CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(stream, 0, new GiopVersion(1,2));
             cdrOut.WriteULong(2); // nr of contexts
@@ -905,9 +907,8 @@ namespace Ch.Elca.Iiop.Tests {
             GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, 
                                                                             new GiopRequestNumberGenerator(), null);            
             
-            SerializerFactory serFactory = new SerializerFactory();            
             GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
-                                                new ArgumentsSerializerFactory(serFactory));
+                                                new ArgumentsSerializerFactory(m_serFactory));
             GiopClientRequest request = 
                 new GiopClientRequest(msg, conDesc,
                                       new IInterceptionOption[0]);
@@ -932,10 +933,9 @@ namespace Ch.Elca.Iiop.Tests {
             // prepare connection context
             GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(null, null, 
                                                                             new GiopRequestNumberGenerator(), null);            
-            
-            SerializerFactory serFactory = new SerializerFactory();            
+                        
             GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
-                                                new ArgumentsSerializerFactory(serFactory));
+                                                new ArgumentsSerializerFactory(m_serFactory));
             GiopClientRequest request = 
                 new GiopClientRequest(msg, conDesc,
                                       new IInterceptionOption[0]);
@@ -985,9 +985,8 @@ namespace Ch.Elca.Iiop.Tests {
             // go to stream begin
             sourceStream.Seek(0, SeekOrigin.Begin);
             
-            SerializerFactory serFactory = new SerializerFactory();            
             GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
-                                                new ArgumentsSerializerFactory(serFactory));
+                                                new ArgumentsSerializerFactory(m_serFactory));
             
             CdrInputStreamImpl cdrSourceStream = 
                 new CdrInputStreamImpl(sourceStream);
@@ -1038,9 +1037,8 @@ namespace Ch.Elca.Iiop.Tests {
             // go to stream begin
             sourceStream.Seek(0, SeekOrigin.Begin);
             
-            SerializerFactory serFactory = new SerializerFactory();            
             GiopMessageBodySerialiser ser = new GiopMessageBodySerialiser(
-                                                new ArgumentsSerializerFactory(serFactory));
+                                                new ArgumentsSerializerFactory(m_serFactory));
             
             CdrInputStreamImpl cdrSourceStream = 
                 new CdrInputStreamImpl(sourceStream);

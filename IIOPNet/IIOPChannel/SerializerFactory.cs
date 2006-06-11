@@ -91,11 +91,15 @@ namespace Ch.Elca.Iiop.Marshalling {
         private IDictionary /* Type, ValueConcreteInstanceSerializer */ 
             m_concValueInstanceSer = new Hashtable();
         
-        private Codec m_codec;
+        private IiopUrlUtil m_iiopUrlUtil;
         
         #endregion IFields
         #region IConstructors
         
+        /// <summary>
+        /// The default constructor.
+        /// </summary>
+        /// <remarks>Call Initalize, before using the factory.</remarks>
         internal SerializerFactory() {
             m_anySerForObject = new AnySerializer(this, false);
             m_anySerForAnyCont = new AnySerializer(this, true);
@@ -109,13 +113,14 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                               
             m_boxedStringValueSer = new BoxedValueSerializer(ReflectionHelper.StringValueType,
                                                              false, this);            
-            
-            m_codec = new Ch.Elca.Iiop.Interception.CodecFactoryImpl(this).
-                    create_codec(new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
         }
         
         #endregion IConstructors
         #region IMethods
+        
+        internal void Initalize(IiopUrlUtil iiopUrlUtil) {
+            m_iiopUrlUtil = iiopUrlUtil;
+        }
                 
         /// <summary>determines the serialiser responsible for a specified formal type and the parameterattributes attributes</summary>
         /// <param name="formal">The formal type. If formal is modified through mapper, result is returned in this parameter</param>
@@ -197,12 +202,12 @@ namespace Ch.Elca.Iiop.Marshalling {
         public object MapToIdlAbstractInterface(System.Type clsType) {
             // could be cached ...
             return new AbstractInterfaceSerializer(clsType, this, 
-                                                   IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec));
+                                                   m_iiopUrlUtil);
         }
         public object MapToIdlConcreteInterface(System.Type clsType) {
              // can be cached, but because not expensive to create not (yet?) done
             return new ObjRefSerializer(clsType, 
-                                        IiopUrlUtil.CreateWithDefaultCodeSetComponent(m_codec));
+                                        m_iiopUrlUtil);
         }
         public object MapToIdlLocalInterface(System.Type clsType) {
             // local interfaces are non-marshable
@@ -371,12 +376,27 @@ namespace Ch.Elca.Iiop.Tests {
     /// </summary>
     [TestFixture]    
     public class SerialiserFactoryTest {
-                       
+            
+        private SerializerFactory m_serFactory;
+        
         public SerialiserFactoryTest() {
         }
         
+        [SetUp]
+        public void SetUp() {
+    	    m_serFactory =
+    	        new SerializerFactory();
+            CodecFactory codecFactory =
+                new CodecFactoryImpl(m_serFactory);
+            Codec codec = 
+                codecFactory.create_codec(
+                    new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+            m_serFactory.Initalize(IiopUrlUtil.Create(codec));            
+        }
+        
         private void GenericFactoryTest(Type createFor, Type expectedSerType) {
-            SerializerFactory factory = new SerializerFactory();
+            SerializerFactory factory = m_serFactory;
+            
             Serializer ser = factory.Create(createFor, 
                                             AttributeExtCollection.EmptyCollection);
             Assertion.AssertEquals("wrong serializer type", expectedSerType, ser.GetType());            

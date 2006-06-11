@@ -116,6 +116,20 @@ namespace Ch.Elca.Iiop.Tests {
     [TestFixture]
     public class ArgumentsSerializerFactoryTest {
         
+        private ArgumentsSerializerFactory m_argSerFactory;
+        
+        [SetUp]
+        public void SetUp() {
+  	        SerializerFactory serFactory = new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(serFactory);
+            omg.org.IOP.Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
+            serFactory.Initalize(IiopUrlUtil.Create(codec));            
+            m_argSerFactory = new ArgumentsSerializerFactory(serFactory);
+        }
+        
         private MethodInfo GetTestSomeIntMethod() {
             Type parameterMarshallerTestRemoteType = typeof(ParameterMarshallerTestRemote);
             return parameterMarshallerTestRemoteType.GetMethod("TestSomeInts", BindingFlags.Instance | BindingFlags.Public);
@@ -140,8 +154,7 @@ namespace Ch.Elca.Iiop.Tests {
         }
         
         private object[] MarshalAndUnmarshalRequestArgsOnce(MethodInfo testMethod, object[] actual) {
-            ArgumentsSerializerFactory serFactory = 
-                new ArgumentsSerializerFactory(new SerializerFactory());
+            ArgumentsSerializerFactory serFactory = m_argSerFactory;
             ArgumentsSerializer ser = serFactory.Create(testMethod.DeclaringType);
             
             MemoryStream data = new MemoryStream();
@@ -177,7 +190,7 @@ namespace Ch.Elca.Iiop.Tests {
         private object MarshalAndUnmarshalResponeArgsOnce(MethodInfo testMethod, object returnValue,
                                                           object[] outArgs, out object[] deserOutArgs) {
             ArgumentsSerializerFactory serFactory = 
-                new ArgumentsSerializerFactory(new SerializerFactory());
+                m_argSerFactory;
             ArgumentsSerializer ser = serFactory.Create(testMethod.DeclaringType);
             
             MemoryStream data = new MemoryStream();

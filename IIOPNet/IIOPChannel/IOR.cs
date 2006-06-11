@@ -665,19 +665,24 @@ namespace Ch.Elca.Iiop.Tests {
     public class IorTest {
 
         private Codec m_codec;
+        private SerializerFactory m_serFactory;
         
         public IorTest() {
         }                
         
         [SetUp]
         public void SetUp() {
-    	    SerializerFactory serFactory =
+    	    m_serFactory =
     	        new SerializerFactory();
             CodecFactory codecFactory =
-                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(serFactory);
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(m_serFactory);
             m_codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
+            IiopUrlUtil iiopUrlUtil = 
+                IiopUrlUtil.Create(m_codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});
+            m_serFactory.Initalize(iiopUrlUtil);
         }
 
         [Test]
@@ -799,6 +804,7 @@ namespace Ch.Elca.Iiop.Tests {
         private byte[] m_objectKey;
         private GiopVersion m_version;
         private Codec m_codec;
+        private SerializerFactory m_serFactory;
 
         [SetUp]
         public void Setup() {
@@ -808,13 +814,17 @@ namespace Ch.Elca.Iiop.Tests {
             m_objectKey = new byte[] { 65 };
             m_profile = new InternetIiopProfile(m_version, m_hostName, m_port, m_objectKey);
             
-    	    SerializerFactory serFactory =
+    	    m_serFactory =
     	        new SerializerFactory();
             CodecFactory codecFactory =
-                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(serFactory);
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(m_serFactory);
             m_codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+            IiopUrlUtil iiopUrlUtil = 
+                IiopUrlUtil.Create(m_codec, new object[] { 
+                    Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});            
+            m_serFactory.Initalize(iiopUrlUtil);
         }
 
         [Test]
