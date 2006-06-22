@@ -139,6 +139,15 @@ namespace Ch.Elca.Iiop.Cdr {
 			return wireVal;
 		}
 		
+		/// <summary>
+		/// converts val to a wireval considering wire and system endian.
+		/// </summary>
+		internal static byte[] GetBytes(Int32 val, bool wireIsLittleEndian) {
+			byte[] wireVal = BitConverter.GetBytes(val);
+			Reverse4ForBCIfNeeded(wireVal, wireIsLittleEndian);
+			return wireVal;
+		}		
+		
 	}
 	
 }
@@ -427,6 +436,43 @@ namespace Ch.Elca.Iiop.Tests {
     		ArrayAssertion.AssertByteArrayEquals("converted wbe int 16 (4)", new byte[] { 0x00, 0x80 }, result);    		    		
     	}
     	
+    	[Test]
+    	public void TestInt32WBESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((int)1, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 32", new byte[] { 0, 0, 0, 1 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((int)258, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 32 (2)", new byte[] { 0, 0, 1, 2 }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Int32.MaxValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 32 (3)", new byte[] { 0x7F, 0xFF, 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Int32.MinValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 32 (4)", new byte[] { 0x80, 0x00, 0x00, 0x00 }, result);
+    	}
+    	
+    	[Test]
+    	public void TestInt32WLESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((int)1, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 32", new byte[] { 1, 0, 0, 0 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((int)258, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 32 (2)", new byte[] { 2, 1, 0, 0 }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Int32.MaxValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 32 (3)", new byte[] { 0xFF, 0xFF, 0xFF, 0x7F }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Int32.MinValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 32 (4)", new byte[] { 0x00, 0x00, 0x00, 0x80 }, result);    		    		
+    	}
 
     	
     }
