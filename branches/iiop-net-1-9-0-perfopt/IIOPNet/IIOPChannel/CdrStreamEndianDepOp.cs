@@ -722,6 +722,84 @@ namespace Ch.Elca.Iiop.Tests {
     	}
     	
     	
+    	[Test]
+    	public void TestSingleWBEWToS() {
+    	    MemoryStream stream = new MemoryStream(new byte[] { 0x3F, 0x80, 0x00, 0x00,
+    	                                                        0x3C, 0x23, 0xD7, 0x0A,
+    	                                                        0x7F, 0x7F, 0xFF, 0xFF,
+    	                                                        0xFF, 0x7F, 0xFF, 0xFF });
+    	    CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(stream);
+    	    cdrIn.ConfigStream(STREAM_BIG_ENDIAN_FLAG, new GiopVersion(1, 2));
+    	    
+    	    System.Single result = cdrIn.ReadFloat();
+    		Assertion.AssertEquals("converted wbe single", (float)1.0f, result);
+    		result = cdrIn.ReadFloat();
+    		Assertion.AssertEquals("converted wbe single (2)", (float)0.01f, result);
+    		result = cdrIn.ReadFloat();    		
+    		Assertion.AssertEquals("converted wbe single (3)", Single.MaxValue, result);    		
+    		result = cdrIn.ReadFloat();
+    		Assertion.AssertEquals("converted wbe single (4)", Single.MinValue, result);    		
+    	}    	
+    	
+    	[Test]
+    	public void TestSingleWLEWToS() {
+    	    MemoryStream stream = new MemoryStream(new byte[] { 0x00, 0x00, 0x80, 0x3F,
+    	                                                        0x0A, 0xD7, 0x23, 0x3C,
+    	                                                        0xFF, 0xFF, 0x7F, 0x7F,
+    	                                                        0xFF, 0xFF, 0x7F, 0xFF });
+    	    CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(stream);
+    	    cdrIn.ConfigStream(STREAM_LITTLE_ENDIAN_FLAG, new GiopVersion(1, 2));
+    	    
+    	    System.Single result = cdrIn.ReadFloat();
+    		Assertion.AssertEquals("converted wbe single", (float)1.0f, result);
+    		result = cdrIn.ReadFloat();			
+			Assertion.AssertEquals("converted wbe single (2)", (float)0.01f, result);
+            result = cdrIn.ReadFloat();    		
+    		Assertion.AssertEquals("converted wbe single (3)", Single.MaxValue, result);
+            result = cdrIn.ReadFloat();    		
+    		Assertion.AssertEquals("converted wbe single (4)", Single.MinValue, result);
+    	}    	    	    	    	
+    	
+    	[Test]
+    	public void TestSingleWBESToW() {
+    	    MemoryStream stream = new MemoryStream();
+    	    CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(stream, STREAM_BIG_ENDIAN_FLAG);
+    	    cdrOut.WriteFloat((float)1);
+    	    cdrOut.WriteFloat((float)0.01);
+    	    cdrOut.WriteFloat(Single.MaxValue);
+    	    cdrOut.WriteFloat(Single.MinValue);
+    	    stream.Seek(0, SeekOrigin.Begin);
+    	    byte[] result = new byte[4];
+    	    stream.Read(result, 0, 4);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single", new byte[] { 0x3F, 0x80, 0x00, 0x00 }, result);
+    		stream.Read(result, 0, 4);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single (2)", new byte[] { 0x3C, 0x23, 0xD7, 0x0A }, result);
+            stream.Read(result, 0, 4);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single (3)", new byte[] { 0x7F, 0x7F, 0xFF, 0xFF }, result);
+            stream.Read(result, 0, 4);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single (4)", new byte[] { 0xFF, 0x7F, 0xFF, 0xFF }, result);
+    	}
+    	
+    	[Test]
+    	public void TestSingleWLESToW() {
+    	    MemoryStream stream = new MemoryStream();
+    	    CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(stream, STREAM_LITTLE_ENDIAN_FLAG);
+    	    cdrOut.WriteFloat((float)1);
+    	    cdrOut.WriteFloat((float)0.01);
+    	    cdrOut.WriteFloat(Single.MaxValue);
+    	    cdrOut.WriteFloat(Single.MinValue);
+    	    stream.Seek(0, SeekOrigin.Begin);
+    	    byte[] result = new byte[4];
+    	    stream.Read(result, 0, 4);
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe single", new byte[] { 0x00, 0x00, 0x80, 0x3F }, result);
+            stream.Read(result, 0, 4);
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe single (2)", new byte[] { 0x0A, 0xD7, 0x23, 0x3C }, result);
+    	    stream.Read(result, 0, 4);
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe single (3)", new byte[] { 0xFF, 0xFF, 0x7F, 0x7F }, result);
+    	    stream.Read(result, 0, 4);
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe single (4)", new byte[] { 0xFF, 0xFF, 0x7F, 0xFF }, result);
+    	}
+    	
     	
     }
 }
