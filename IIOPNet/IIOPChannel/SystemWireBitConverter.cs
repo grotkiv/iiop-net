@@ -131,6 +131,24 @@ namespace Ch.Elca.Iiop.Cdr {
 		}			
 		
 		/// <summary>
+		/// converts wireVal to a single considering wire and system endian.
+		/// </summary>
+		/// <remarks>Be careful, this method modifies wireVal</remarks>
+		internal static Single ToSingle(byte[] wireVal, bool wireIsLittleEndian) {
+			Reverse4ForBCIfNeeded(wireVal, wireIsLittleEndian);
+			return BitConverter.ToSingle(wireVal, 0);
+		}			
+		
+		/// <summary>
+		/// converts wireVal to a single considering wire and system endian.
+		/// </summary>
+		/// <remarks>Be careful, this method modifies wireVal</remarks>
+		internal static Double ToDouble(byte[] wireVal, bool wireIsLittleEndian) {
+			Reverse8ForBCIfNeeded(wireVal, wireIsLittleEndian);
+			return BitConverter.ToDouble(wireVal, 0);
+		}		
+		
+		/// <summary>
 		/// converts val to a wireval considering wire and system endian.
 		/// </summary>
 		internal static byte[] GetBytes(Int16 val, bool wireIsLittleEndian) {
@@ -147,6 +165,62 @@ namespace Ch.Elca.Iiop.Cdr {
 			Reverse4ForBCIfNeeded(wireVal, wireIsLittleEndian);
 			return wireVal;
 		}		
+		
+		/// <summary>
+		/// converts val to a wireval considering wire and system endian.
+		/// </summary>
+		internal static byte[] GetBytes(Int64 val, bool wireIsLittleEndian) {
+			byte[] wireVal = BitConverter.GetBytes(val);
+			Reverse8ForBCIfNeeded(wireVal, wireIsLittleEndian);
+			return wireVal;
+		}		
+		
+		/// <summary>
+		/// converts val to a wireval considering wire and system endian.
+		/// </summary>
+		internal static byte[] GetBytes(UInt16 val, bool wireIsLittleEndian) {
+			byte[] wireVal = BitConverter.GetBytes(val);
+			Reverse2ForBCIfNeeded(wireVal, wireIsLittleEndian);
+			return wireVal;
+		}
+		
+	    /// <summary>
+		/// converts val to a wireval considering wire and system endian.
+		/// </summary>
+		internal static byte[] GetBytes(UInt32 val, bool wireIsLittleEndian) {
+			byte[] wireVal = BitConverter.GetBytes(val);
+			Reverse4ForBCIfNeeded(wireVal, wireIsLittleEndian);
+			return wireVal;
+		}
+		
+	    /// <summary>
+		/// converts val to a wireval considering wire and system endian.
+		/// </summary>
+		internal static byte[] GetBytes(UInt64 val, bool wireIsLittleEndian) {
+			byte[] wireVal = BitConverter.GetBytes(val);
+			Reverse8ForBCIfNeeded(wireVal, wireIsLittleEndian);
+			return wireVal;
+		}
+		
+	    /// <summary>
+		/// converts val to a wireval considering wire and system endian.
+		/// </summary>
+		internal static byte[] GetBytes(Single val, bool wireIsLittleEndian) {
+			byte[] wireVal = BitConverter.GetBytes(val);
+			Reverse4ForBCIfNeeded(wireVal, wireIsLittleEndian);
+			return wireVal;
+		}
+		
+	    /// <summary>
+		/// converts val to a wireval considering wire and system endian.
+		/// </summary>
+		internal static byte[] GetBytes(Double val, bool wireIsLittleEndian) {
+			byte[] wireVal = BitConverter.GetBytes(val);
+			Reverse8ForBCIfNeeded(wireVal, wireIsLittleEndian);
+			return wireVal;
+		}
+		
+		
 		
 	}
 	
@@ -473,7 +547,310 @@ namespace Ch.Elca.Iiop.Tests {
     			SystemWireBitConverter.GetBytes(Int32.MinValue, true);
     		ArrayAssertion.AssertByteArrayEquals("converted wbe int 32 (4)", new byte[] { 0x00, 0x00, 0x00, 0x80 }, result);    		    		
     	}
+    	
+    	[Test]
+    	public void TestInt64WBESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((long)1, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 64", new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((long)258, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 64 (2)", new byte[] { 0, 0, 0, 0, 0, 0, 1, 2 }, result);
 
+    		result =
+    			SystemWireBitConverter.GetBytes(Int64.MaxValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 64 (3)", new byte[] { 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Int64.MinValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 64 (4)", new byte[] { 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, result);
+    	}
+    	
+    	[Test]
+    	public void TestInt64WLESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((long)1, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 64", new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((long)258, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 64 (2)", new byte[] { 2, 1, 0, 0, 0, 0, 0, 0 }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Int64.MaxValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 64 (3)", new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Int64.MinValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 64 (4)", new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80 }, result);    		    		
+    	}
+    	
+    	[Test]
+    	public void TestUInt16WBESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((ushort)1, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 16", new byte[] { 0, 1 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((ushort)258, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 16 (2)", new byte[] { 1, 2 }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt16.MaxValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 16 (3)", new byte[] { 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt16.MinValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 16 (4)", new byte[] { 0x00, 0x00 }, result);
+    	}
+    	
+    	[Test]
+    	public void TestUInt16WLESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((ushort)1, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 16", new byte[] { 1, 0 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((ushort)258, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 16 (2)", new byte[] { 2, 1 }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt16.MaxValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 16 (3)", new byte[] { 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt16.MinValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 16 (4)", new byte[] { 0x00, 0x00 }, result);
+    	}
+    	
+    	[Test]
+    	public void TestUInt32WBESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((uint)1, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 32", new byte[] { 0, 0, 0, 1 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((uint)258, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 32 (2)", new byte[] { 0, 0, 1, 2 }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt32.MaxValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 32 (3)", new byte[] { 0xFF, 0xFF, 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt32.MinValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 32 (4)", new byte[] { 0x00, 0x00, 0x00, 0x00 }, result);
+    	}
+    	
+    	[Test]
+    	public void TestUInt32WLESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((uint)1, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 32", new byte[] { 1, 0, 0, 0 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((uint)258, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 32 (2)", new byte[] { 2, 1, 0, 0 }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt32.MaxValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 32 (3)", new byte[] { 0xFF, 0xFF, 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt32.MinValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 32 (4)", new byte[] { 0x00, 0x00, 0x00, 0x00 }, result);
+    	}
+    	
+    	[Test]
+    	public void TestUInt64WBESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((ulong)1, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 64", new byte[] { 0, 0, 0, 0, 0, 0, 0, 1 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((ulong)258, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 64 (2)", new byte[] { 0, 0, 0, 0, 0, 0, 1, 2 }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt64.MaxValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 64 (3)", new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt64.MinValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 64 (4)", new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, result);
+    	}
+    	
+    	[Test]
+    	public void TestUInt64WLESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((ulong)1, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 64", new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((ulong)258, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 64 (2)", new byte[] { 2, 1, 0, 0, 0, 0, 0, 0 }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt64.MaxValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 64 (3)", new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(UInt64.MinValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe uint 64 (4)", new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, result);
+    	}
+
+    	[Test]
+    	public void TestSingleWBEWToS() {
+    		System.Single result = 
+    			SystemWireBitConverter.ToSingle(new byte[] { 0x3F, 0x80, 0x00, 0x00 }, false);
+    		Assertion.AssertEquals("converted wbe single", (float)1.0f, result);
+    		
+    		result = 
+    			SystemWireBitConverter.ToSingle(new byte[] { 0x3C, 0x23, 0xD7, 0x0A }, false);
+    		Assertion.AssertEquals("converted wbe single (2)", (float)0.01f, result);
+    		
+    		result = 
+    			SystemWireBitConverter.ToSingle(new byte[] { 0x7F, 0x7F, 0xFF, 0xFF }, false);
+    		Assertion.AssertEquals("converted wbe single (3)", Single.MaxValue, result);
+    		
+    		result = 
+    			SystemWireBitConverter.ToSingle(new byte[] { 0xFF, 0x7F, 0xFF, 0xFF }, false);
+    		Assertion.AssertEquals("converted wbe single (4)", Single.MinValue, result);    		
+    	}    	
+    	
+    	[Test]
+    	public void TestSingleWLEWToS() {
+    		System.Single result = 
+    			SystemWireBitConverter.ToSingle(new byte[] { 0x00, 0x00, 0x80, 0x3F }, true);
+    		Assertion.AssertEquals("converted wbe single", (float)1.0f, result);
+    		
+			result = 
+    			SystemWireBitConverter.ToSingle(new byte[] { 0x0A, 0xD7, 0x23, 0x3C }, true);
+			Assertion.AssertEquals("converted wbe single (2)", (float)0.01f, result);
+    		
+			result = 
+    			SystemWireBitConverter.ToSingle(new byte[] { 0xFF, 0xFF, 0x7F, 0x7F }, true);
+    		Assertion.AssertEquals("converted wbe single (3)", Single.MaxValue, result);
+    		
+			result = 
+    			SystemWireBitConverter.ToSingle(new byte[] { 0xFF, 0xFF, 0x7F, 0xFF }, true);
+    		Assertion.AssertEquals("converted wbe single (4)", Single.MinValue, result);
+    	}    	    	    	    	
+    	
+    	[Test]
+    	public void TestDoubleWBEWToS() {
+    		System.Double result = 
+    			SystemWireBitConverter.ToDouble(new byte[] { 0x3F, 0xF0, 0, 0, 0, 0, 0, 0 }, false);
+    		Assertion.AssertEquals("converted wbe double", 1.0f, result);
+    		
+    		result = 
+    			SystemWireBitConverter.ToDouble(new byte[] { 0x3F, 0x84, 0x7A, 0xE1, 0x47, 0xAE, 0x14, 0x7B }, false);
+    		Assertion.AssertEquals("converted wbe double (2)", 0.01f, result);
+    		
+    		result = 
+    			SystemWireBitConverter.ToDouble(new byte[] { 0x7F, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, false);
+    		Assertion.AssertEquals("converted wbe double (3)", Double.MaxValue, result);
+    		
+    		result = 
+    			SystemWireBitConverter.ToDouble(new byte[] { 0xFF, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, false);
+    		Assertion.AssertEquals("converted wbe double (4)", Double.MinValue, result);    		
+    	}    	
+    	
+    	[Test]
+    	public void TestDoubleWLEWToS() {
+    		System.Double result = 
+    			SystemWireBitConverter.ToDouble(new byte[] { 0, 0, 0, 0, 0, 0, 0xF0, 0x3F }, true);
+    		Assertion.AssertEquals("converted wbe double", 1.0f, result);
+    		
+			result = 
+    			SystemWireBitConverter.ToDouble(new byte[] { 0x7B, 0x14, 0xAE, 0x47, 0xE1, 0x7A, 0x84, 0x3F }, true);
+    		Assertion.AssertEquals("converted wbe double (2)", 0.01f, result);    		
+    		
+			result = 
+    			SystemWireBitConverter.ToDouble(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF, 0x7F }, true);
+    		Assertion.AssertEquals("converted wbe double (3)", Double.MaxValue, result);
+    		
+			result = 
+    			SystemWireBitConverter.ToDouble(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF, 0xFF }, true);
+    		Assertion.AssertEquals("converted wbe double (4)", Double.MinValue, result);
+    	}    	    	    	    	
+    	
+    	[Test]
+    	public void TestSingleWBESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((float)1, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single", new byte[] { 0x3F, 0x80, 0x00, 0x00 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((float)0.01, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single (2)", new byte[] { 0x3C, 0x23, 0xD7, 0x0A }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Single.MaxValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single (3)", new byte[] { 0x7F, 0x7F, 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Single.MinValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single (4)", new byte[] { 0xFF, 0x7F, 0xFF, 0xFF }, result);
+    	}
+    	
+    	[Test]
+    	public void TestSingleWLESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((float)1, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single", new byte[] { 0x00, 0x00, 0x80, 0x3F }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((float)0.01, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single (2)", new byte[] { 0x0A, 0xD7, 0x23, 0x3C }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Single.MaxValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single (3)", new byte[] { 0xFF, 0xFF, 0x7F, 0x7F }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Single.MinValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe single (4)", new byte[] { 0xFF, 0xFF, 0x7F, 0xFF }, result);
+    	}
+    	
+    	[Test]
+    	public void TestDoubleWBESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((double)1, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double", new byte[] { 0x3F, 0xF0, 0, 0, 0, 0, 0, 0 }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((double)0.01, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double (2)", new byte[] { 0x3F, 0x84, 0x7A, 0xE1, 0x47, 0xAE, 0x14, 0x7B }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Double.MaxValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double (3)", new byte[] { 0x7F, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Double.MinValue, false);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double (4)", new byte[] { 0xFF, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, result);
+    	}
+    	
+    	[Test]
+    	public void TestDoubleWLESToW() {
+    		byte[] result =
+    			SystemWireBitConverter.GetBytes((double)1, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double", new byte[] { 0, 0, 0, 0, 0, 0, 0xF0, 0x3F }, result);
+    		
+    		result =
+    			SystemWireBitConverter.GetBytes((double)0.01, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double (2)", new byte[] { 0x7B, 0x14, 0xAE, 0x47, 0xE1, 0x7A, 0x84, 0x3F }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Double.MaxValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double (3)", new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF, 0x7F }, result);
+
+    		result =
+    			SystemWireBitConverter.GetBytes(Double.MinValue, true);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double (4)", new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF, 0xFF }, result);
+    	}    	    	
     	
     }
 
