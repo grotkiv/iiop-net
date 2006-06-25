@@ -227,6 +227,10 @@ namespace Ch.Elca.Iiop.Benchmarks {
             m_testService.DoubleIdlSeqEcho(arg);
         }
 
+        void CallIntSeqEcho() {
+            int[] arg = new int[5000];
+            m_testService.IntIdlSeqEcho(arg);
+        }
 
         void CallDoubleArrCountElems() {
             double[] arg = new double[5000];
@@ -314,6 +318,7 @@ namespace Ch.Elca.Iiop.Benchmarks {
             tc.ExecuteTest(false, "(double[])double[]", new TestProcedure(tc.CallDoubleArrEcho));
             tc.ExecuteTest(false, "(double[])V", new TestProcedure(tc.CallDoubleArrCountElems));
             tc.ExecuteTest(false, "(double_sq)double_sq", new TestProcedure(tc.CallDoubleSeqEcho));
+            tc.ExecuteTest(false, "(int_sq)int_sq", new TestProcedure(tc.CallIntSeqEcho));
             tc.ExecuteTest(false, "(EnumA)EnumA", new TestProcedure(tc.CallEnumEcho));
             tc.ExecuteTest(false, "(IdlStructA)IdlStructA", new TestProcedure(tc.CallIdlStructEcho));
 
