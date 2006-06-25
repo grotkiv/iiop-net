@@ -79,51 +79,46 @@ namespace Ch.Elca.Iiop.Cdr {
         private void Read(int size, Aligns align) {
             m_stream.ForceReadAlign(align);
             m_stream.ReadBytes(m_buf, 0, size);
-            if (BitConverter.IsLittleEndian) { // need to reverse, because BitConverter uses other endian
-                Array.Reverse(m_buf, 0, size);
-            }
         }
 
         public short ReadShort() {
             Read(2, Aligns.Align2);
-            return BitConverter.ToInt16(m_buf, 0);
+            return SystemWireBitConverter.ToInt16(m_buf, false);
         }
 
         public ushort ReadUShort() {
             Read(2, Aligns.Align2);
-            return BitConverter.ToUInt16(m_buf, 0);
+            return SystemWireBitConverter.ToUInt16(m_buf, false);
         }
 
         public int ReadLong() {
             Read(4, Aligns.Align4);
-            return BitConverter.ToInt32(m_buf, 0);
+            return SystemWireBitConverter.ToInt32(m_buf, false);
         }
 
         public uint ReadULong() {
             Read(4, Aligns.Align4);
-            return BitConverter.ToUInt32(m_buf, 0);
+            return SystemWireBitConverter.ToUInt32(m_buf, false);
         }
 
         public long ReadLongLong() {
             Read(8, Aligns.Align8);
-            return BitConverter.ToInt64(m_buf, 0);
+            return SystemWireBitConverter.ToInt64(m_buf, false);
         }
 
         public ulong ReadULongLong() {
             Read(8, Aligns.Align8);
-            return BitConverter.ToUInt64(m_buf, 0);
+            return SystemWireBitConverter.ToUInt64(m_buf, false);
         }
 
         public float ReadFloat() {
             Read(4, Aligns.Align4);
-            float result = BitConverter.ToSingle(m_buf, 0);
-            return result;
+            return SystemWireBitConverter.ToSingle(m_buf, false);
         }
 
         public double ReadDouble() {
             Read(8, Aligns.Align8);
-            double result = BitConverter.ToDouble(m_buf, 0);
-            return result;
+            return SystemWireBitConverter.ToDouble(m_buf, false);
         }
         
         private byte[] AppendChar(byte[] oldData) {
@@ -212,42 +207,39 @@ namespace Ch.Elca.Iiop.Cdr {
 
     	private void Write(byte[] data, int count, Aligns align) {
 	        m_stream.ForceWriteAlign(align);
-            if (BitConverter.IsLittleEndian) { // need to reverse, because BitConverter uses other endian
-    	        Array.Reverse(data, 0, count);
-	        }
 		    m_stream.WriteBytes(data, 0, count);
 	    }
         
         public void WriteShort(short data) {
-		    Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
+		    Write(SystemWireBitConverter.GetBytes(data, false), 2, Aligns.Align2);
         }
 
         public void WriteUShort(ushort data) {
-		    Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
+		    Write(SystemWireBitConverter.GetBytes(data, false), 2, Aligns.Align2);
         }
 
         public void WriteLong(int data) {
-		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(SystemWireBitConverter.GetBytes(data, false), 4, Aligns.Align4);
         }
 
         public void WriteULong(uint data) {
-		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(SystemWireBitConverter.GetBytes(data, false), 4, Aligns.Align4);
         }
 
         public void WriteLongLong(long data) {
-		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(SystemWireBitConverter.GetBytes(data, false), 8, Aligns.Align8);
         }
 
         public void WriteULongLong(ulong data) {
-		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(SystemWireBitConverter.GetBytes(data, false), 8, Aligns.Align8);
         }
 
         public void WriteFloat(float data) {
-		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(SystemWireBitConverter.GetBytes(data, false), 4, Aligns.Align4);
         }
 
         public void WriteDouble(double data) {
-		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(SystemWireBitConverter.GetBytes(data, false), 8, Aligns.Align8);
         }
 
         public void WriteWChar(char data) {
@@ -323,51 +315,46 @@ namespace Ch.Elca.Iiop.Cdr {
         private void Read(int size, Aligns align) {
             m_stream.ForceReadAlign(align);
             m_stream.ReadBytes(m_buf, 0, size);
-            if (!BitConverter.IsLittleEndian) { // need to reverse, because BitConverter uses other endian
-                Array.Reverse(m_buf, 0, size);
-            }            
         }
 
         public short ReadShort() {
             Read(2, Aligns.Align2);
-            return BitConverter.ToInt16(m_buf, 0);
+            return SystemWireBitConverter.ToInt16(m_buf, true);
         }
 
         public ushort ReadUShort() {
             Read(2, Aligns.Align2);
-            return BitConverter.ToUInt16(m_buf, 0);
+            return SystemWireBitConverter.ToUInt16(m_buf, true);
         }
 
         public int ReadLong() {
             Read(4, Aligns.Align4);
-            return BitConverter.ToInt32(m_buf, 0);
+            return SystemWireBitConverter.ToInt32(m_buf, true);
         }
 
         public uint ReadULong() {
             Read(4, Aligns.Align4);
-            return BitConverter.ToUInt32(m_buf, 0);
+            return SystemWireBitConverter.ToUInt32(m_buf, true);
         }
 
         public long ReadLongLong() {
             Read(8, Aligns.Align8);
-            return BitConverter.ToInt64(m_buf, 0);
+            return SystemWireBitConverter.ToInt64(m_buf, true);
         }
 
         public ulong ReadULongLong() {
             Read(8, Aligns.Align8);
-            return BitConverter.ToUInt64(m_buf, 0);
+            return SystemWireBitConverter.ToUInt64(m_buf, true);
         }
 
         public float ReadFloat() {
             Read(4, Aligns.Align4);
-            float result = BitConverter.ToSingle(m_buf, 0);
-            return result;
+            return SystemWireBitConverter.ToSingle(m_buf, true);
         }
 
         public double ReadDouble() {
             Read(8, Aligns.Align8);
-            double result = BitConverter.ToDouble(m_buf, 0);
-            return result;
+            return SystemWireBitConverter.ToDouble(m_buf, true);
         }
         
         private byte[] AppendChar(byte[] oldData) {
@@ -456,42 +443,39 @@ namespace Ch.Elca.Iiop.Cdr {
 
        	private void Write(byte[] data, int count, Aligns align) {
 		    m_stream.ForceWriteAlign(align);
-            if (!BitConverter.IsLittleEndian) { // need to reverse, because BitConverter uses other endian
-    	        Array.Reverse(data, 0, count);
-	        }
 		    m_stream.WriteBytes(data, 0, count);
 	    }
         
         public void WriteShort(short data) {
-		    Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
+		    Write(SystemWireBitConverter.GetBytes(data, true), 2, Aligns.Align2);
         }
 
         public void WriteUShort(ushort data) {
-		    Write(BitConverter.GetBytes(data), 2, Aligns.Align2);
+		    Write(SystemWireBitConverter.GetBytes(data, true), 2, Aligns.Align2);
         }
 
         public void WriteLong(int data) {
-		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(SystemWireBitConverter.GetBytes(data, true), 4, Aligns.Align4);
         }
 
         public void WriteULong(uint data) {
-		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(SystemWireBitConverter.GetBytes(data, true), 4, Aligns.Align4);
         }
 
         public void WriteLongLong(long data) {
-		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(SystemWireBitConverter.GetBytes(data, true), 8, Aligns.Align8);
         }
 
         public void WriteULongLong(ulong data) {
-		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(SystemWireBitConverter.GetBytes(data, true), 8, Aligns.Align8);
         }
 
         public void WriteFloat(float data) {
-		    Write(BitConverter.GetBytes(data), 4, Aligns.Align4);
+		    Write(SystemWireBitConverter.GetBytes(data, true), 4, Aligns.Align4);
         }
 
         public void WriteDouble(double data) {
-		    Write(BitConverter.GetBytes(data), 8, Aligns.Align8);
+		    Write(SystemWireBitConverter.GetBytes(data, true), 8, Aligns.Align8);
         }
 
         public void WriteWChar(char data) {
