@@ -624,3 +624,106 @@ namespace Ch.Elca.Iiop.Cdr {
 
 
 }
+
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using System;
+    using System.Reflection;
+    using Ch.Elca.Iiop.Cdr;
+    using NUnit.Framework;
+    
+    /// <summary>
+    /// Unit-tests for testing CdrEndianDepOp Tests.
+    /// </summary>
+    [TestFixture]
+    public class CdrEndianDepOpTest {
+
+        private const byte STREAM_BIG_ENDIAN_FLAG = 0;
+        private const byte STREAM_LITTLE_ENDIAN_FLAG = 1;
+    	
+    	[Test]
+    	public void TestInt16WBEWToS() {
+    	    MemoryStream stream = new MemoryStream(new byte[] { 0, 1,
+    	                                                        1, 2,
+    	                                                        0x7F, 0xFF,
+    	                                                        0x80, 0x00 });
+    	    CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(stream);
+    	    cdrIn.ConfigStream(STREAM_BIG_ENDIAN_FLAG, new GiopVersion(1, 2));
+    	        	    
+    		System.Int16 result = cdrIn.ReadShort();
+    		Assertion.AssertEquals("read wbe int 16", 1, result);    		
+    		result = cdrIn.ReadShort();
+    		Assertion.AssertEquals("read wbe int 16 (2)", 258, result);
+    		result = cdrIn.ReadShort();
+    		Assertion.AssertEquals("read wbe int 16 (3)", Int16.MaxValue, result);
+    		result = cdrIn.ReadShort();
+    		Assertion.AssertEquals("read wbe int 16 (4)", Int16.MinValue, result);
+    	}
+    	
+    	[Test]
+    	public void TestInt16WLEWToS() {
+    	    MemoryStream stream = new MemoryStream(new byte[] { 1, 0,
+    	                                                        2, 1,
+    	                                                        0xFF, 0x7F,
+    	                                                        0x00, 0x80 });
+    	    CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(stream);
+    	    cdrIn.ConfigStream(STREAM_LITTLE_ENDIAN_FLAG, new GiopVersion(1, 2));
+    	        	    
+    		System.Int16 result = cdrIn.ReadShort();
+    		Assertion.AssertEquals("read wle int 16", 1, result);    		
+    		result = cdrIn.ReadShort();
+    		Assertion.AssertEquals("read wle int 16 (2)", 258, result);
+    		result = cdrIn.ReadShort();
+    		Assertion.AssertEquals("read wle int 16 (3)", Int16.MaxValue, result);
+    		result = cdrIn.ReadShort();
+    		Assertion.AssertEquals("read wle int 16 (4)", Int16.MinValue, result);
+    	}    	    	
+    	
+    	[Test]
+    	public void TestInt16WBESToW() {
+    	    MemoryStream stream = new MemoryStream();
+    	    CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(stream, STREAM_BIG_ENDIAN_FLAG);
+    	    cdrOut.WriteShort((short)1);
+    	    cdrOut.WriteShort((short)258);
+    	    cdrOut.WriteShort(Int16.MaxValue);
+    	    cdrOut.WriteShort(Int16.MinValue);
+    	    stream.Seek(0, SeekOrigin.Begin);
+    	    byte[] result = new byte[2];
+    	    stream.Read(result, 0, 2);
+    	    ArrayAssertion.AssertByteArrayEquals("converted wbe int 16", new byte[] { 0, 1 }, result);
+    	    stream.Read(result, 0, 2);    	        	        	        		
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 16 (2)", new byte[] { 1, 2 }, result);
+    	    stream.Read(result, 0, 2);    	        	        	        		
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 16 (3)", new byte[] { 0x7F, 0xFF }, result);
+    	    stream.Read(result, 0, 2);    	        	        	        		    		
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe int 16 (4)", new byte[] { 0x80, 0x00 }, result);    		
+    	}
+    	
+    	[Test]
+    	public void TestInt16WLESToW() {
+    	    MemoryStream stream = new MemoryStream();
+    	    CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(stream, STREAM_LITTLE_ENDIAN_FLAG);
+    	    cdrOut.WriteShort((short)1);
+    	    cdrOut.WriteShort((short)258);
+    	    cdrOut.WriteShort(Int16.MaxValue);
+    	    cdrOut.WriteShort(Int16.MinValue);
+    	    stream.Seek(0, SeekOrigin.Begin);
+    	    byte[] result = new byte[2];
+    	    stream.Read(result, 0, 2);
+    	    ArrayAssertion.AssertByteArrayEquals("converted lbe int 16", new byte[] { 1, 0 }, result);
+    	    stream.Read(result, 0, 2);    	        	        	        		
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe int 16 (2)", new byte[] { 2, 1 }, result);
+    	    stream.Read(result, 0, 2);    	        	        	        		
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe int 16 (3)", new byte[] { 0xFF, 0x7F }, result);
+    	    stream.Read(result, 0, 2);    	        	        	        		    		
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe int 16 (4)", new byte[] { 0x00, 0x80 }, result);    		
+    	}
+    	
+    	
+    	
+    }
+}
+
+#endif
