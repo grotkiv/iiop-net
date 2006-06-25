@@ -798,8 +798,83 @@ namespace Ch.Elca.Iiop.Tests {
     		ArrayAssertion.AssertByteArrayEquals("converted lbe single (3)", new byte[] { 0xFF, 0xFF, 0x7F, 0x7F }, result);
     	    stream.Read(result, 0, 4);
     		ArrayAssertion.AssertByteArrayEquals("converted lbe single (4)", new byte[] { 0xFF, 0xFF, 0x7F, 0xFF }, result);
+    	}    	
+    	
+    	[Test]
+    	public void TestDoubleWBEWToS() {
+    	    MemoryStream stream = new MemoryStream(new byte[] { 0x3F, 0xF0, 0, 0, 0, 0, 0, 0,
+    	                                                        0x3F, 0x84, 0x7A, 0xE1, 0x47, 0xAE, 0x14, 0x7B,
+    	                                                        0x7F, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    	                                                        0xFF, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+    	    CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(stream);
+    	    cdrIn.ConfigStream(STREAM_BIG_ENDIAN_FLAG, new GiopVersion(1, 2));
+    	    double result = cdrIn.ReadDouble();
+    	    Assertion.AssertEquals("converted wbe double", 1.0f, result);
+    		result = cdrIn.ReadDouble();
+    		Assertion.AssertEquals("converted wbe double (2)", 0.01f, result);
+            result = cdrIn.ReadDouble();    		
+    		Assertion.AssertEquals("converted wbe double (3)", Double.MaxValue, result);
+    		result = cdrIn.ReadDouble();
+    		Assertion.AssertEquals("converted wbe double (4)", Double.MinValue, result);
+    	}    	
+    	
+    	[Test]
+    	public void TestDoubleWLEWToS() {
+    	    MemoryStream stream = new MemoryStream(new byte[] { 0, 0, 0, 0, 0, 0, 0xF0, 0x3F,
+    	                                                        0x7B, 0x14, 0xAE, 0x47, 0xE1, 0x7A, 0x84, 0x3F,
+    	                                                        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF, 0x7F,
+    	                                                        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF, 0xFF });
+    	    CdrInputStreamImpl cdrIn = new CdrInputStreamImpl(stream);
+    	    cdrIn.ConfigStream(STREAM_LITTLE_ENDIAN_FLAG, new GiopVersion(1, 2));
+    	    double result = cdrIn.ReadDouble();
+    		Assertion.AssertEquals("converted lbe double", 1.0f, result);
+    		result = cdrIn.ReadDouble();
+    		Assertion.AssertEquals("converted lbe double (2)", 0.01f, result);    		
+    	    result = cdrIn.ReadDouble();    		
+    		Assertion.AssertEquals("converted lbe double (3)", Double.MaxValue, result);
+    	    result = cdrIn.ReadDouble();
+    		Assertion.AssertEquals("converted lbe double (4)", Double.MinValue, result);
+    	}    	    	
+    	
+    	[Test]
+    	public void TestDoubleWBESToW() {
+    	    MemoryStream stream = new MemoryStream();
+    	    CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(stream, STREAM_BIG_ENDIAN_FLAG);
+    	    cdrOut.WriteDouble((double)1);
+    	    cdrOut.WriteDouble((double)0.01);
+    	    cdrOut.WriteDouble(Double.MaxValue);
+    	    cdrOut.WriteDouble(Double.MinValue);
+    	    stream.Seek(0, SeekOrigin.Begin);
+    	    byte[] result = new byte[8];
+    	    stream.Read(result, 0, 8);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double", new byte[] { 0x3F, 0xF0, 0, 0, 0, 0, 0, 0 }, result);
+            stream.Read(result, 0, 8);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double (2)", new byte[] { 0x3F, 0x84, 0x7A, 0xE1, 0x47, 0xAE, 0x14, 0x7B }, result);
+            stream.Read(result, 0, 8);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double (3)", new byte[] { 0x7F, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, result);
+            stream.Read(result, 0, 8);
+    		ArrayAssertion.AssertByteArrayEquals("converted wbe double (4)", new byte[] { 0xFF, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }, result);
     	}
     	
+    	[Test]
+    	public void TestDoubleWLESToW() {
+    	    MemoryStream stream = new MemoryStream();
+    	    CdrOutputStreamImpl cdrOut = new CdrOutputStreamImpl(stream, STREAM_LITTLE_ENDIAN_FLAG);
+    	    cdrOut.WriteDouble((double)1);
+    	    cdrOut.WriteDouble((double)0.01);
+    	    cdrOut.WriteDouble(Double.MaxValue);
+    	    cdrOut.WriteDouble(Double.MinValue);
+    	    stream.Seek(0, SeekOrigin.Begin);
+    	    byte[] result = new byte[8];
+    	    stream.Read(result, 0, 8);
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe double", new byte[] { 0, 0, 0, 0, 0, 0, 0xF0, 0x3F }, result);
+    		stream.Read(result, 0, 8);
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe double (2)", new byte[] { 0x7B, 0x14, 0xAE, 0x47, 0xE1, 0x7A, 0x84, 0x3F }, result);
+            stream.Read(result, 0, 8);
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe double (3)", new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF, 0x7F }, result);
+            stream.Read(result, 0, 8);
+    		ArrayAssertion.AssertByteArrayEquals("converted lbe double (4)", new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF, 0xFF }, result);
+    	}    	    	
     	
     }
 }
