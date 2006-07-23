@@ -108,6 +108,9 @@ namespace Ch.Elca.Iiop {
         #region Implementation of IClientChannelSink
         public void AsyncProcessRequest(IClientChannelSinkStack sinkStack, IMessage msg, 
                                         ITransportHeaders headers, Stream requestStream) {
+            #if DEBUG
+            OutputHelper.LogStream(requestStream);
+            #endif            
             // this is the last sink in the chain, therefore the call is not forwarded, instead the request is sent
             GiopClientConnection clientCon = GetClientConnection(msg);
             GiopTransportMessageHandler handler = clientCon.TransportHandler;
@@ -123,6 +126,9 @@ namespace Ch.Elca.Iiop {
 
         public void ProcessMessage(IMessage msg, ITransportHeaders requestHeaders, Stream requestStream,
                                    out ITransportHeaders responseHeaders, out Stream responseStream) {
+            #if DEBUG
+            OutputHelper.LogStream(requestStream);
+            #endif
             // called by the chain, chain expect response-stream and headers back
             GiopClientConnection clientCon = GetClientConnection(msg);
             GiopTransportMessageHandler handler = clientCon.TransportHandler;
@@ -131,6 +137,9 @@ namespace Ch.Elca.Iiop {
             responseHeaders[GiopClientConnectionDesc.CLIENT_TR_HEADER_KEY]= clientCon.Desc; // add to response headers            
             uint reqNr = (uint)msg.Properties[SimpleGiopMsg.REQUEST_ID_KEY];
             responseStream = handler.SendRequestSynchronous(requestStream, reqNr, clientCon);
+            #if DEBUG
+            OutputHelper.LogStream(responseStream);
+            #endif            
             responseStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
             // the previous sink in the chain does further process this response ...
         }
@@ -143,6 +152,9 @@ namespace Ch.Elca.Iiop {
 
             // forward the response
             if ((resultException == null) && (responseStream != null)) {
+                #if DEBUG
+                OutputHelper.LogStream(responseStream);
+                #endif                            
                 responseStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
                 sinkStack.AsyncProcessResponse(responseHeaders, responseStream);
             } else {
@@ -208,17 +220,10 @@ namespace Ch.Elca.Iiop {
 
         #endregion IProperties
         #region IMethods
-        
-        private void LogStream(Stream stream) {
-            stream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
-            byte[] data = new byte[stream.Length];
-            stream.Read(data, 0, (int)stream.Length);
-            OutputHelper.DebugBuffer(data);            
-        }
-        
+                
         private void ProcessRequestInternal(Stream requestStream, GiopServerConnection serverCon) {
 #if DEBUG
-            LogStream(requestStream);
+            OutputHelper.LogStream(requestStream);
 #endif
             requestStream.Seek(0, SeekOrigin.Begin); // assure stream is read from beginning in formatter
             // the out params returned form later sinks
@@ -247,7 +252,7 @@ namespace Ch.Elca.Iiop {
                     } catch (Exception) { }                    
 #if DEBUG
                     Debug.WriteLine("Send response sync");
-                    LogStream(responseStream);
+                    OutputHelper.LogStream(responseStream);
 #endif                    
                     serverCon.TransportHandler.SendResponse(responseStream);
                     break;                    
@@ -307,7 +312,7 @@ namespace Ch.Elca.Iiop {
                                          IMessage msg, ITransportHeaders headers, Stream stream) {            
 #if DEBUG
             Debug.WriteLine("Send response async");
-            LogStream(stream);
+            OutputHelper.LogStream(stream);
 #endif
             GiopTransportMessageHandler giopTransportMsgHandler =
                 ((GiopServerConnection) state).TransportHandler;
