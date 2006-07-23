@@ -541,17 +541,19 @@ namespace Ch.Elca.Iiop {
         
         #endregion IFields
         #region IConstructors
-        
+                
         /// <summary>creates a giop transport message handler, which doesn't accept request messages</summary>
-        internal GiopTransportMessageHandler(ITransport transport) : this(transport, MessageTimeout.Infinite) {            
+        internal GiopTransportMessageHandler(ITransport transport, byte headerFlags) : this(transport, MessageTimeout.Infinite, headerFlags) {
         }
-        
+                
         /// <summary>creates a giop transport message handler, which doesn't accept request messages. 
         /// A receiver must be installed first.</summary>
         /// <param name="transport">the transport implementation</param>
         /// <param name="timeout">the client side timeout for a request</param>
-        internal GiopTransportMessageHandler(ITransport transport, MessageTimeout timeout) {
-            Initalize(transport, timeout, GiopHeader.DefaultHeaderFlags);
+        /// <param name="headerFlags">the header flags to use for message created by giop transport.</param>
+        internal GiopTransportMessageHandler(ITransport transport, MessageTimeout timeout,
+                                             byte headerFlags) {
+            Initalize(transport, timeout, headerFlags);
         }
         
         #endregion IConstructors

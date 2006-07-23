@@ -164,17 +164,7 @@ namespace Ch.Elca.Iiop {
         }
 
         #endregion IConstructors
-        #region SProperties
-        
-        /// <summary>
-        /// the default header flags to use.
-        /// </summary>
-        internal static byte DefaultHeaderFlags {
-            get {
-                return GetDefaultHeaderFlagsForEndian(true);
-            }
-        }
-        
+        #region SProperties                
         #endregion SProperties
         #region IProperties
 

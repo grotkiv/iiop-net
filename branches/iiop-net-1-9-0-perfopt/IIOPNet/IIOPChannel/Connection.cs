@@ -418,13 +418,14 @@ namespace Ch.Elca.Iiop {
 
         /// <param name="connectionKey">the key describing the connection</param>
         /// <param name="transport">a not yet connected client transport</param>
+        /// <param name="headerFlags">the header flags to use for transport related giop messages.</param>
         internal GiopClientInitiatedConnection(string connectionKey, IClientTransport transport,
                                                MessageTimeout requestTimeOut, GiopClientConnectionManager conManager,
-                                               bool supportBidir) {            
+                                               bool supportBidir, byte headerFlags) {            
             GiopRequestNumberGenerator reqNumberGen =
                 (!supportBidir ? new GiopRequestNumberGenerator() : new GiopRequestNumberGenerator(true));
             GiopTransportMessageHandler handler =
-                      new GiopTransportMessageHandler(transport, requestTimeOut);
+                      new GiopTransportMessageHandler(transport, requestTimeOut, headerFlags);
             GiopClientConnectionDesc conDesc = new GiopClientConnectionDesc(conManager, this, reqNumberGen, handler);
             m_clientTransport = transport;
             Initalize(connectionKey, handler, conDesc);            
