@@ -62,9 +62,20 @@ namespace Ch.Elca.Iiop.MessageHandling {
         #endregion IFields
         #region IConstructors
 
-        internal GiopMessageHandler(ArgumentsSerializerFactory argSerFactory) {
+        /// <summary>
+        /// Constructs a giop message handler, which uses the given
+        /// ArgumentsSerializerFactory for serializing/deserializing
+        /// requests/replys. The headerFlags parameter defines the
+        /// used header flags for messages initiated by this handler.
+        /// </summary>
+        internal GiopMessageHandler(ArgumentsSerializerFactory argSerFactory,
+                                    byte headerFlags) {
             m_ser = new GiopMessageBodySerialiser(argSerFactory);
-            m_headerFlags = GiopHeader.DefaultHeaderFlags;
+            m_headerFlags = headerFlags;
+        }
+                
+        internal GiopMessageHandler(ArgumentsSerializerFactory argSerFactory) :
+            this(argSerFactory, GiopHeader.DefaultHeaderFlags) {            
         }
 
         #endregion IConstructors
@@ -432,6 +443,7 @@ namespace Ch.Elca.Iiop.Tests {
         private IiopUrlUtil m_iiopUrlUtil;
         private SerializerFactory m_serFactory;
         private omg.org.IOP.Codec m_codec;
+        private GiopMessageHandler m_handler;
         
         [SetUp]
         public void SetUp() {
@@ -447,6 +459,8 @@ namespace Ch.Elca.Iiop.Tests {
                 IiopUrlUtil.Create(m_codec, new object[] { 
                     Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});
             m_serFactory.Initalize(m_iiopUrlUtil);
+            m_handler = 
+                new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
         }
                 
         /// <summary>
@@ -485,12 +499,11 @@ namespace Ch.Elca.Iiop.Tests {
                                                                             new GiopRequestNumberGenerator(), null);
 
             // serialise            
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
             MemoryStream targetStream = new MemoryStream();
             
             uint reqId = 5;
-            handler.SerialiseOutgoingRequestMessage(msg, target.Profiles[0], conDesc, targetStream, reqId,
-                                                    InterceptorManager.EmptyInterceptorOptions);
+            m_handler.SerialiseOutgoingRequestMessage(msg, target.Profiles[0], conDesc, targetStream, reqId,
+                                                      InterceptorManager.EmptyInterceptorOptions);
             
             // check to serialised stream
             targetStream.Seek(0, SeekOrigin.Begin);
@@ -558,11 +571,10 @@ namespace Ch.Elca.Iiop.Tests {
             // create the reply
             ReturnMessage retMsg = new ReturnMessage((Int32) 3, new object[0], 0, null, msg);            
             
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
             MemoryStream targetStream = new MemoryStream();
             
-            handler.SerialiseOutgoingReplyMessage(retMsg, msg, version, 
-                                                  targetStream, conDesc, InterceptorManager.EmptyInterceptorOptions);
+            m_handler.SerialiseOutgoingReplyMessage(retMsg, msg, version, 
+                                                    targetStream, conDesc, InterceptorManager.EmptyInterceptorOptions);
             
             // check to serialised stream
             targetStream.Seek(0, SeekOrigin.Begin);
@@ -653,9 +665,8 @@ namespace Ch.Elca.Iiop.Tests {
                 string uri = "testobject";
                 RemotingServices.Marshal(service, uri);
 
-                // deserialise request message
-                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
-                result = handler.ParseIncomingRequestMessage(sourceStream, conDesc, InterceptorManager.EmptyInterceptorOptions);
+                // deserialise request message                
+                result = m_handler.ParseIncomingRequestMessage(sourceStream, conDesc, InterceptorManager.EmptyInterceptorOptions);
             } catch (RequestDeserializationException e) {                
                 throw e;
             } finally {
@@ -711,9 +722,8 @@ namespace Ch.Elca.Iiop.Tests {
             // result
             cdrOut.WriteLong(3);
             // check deser of msg:
-            sourceStream.Seek(0, SeekOrigin.Begin);
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
-            ReturnMessage result = (ReturnMessage) handler.ParseIncomingReplyMessage(sourceStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
+            sourceStream.Seek(0, SeekOrigin.Begin);            
+            ReturnMessage result = (ReturnMessage) m_handler.ParseIncomingReplyMessage(sourceStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
             Assertion.AssertEquals(3, result.ReturnValue);
             Assertion.AssertEquals(0, result.OutArgCount);
         }                
@@ -738,10 +748,9 @@ namespace Ch.Elca.Iiop.Tests {
             
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,
-                                                               target);
-                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
+                                                               target);                
                 ReturnMessage result = 
-                    (ReturnMessage) handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
+                    (ReturnMessage) m_handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
                 Assertion.AssertEquals(3, result.ReturnValue);
                 Assertion.AssertEquals(0, result.OutArgCount);                
             } finally {
@@ -774,9 +783,8 @@ namespace Ch.Elca.Iiop.Tests {
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,
                                                                target);
-                GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
                 ReturnMessage result = 
-                    (ReturnMessage) handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
+                    (ReturnMessage) m_handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc, InterceptorManager.EmptyInterceptorOptions);
                 Assertion.AssertEquals(true, result.ReturnValue);
                 Assertion.AssertEquals(0, result.OutArgCount);                
             } finally {
@@ -871,9 +879,8 @@ namespace Ch.Elca.Iiop.Tests {
             // go to stream begin
             sourceStream.Seek(0, SeekOrigin.Begin);            
             
-            // deserialise request message
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
-            LocateRequestMessage result = handler.ParseIncomingLocateRequestMessage(sourceStream);
+            // deserialise request message            
+            LocateRequestMessage result = m_handler.ParseIncomingLocateRequestMessage(sourceStream);
 
             // now check if values are correct
             Assertion.Assert("deserialised message is null", result != null);
@@ -897,10 +904,9 @@ namespace Ch.Elca.Iiop.Tests {
             LocateStatus replyStatus = LocateStatus.OBJECT_HERE;
             LocateReplyMessage locReply = new LocateReplyMessage(replyStatus);
             
-            GiopMessageHandler handler = new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
             MemoryStream targetStream = new MemoryStream();
             
-            handler.SerialiseOutgoingLocateReplyMessage(locReply, locReq, version, targetStream, conDesc);
+            m_handler.SerialiseOutgoingLocateReplyMessage(locReply, locReq, version, targetStream, conDesc);
             
             // check to serialised stream
             targetStream.Seek(0, SeekOrigin.Begin);
