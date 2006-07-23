@@ -73,10 +73,6 @@ namespace Ch.Elca.Iiop.MessageHandling {
             m_ser = new GiopMessageBodySerialiser(argSerFactory);
             m_headerFlags = headerFlags;
         }
-                
-        internal GiopMessageHandler(ArgumentsSerializerFactory argSerFactory) :
-            this(argSerFactory, GiopHeader.DefaultHeaderFlags) {            
-        }
 
         #endregion IConstructors
         #region SMethods
@@ -460,7 +456,9 @@ namespace Ch.Elca.Iiop.Tests {
                     Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});
             m_serFactory.Initalize(m_iiopUrlUtil);
             m_handler = 
-                new GiopMessageHandler(new ArgumentsSerializerFactory(m_serFactory));
+                new GiopMessageHandler(
+                    new ArgumentsSerializerFactory(m_serFactory),
+                    GiopHeader.GetDefaultHeaderFlagsForEndian(true));
         }
                 
         /// <summary>

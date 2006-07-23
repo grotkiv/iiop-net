@@ -624,7 +624,8 @@ namespace Ch.Elca.Iiop {
                 m_providerChain = formatterProv;
             }            
             GiopMessageHandler messageHandler = 
-                new GiopMessageHandler(argumentSerializerFactory);
+                new GiopMessageHandler(argumentSerializerFactory,
+                                       GiopHeader.GetDefaultHeaderFlagsForEndian(true));
             ConfigureSinkProviderChain(m_conManager, messageHandler, m_iiopUrlUtil,
                                        interceptionOptions, retries);
         }
@@ -930,7 +931,8 @@ namespace Ch.Elca.Iiop {
                 m_providerChain = new IiopServerFormatterSinkProvider();
             }
             GiopMessageHandler messageHandler = 
-                new GiopMessageHandler(argumentSerializerFactory);
+                new GiopMessageHandler(argumentSerializerFactory,
+                                       GiopHeader.GetDefaultHeaderFlagsForEndian(true));
             ConfigureSinkProviderChain(messageHandler, interceptionOptions);            
             
             IServerChannelSink sinkChain = ChannelServices.CreateServerChannelSinkChain(m_providerChain, this);
