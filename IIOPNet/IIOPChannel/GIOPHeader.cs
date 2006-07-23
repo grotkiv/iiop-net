@@ -268,6 +268,9 @@ namespace Ch.Elca.Iiop {
         #endregion IMethods
         #region SMethods
         
+        /// <summary>
+        /// Gets the default header flags for the given endian.
+        /// </summary>
         internal static byte GetDefaultHeaderFlagsForEndian(bool isBigEndian) {
             if (isBigEndian) {
                 return 0;
