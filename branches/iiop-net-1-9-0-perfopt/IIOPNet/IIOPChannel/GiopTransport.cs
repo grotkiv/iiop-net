@@ -537,7 +537,7 @@ namespace Ch.Elca.Iiop {
         private MessageSendTask m_messageSendTask;
         
         private GiopReceivedRequestMessageDispatcher m_reiceivedRequestDispatcher;
-        private byte m_headerFlags = GiopHeader.DefaultHeaderFlags;
+        private byte m_headerFlags;
         
         #endregion IFields
         #region IConstructors
@@ -551,7 +551,7 @@ namespace Ch.Elca.Iiop {
         /// <param name="transport">the transport implementation</param>
         /// <param name="timeout">the client side timeout for a request</param>
         internal GiopTransportMessageHandler(ITransport transport, MessageTimeout timeout) {
-            Initalize(transport, timeout);
+            Initalize(transport, timeout, GiopHeader.DefaultHeaderFlags);
         }
         
         #endregion IConstructors
@@ -566,9 +566,11 @@ namespace Ch.Elca.Iiop {
         #endregion IProperties
         #region IMethods        
         
-        private void Initalize(ITransport transport, MessageTimeout timeout) {
+        private void Initalize(ITransport transport, MessageTimeout timeout,
+                               byte headerFlags) {
             m_transport = transport;            
-            m_timeout = timeout;            
+            m_timeout = timeout;
+            m_headerFlags = headerFlags;
             m_writeLock = new AutoResetEvent(true);
             m_reiceivedRequestDispatcher = null;
             m_messageSendTask = new MessageSendTask(m_transport, this);
