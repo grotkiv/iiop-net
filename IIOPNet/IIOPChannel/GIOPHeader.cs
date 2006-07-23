@@ -171,7 +171,7 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         internal static byte DefaultHeaderFlags {
             get {
-                return 0; // big endian
+                return GetDefaultHeaderFlagsForEndian(true);
             }
         }
         
@@ -266,6 +266,45 @@ namespace Ch.Elca.Iiop {
 
         
         #endregion IMethods
+        #region SMethods
         
+        internal static byte GetDefaultHeaderFlagsForEndian(bool isBigEndian) {
+            if (isBigEndian) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+        
+        #endregion SMethods
     }
 }
+#if UnitTest
+
+namespace Ch.Elca.Iiop.Tests {
+    
+    using System.Reflection;
+    using NUnit.Framework;
+    using Ch.Elca.Iiop;
+
+    /// <summary>
+    /// Unit-tests for testing request/reply serialisation/deserialisation
+    /// </summary>
+    [TestFixture]
+    public class GiopHeaderTest {
+        
+        [Test]
+        public void TestGetHeaderFlagsForBigEndian() {
+            Assertion.AssertEquals(0, GiopHeader.GetDefaultHeaderFlagsForEndian(true));
+        }
+        
+        [Test]
+        public void TestGetHeaderFlagsForLittleEndian() {
+            Assertion.AssertEquals(1, GiopHeader.GetDefaultHeaderFlagsForEndian(false));
+        }        
+        
+    }
+    
+}
+
+#endif
