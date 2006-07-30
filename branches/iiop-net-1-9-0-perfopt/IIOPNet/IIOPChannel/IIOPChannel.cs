@@ -409,7 +409,9 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         private byte m_headerFlags =
             GiopHeader.GetDefaultHeaderFlagsForEndian(true);
-
+        
+        private RetryConfig m_retryConfig = new RetryConfig(MAX_NUMBER_OF_RETRIES,
+                                                            RETRY_DELAY);
 
         #endregion IFields
         #region SConstructor
@@ -434,8 +436,7 @@ namespace Ch.Elca.Iiop {
         public IiopClientChannel() {
             InitChannel(new TcpTransportFactory(), MessageTimeout.Infinite, UNUSED_CLIENT_CONNECTION_TIMEOUT, false,
                         InterceptorManager.EmptyInterceptorOptions, NUMBER_OF_CLIENT_CONNECTION_TO_SAME_TARGET, 
-                        ALLOW_MULTIPLEX_REQUEST, NUMBER_OF_MULTIPLEXED_MAX, 
-                        new RetryConfig(MAX_NUMBER_OF_RETRIES, RETRY_DELAY));
+                        ALLOW_MULTIPLEX_REQUEST, NUMBER_OF_MULTIPLEXED_MAX);
         }
         
         public IiopClientChannel(IDictionary properties) : 
@@ -516,15 +517,14 @@ namespace Ch.Elca.Iiop {
                     }
                 }
             }
-            
+            m_retryConfig = new RetryConfig(maxNumberOfRetries, retryDelay);
             // handle the options now by transport factory
             clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
             clientTransportFactory.SetupClientOptions(nonDefaultOptions);
             InitChannel(clientTransportFactory, requestTimeOut, 
                         unusedClientConnectionTimeout, isBidir, 
                         (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption)),
-                        maxNumberOfConnections, allowMultiplex, maxNumberOfMultplexedRequests, 
-                        new RetryConfig(maxNumberOfRetries, retryDelay));
+                        maxNumberOfConnections, allowMultiplex, maxNumberOfMultplexedRequests);
         }
 
         #endregion IConstructors
@@ -594,8 +594,7 @@ namespace Ch.Elca.Iiop {
         /// <summary>initalize this channel</summary>
         private void InitChannel(IClientTransportFactory transportFactory, MessageTimeout requestTimeOut,
                                  int unusedClientConnectionTimeOut, bool isBidir, IInterceptionOption[] interceptionOptions,
-                                 int maxNumberOfConnections, bool allowMultiplex, int maxNumberOfMultplexedRequests,
-                                 RetryConfig retries) {
+                                 int maxNumberOfConnections, bool allowMultiplex, int maxNumberOfMultplexedRequests) {
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
             CodecFactory codecFactory =
@@ -635,7 +634,7 @@ namespace Ch.Elca.Iiop {
                 new GiopMessageHandler(argumentSerializerFactory,
                                        m_headerFlags);
             ConfigureSinkProviderChain(m_conManager, messageHandler, m_iiopUrlUtil,
-                                       interceptionOptions, retries);
+                                       interceptionOptions, m_retryConfig);
         }
 
         #region Implementation of IChannelSender
