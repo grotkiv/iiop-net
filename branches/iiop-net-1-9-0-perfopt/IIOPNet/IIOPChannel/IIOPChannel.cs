@@ -774,6 +774,9 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         private byte m_headerFlags =
             GiopHeader.GetDefaultHeaderFlagsForEndian(true);
+        
+        private IInterceptionOption[] m_interceptionOptions =
+            InterceptorManager.EmptyInterceptorOptions;
 
 
         #endregion IFields
@@ -801,7 +804,7 @@ namespace Ch.Elca.Iiop {
 
         public IiopServerChannel(int port) {
             m_port = port;            
-            InitChannel(new TcpTransportFactory(), InterceptorManager.EmptyInterceptorOptions);
+            InitChannel(new TcpTransportFactory());
         }
         
         public IiopServerChannel(IDictionary properties) : this(properties, new IiopServerFormatterSinkProvider()) {            
@@ -861,10 +864,11 @@ namespace Ch.Elca.Iiop {
                     }
                 }
             }
+            m_interceptionOptions =
+                (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption));
             // handle non-default options now by transport factory
             serverTransportFactory.SetupServerOptions(nonDefaultOptions);
-            InitChannel(serverTransportFactory, 
-                        (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption)));
+            InitChannel(serverTransportFactory);
         }
         
         #endregion IConstructors
@@ -925,7 +929,7 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>initalize the channel</summary>
-        private void InitChannel(IServerTransportFactory transportFactory, IInterceptionOption[] interceptionOptions) {
+        private void InitChannel(IServerTransportFactory transportFactory) {
             if (m_port < 0) {
                 throw new ArgumentException("illegal port to listen on: " + m_port); 
             }
@@ -951,7 +955,7 @@ namespace Ch.Elca.Iiop {
             GiopMessageHandler messageHandler = 
                 new GiopMessageHandler(argumentSerializerFactory,
                                        m_headerFlags);
-            ConfigureSinkProviderChain(messageHandler, interceptionOptions);            
+            ConfigureSinkProviderChain(messageHandler, m_interceptionOptions);            
             
             IServerChannelSink sinkChain = ChannelServices.CreateServerChannelSinkChain(m_providerChain, this);
             m_transportSink = new IiopServerTransportSink(sinkChain);            
