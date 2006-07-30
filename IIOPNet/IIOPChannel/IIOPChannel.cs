@@ -403,6 +403,13 @@ namespace Ch.Elca.Iiop {
         private GiopClientConnectionManager m_conManager;
         
         private IiopUrlUtil m_iiopUrlUtil;
+        
+        /// <summary>
+        /// The header flags to use for message initiated from this channel.
+        /// </summary>
+        private byte m_headerFlags =
+            GiopHeader.GetDefaultHeaderFlagsForEndian(true);
+
 
         #endregion IFields
         #region SConstructor
@@ -454,7 +461,7 @@ namespace Ch.Elca.Iiop {
             bool allowMultiplex = ALLOW_MULTIPLEX_REQUEST;
             int maxNumberOfMultplexedRequests = NUMBER_OF_MULTIPLEXED_MAX;
             int maxNumberOfRetries = MAX_NUMBER_OF_RETRIES;
-            int retryDelay = RETRY_DELAY;
+            int retryDelay = RETRY_DELAY;            
             
             if (properties != null) {
                 foreach (DictionaryEntry entry in properties) {
@@ -589,8 +596,6 @@ namespace Ch.Elca.Iiop {
                                  int unusedClientConnectionTimeOut, bool isBidir, IInterceptionOption[] interceptionOptions,
                                  int maxNumberOfConnections, bool allowMultiplex, int maxNumberOfMultplexedRequests,
                                  RetryConfig retries) {
-            
-            byte headerFlags = GiopHeader.GetDefaultHeaderFlagsForEndian(true);
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
             CodecFactory codecFactory =
@@ -606,12 +611,12 @@ namespace Ch.Elca.Iiop {
                 m_conManager = new GiopClientConnectionManager(transportFactory, requestTimeOut,
                                                                unusedClientConnectionTimeOut, maxNumberOfConnections,
                                                                allowMultiplex, maxNumberOfMultplexedRequests, 
-                                                               headerFlags);
+                                                               m_headerFlags);
             } else {
                 m_conManager = new GiopBidirectionalConnectionManager(transportFactory, requestTimeOut,
                                                                       unusedClientConnectionTimeOut, maxNumberOfConnections,
                                                                       allowMultiplex, maxNumberOfMultplexedRequests, 
-                                                                      headerFlags);
+                                                                      m_headerFlags);
             }
             IiopClientTransportSinkProvider transportProvider =
                 new IiopClientTransportSinkProvider(m_conManager);
@@ -628,7 +633,7 @@ namespace Ch.Elca.Iiop {
             }            
             GiopMessageHandler messageHandler = 
                 new GiopMessageHandler(argumentSerializerFactory,
-                                       headerFlags);
+                                       m_headerFlags);
             ConfigureSinkProviderChain(m_conManager, messageHandler, m_iiopUrlUtil,
                                        interceptionOptions, retries);
         }
@@ -759,6 +764,12 @@ namespace Ch.Elca.Iiop {
         
         private omg.org.IOP.Codec m_codec;
         private IiopUrlUtil m_iiopUrlUtil;
+        
+        /// <summary>
+        /// The header flags to use for message initiated from this channel.
+        /// </summary>
+        private byte m_headerFlags =
+            GiopHeader.GetDefaultHeaderFlagsForEndian(true);
 
 
         #endregion IFields
@@ -785,7 +796,7 @@ namespace Ch.Elca.Iiop {
         }
 
         public IiopServerChannel(int port) {
-            m_port = port;
+            m_port = port;            
             InitChannel(new TcpTransportFactory(), InterceptorManager.EmptyInterceptorOptions);
         }
         
@@ -935,7 +946,7 @@ namespace Ch.Elca.Iiop {
             }
             GiopMessageHandler messageHandler = 
                 new GiopMessageHandler(argumentSerializerFactory,
-                                       GiopHeader.GetDefaultHeaderFlagsForEndian(true));
+                                       m_headerFlags);
             ConfigureSinkProviderChain(messageHandler, interceptionOptions);            
             
             IServerChannelSink sinkChain = ChannelServices.CreateServerChannelSinkChain(m_providerChain, this);
@@ -1010,7 +1021,7 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         private void ProcessClientMessages(IServerTransport transport) {
             GiopTransportMessageHandler handler = 
-                new GiopTransportMessageHandler(transport, GiopHeader.GetDefaultHeaderFlagsForEndian(true));
+                new GiopTransportMessageHandler(transport, m_headerFlags);
             GiopConnectionDesc conDesc = new GiopConnectionDesc(m_bidirConnectionManager, handler);            
             handler.InstallReceiver(m_transportSink, conDesc, m_serverThreadsMaxPerConnection);
             m_transportHandlers.Add(handler);
