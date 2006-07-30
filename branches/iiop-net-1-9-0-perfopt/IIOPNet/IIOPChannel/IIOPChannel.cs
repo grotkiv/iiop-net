@@ -412,6 +412,8 @@ namespace Ch.Elca.Iiop {
         
         private RetryConfig m_retryConfig = new RetryConfig(MAX_NUMBER_OF_RETRIES,
                                                             RETRY_DELAY);
+        
+        private MessageTimeout m_requestTimeOut = MessageTimeout.Infinite;
 
         #endregion IFields
         #region SConstructor
@@ -434,7 +436,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         public IiopClientChannel() {
-            InitChannel(new TcpTransportFactory(), MessageTimeout.Infinite, UNUSED_CLIENT_CONNECTION_TIMEOUT, false,
+            InitChannel(new TcpTransportFactory(), UNUSED_CLIENT_CONNECTION_TIMEOUT, false,
                         InterceptorManager.EmptyInterceptorOptions, NUMBER_OF_CLIENT_CONNECTION_TO_SAME_TARGET, 
                         ALLOW_MULTIPLEX_REQUEST, NUMBER_OF_MULTIPLEXED_MAX);
         }
@@ -454,7 +456,6 @@ namespace Ch.Elca.Iiop {
             IDictionary nonDefaultOptions = new Hashtable();
             int receiveTimeOut = 0;
             int sendTimeOut = 0;
-            MessageTimeout requestTimeOut = MessageTimeout.Infinite;
             int unusedClientConnectionTimeout = UNUSED_CLIENT_CONNECTION_TIMEOUT;
             bool isBidir = false;
             ArrayList interceptionOptions = new ArrayList();
@@ -486,7 +487,7 @@ namespace Ch.Elca.Iiop {
                             break;
                         case IiopClientChannel.CLIENT_REQUEST_TIMEOUT_KEY:
                             int requestTimeOutMilllis = Convert.ToInt32(entry.Value);
-                            requestTimeOut = new MessageTimeout(TimeSpan.FromMilliseconds(requestTimeOutMilllis));
+                            m_requestTimeOut = new MessageTimeout(TimeSpan.FromMilliseconds(requestTimeOutMilllis));
                             break;
                         case IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY:
                             unusedClientConnectionTimeout = Convert.ToInt32(entry.Value);
@@ -521,7 +522,7 @@ namespace Ch.Elca.Iiop {
             // handle the options now by transport factory
             clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
             clientTransportFactory.SetupClientOptions(nonDefaultOptions);
-            InitChannel(clientTransportFactory, requestTimeOut, 
+            InitChannel(clientTransportFactory, 
                         unusedClientConnectionTimeout, isBidir, 
                         (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption)),
                         maxNumberOfConnections, allowMultiplex, maxNumberOfMultplexedRequests);
@@ -592,7 +593,7 @@ namespace Ch.Elca.Iiop {
         }        
         
         /// <summary>initalize this channel</summary>
-        private void InitChannel(IClientTransportFactory transportFactory, MessageTimeout requestTimeOut,
+        private void InitChannel(IClientTransportFactory transportFactory,
                                  int unusedClientConnectionTimeOut, bool isBidir, IInterceptionOption[] interceptionOptions,
                                  int maxNumberOfConnections, bool allowMultiplex, int maxNumberOfMultplexedRequests) {
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =
@@ -607,12 +608,12 @@ namespace Ch.Elca.Iiop {
                 omg.org.CORBA.OrbServices.GetSingleton().IiopUrlUtil;
             
             if (!isBidir) {
-                m_conManager = new GiopClientConnectionManager(transportFactory, requestTimeOut,
+                m_conManager = new GiopClientConnectionManager(transportFactory, m_requestTimeOut,
                                                                unusedClientConnectionTimeOut, maxNumberOfConnections,
                                                                allowMultiplex, maxNumberOfMultplexedRequests, 
                                                                m_headerFlags);
             } else {
-                m_conManager = new GiopBidirectionalConnectionManager(transportFactory, requestTimeOut,
+                m_conManager = new GiopBidirectionalConnectionManager(transportFactory, m_requestTimeOut,
                                                                       unusedClientConnectionTimeOut, maxNumberOfConnections,
                                                                       allowMultiplex, maxNumberOfMultplexedRequests, 
                                                                       m_headerFlags);
