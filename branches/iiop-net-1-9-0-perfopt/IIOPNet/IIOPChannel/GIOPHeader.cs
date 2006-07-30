@@ -34,6 +34,13 @@ using Ch.Elca.Iiop.Cdr;
 
 namespace Ch.Elca.Iiop {
     
+    /// <summary>
+    /// specifies the endian.
+    /// </summary>
+    public enum Endian {
+        LittleEndian, BigEndian
+    }
+    
     public struct GiopVersion {
         
         #region IFields
@@ -261,8 +268,8 @@ namespace Ch.Elca.Iiop {
         /// <summary>
         /// Gets the default header flags for the given endian.
         /// </summary>
-        internal static byte GetDefaultHeaderFlagsForEndian(bool isBigEndian) {
-            if (isBigEndian) {
+        internal static byte GetDefaultHeaderFlagsForEndian(Endian endian) {
+            if (endian == Endian.BigEndian) {
                 return 0;
             } else {
                 return 1;
@@ -288,12 +295,12 @@ namespace Ch.Elca.Iiop.Tests {
         
         [Test]
         public void TestGetHeaderFlagsForBigEndian() {
-            Assertion.AssertEquals(0, GiopHeader.GetDefaultHeaderFlagsForEndian(true));
+            Assertion.AssertEquals(0, GiopHeader.GetDefaultHeaderFlagsForEndian(Endian.BigEndian));
         }
         
         [Test]
         public void TestGetHeaderFlagsForLittleEndian() {
-            Assertion.AssertEquals(1, GiopHeader.GetDefaultHeaderFlagsForEndian(false));
+            Assertion.AssertEquals(1, GiopHeader.GetDefaultHeaderFlagsForEndian(Endian.LittleEndian));
         }        
         
     }
