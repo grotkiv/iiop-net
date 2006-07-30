@@ -764,7 +764,8 @@ namespace Ch.Elca.Iiop {
         private IList /* GiopClientServerMessageHandler */ m_transportHandlers = new ArrayList(); // the active transport handlers
         
         private GiopBidirectionalConnectionManager m_bidirConnectionManager = null;
-        private IServerTransportFactory m_transportFactory;
+        private IServerTransportFactory m_transportFactory =
+            new TcpTransportFactory();
         
         private omg.org.IOP.Codec m_codec;
         private IiopUrlUtil m_iiopUrlUtil;
@@ -776,7 +777,7 @@ namespace Ch.Elca.Iiop {
             GiopHeader.GetDefaultHeaderFlagsForEndian(true);
         
         private IInterceptionOption[] m_interceptionOptions =
-            InterceptorManager.EmptyInterceptorOptions;
+            InterceptorManager.EmptyInterceptorOptions;            
 
 
         #endregion IFields
@@ -804,7 +805,7 @@ namespace Ch.Elca.Iiop {
 
         public IiopServerChannel(int port) {
             m_port = port;            
-            InitChannel(new TcpTransportFactory());
+            InitChannel();
         }
         
         public IiopServerChannel(IDictionary properties) : this(properties, new IiopServerFormatterSinkProvider()) {            
@@ -818,8 +819,6 @@ namespace Ch.Elca.Iiop {
             }
 
             m_providerChain = sinkProvider;
-            IServerTransportFactory serverTransportFactory =
-                new TcpTransportFactory();
             IDictionary nonDefaultOptions = new Hashtable();
             ArrayList interceptionOptions = new ArrayList();
 
@@ -847,7 +846,7 @@ namespace Ch.Elca.Iiop {
                             break;
                         case IiopChannel.TRANSPORT_FACTORY_KEY:
                             Type transportFactoryType = Type.GetType((string)entry.Value, true);
-                            serverTransportFactory = (IServerTransportFactory)
+                            m_transportFactory = (IServerTransportFactory)
                                 Activator.CreateInstance(transportFactoryType);
                             break;
                         case SERVERTHREADS_MAX_PER_CONNECTION_KEY:
@@ -867,8 +866,8 @@ namespace Ch.Elca.Iiop {
             m_interceptionOptions =
                 (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption));
             // handle non-default options now by transport factory
-            serverTransportFactory.SetupServerOptions(nonDefaultOptions);
-            InitChannel(serverTransportFactory);
+            m_transportFactory.SetupServerOptions(nonDefaultOptions);
+            InitChannel();
         }
         
         #endregion IConstructors
@@ -929,7 +928,7 @@ namespace Ch.Elca.Iiop {
         }
         
         /// <summary>initalize the channel</summary>
-        private void InitChannel(IServerTransportFactory transportFactory) {
+        private void InitChannel() {
             if (m_port < 0) {
                 throw new ArgumentException("illegal port to listen on: " + m_port); 
             }
@@ -940,13 +939,12 @@ namespace Ch.Elca.Iiop {
             m_codec = codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
                                              1, 2));
-            transportFactory.Codec = m_codec;
-            m_transportFactory = transportFactory;
+            m_transportFactory.Codec = m_codec;
             m_iiopUrlUtil = omg.org.CORBA.OrbServices.GetSingleton().IiopUrlUtil;            
             m_hostNameToUse = DetermineMachineNameToUse();
             SetupChannelData(m_hostNameToUse, m_port, m_codec, null);
             m_connectionListener =
-                transportFactory.CreateConnectionListener(new ClientAccepted(this.ProcessClientMessages));
+                m_transportFactory.CreateConnectionListener(new ClientAccepted(this.ProcessClientMessages));
             
             // create the default provider chain, if no chain specified
             if (m_providerChain == null) {
