@@ -424,6 +424,9 @@ namespace Ch.Elca.Iiop {
         private bool m_allowMultiplex = ALLOW_MULTIPLEX_REQUEST;
         private int m_maxNumberOfMultplexedRequests = NUMBER_OF_MULTIPLEXED_MAX;
         
+        private IInterceptionOption[] m_interceptionOptions =
+            InterceptorManager.EmptyInterceptorOptions;
+        
         #endregion IFields
         #region SConstructor
 
@@ -445,8 +448,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         public IiopClientChannel() {
-            InitChannel(new TcpTransportFactory(),
-                        InterceptorManager.EmptyInterceptorOptions);
+            InitChannel(new TcpTransportFactory());
         }
         
         public IiopClientChannel(IDictionary properties) : 
@@ -522,11 +524,12 @@ namespace Ch.Elca.Iiop {
                 }
             }
             m_retryConfig = new RetryConfig(maxNumberOfRetries, retryDelay);
+            m_interceptionOptions =
+                (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption));
             // handle the options now by transport factory
             clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
             clientTransportFactory.SetupClientOptions(nonDefaultOptions);
-            InitChannel(clientTransportFactory, 
-                        (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption)));
+            InitChannel(clientTransportFactory);
         }
 
         #endregion IConstructors
@@ -594,8 +597,7 @@ namespace Ch.Elca.Iiop {
         }        
         
         /// <summary>initalize this channel</summary>
-        private void InitChannel(IClientTransportFactory transportFactory,
-                                 IInterceptionOption[] interceptionOptions) {
+        private void InitChannel(IClientTransportFactory transportFactory) {
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
             CodecFactory codecFactory =
@@ -635,7 +637,7 @@ namespace Ch.Elca.Iiop {
                 new GiopMessageHandler(argumentSerializerFactory,
                                        m_headerFlags);
             ConfigureSinkProviderChain(m_conManager, messageHandler, m_iiopUrlUtil,
-                                       interceptionOptions, m_retryConfig);
+                                       m_interceptionOptions, m_retryConfig);
         }
 
         #region Implementation of IChannelSender
