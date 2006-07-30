@@ -419,6 +419,8 @@ namespace Ch.Elca.Iiop {
         
         private int m_maxNumberOfConnections = NUMBER_OF_CLIENT_CONNECTION_TO_SAME_TARGET;
         
+        private bool m_isBidir = false;
+        
         #endregion IFields
         #region SConstructor
 
@@ -440,7 +442,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         public IiopClientChannel() {
-            InitChannel(new TcpTransportFactory(), false,
+            InitChannel(new TcpTransportFactory(),
                         InterceptorManager.EmptyInterceptorOptions, 
                         ALLOW_MULTIPLEX_REQUEST, NUMBER_OF_MULTIPLEXED_MAX);
         }
@@ -459,8 +461,7 @@ namespace Ch.Elca.Iiop {
             IClientTransportFactory clientTransportFactory = new TcpTransportFactory();
             IDictionary nonDefaultOptions = new Hashtable();
             int receiveTimeOut = 0;
-            int sendTimeOut = 0;            
-            bool isBidir = false;
+            int sendTimeOut = 0;
             ArrayList interceptionOptions = new ArrayList();
             bool allowMultiplex = ALLOW_MULTIPLEX_REQUEST;
             int maxNumberOfMultplexedRequests = NUMBER_OF_MULTIPLEXED_MAX;
@@ -510,7 +511,7 @@ namespace Ch.Elca.Iiop {
                             retryDelay = Convert.ToInt32(entry.Value);
                             break;
                         case IiopChannel.BIDIR_KEY:
-                            isBidir = Convert.ToBoolean(entry.Value);
+                            m_isBidir = Convert.ToBoolean(entry.Value);
                             interceptionOptions.Add(new BiDirIiopInterceptionOption());
                             break;                             
                         default: 
@@ -525,7 +526,6 @@ namespace Ch.Elca.Iiop {
             clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
             clientTransportFactory.SetupClientOptions(nonDefaultOptions);
             InitChannel(clientTransportFactory, 
-                        isBidir, 
                         (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption)),
                         allowMultiplex, maxNumberOfMultplexedRequests);
         }
@@ -596,7 +596,7 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>initalize this channel</summary>
         private void InitChannel(IClientTransportFactory transportFactory,
-                                 bool isBidir, IInterceptionOption[] interceptionOptions,
+                                 IInterceptionOption[] interceptionOptions,
                                  bool allowMultiplex, int maxNumberOfMultplexedRequests) {
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
@@ -609,7 +609,7 @@ namespace Ch.Elca.Iiop {
             m_iiopUrlUtil = 
                 omg.org.CORBA.OrbServices.GetSingleton().IiopUrlUtil;
             
-            if (!isBidir) {
+            if (!m_isBidir) {
                 m_conManager = new GiopClientConnectionManager(transportFactory, m_requestTimeOut,
                                                                m_unusedClientConnectionTimeOut, m_maxNumberOfConnections,
                                                                allowMultiplex, maxNumberOfMultplexedRequests, 
