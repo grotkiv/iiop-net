@@ -422,6 +422,7 @@ namespace Ch.Elca.Iiop {
         private bool m_isBidir = false;
         
         private bool m_allowMultiplex = ALLOW_MULTIPLEX_REQUEST;
+        private int m_maxNumberOfMultplexedRequests = NUMBER_OF_MULTIPLEXED_MAX;
         
         #endregion IFields
         #region SConstructor
@@ -445,8 +446,7 @@ namespace Ch.Elca.Iiop {
         
         public IiopClientChannel() {
             InitChannel(new TcpTransportFactory(),
-                        InterceptorManager.EmptyInterceptorOptions, 
-                        NUMBER_OF_MULTIPLEXED_MAX);
+                        InterceptorManager.EmptyInterceptorOptions);
         }
         
         public IiopClientChannel(IDictionary properties) : 
@@ -465,7 +465,6 @@ namespace Ch.Elca.Iiop {
             int receiveTimeOut = 0;
             int sendTimeOut = 0;
             ArrayList interceptionOptions = new ArrayList();
-            int maxNumberOfMultplexedRequests = NUMBER_OF_MULTIPLEXED_MAX;
             int maxNumberOfRetries = MAX_NUMBER_OF_RETRIES;
             int retryDelay = RETRY_DELAY;            
             
@@ -503,7 +502,7 @@ namespace Ch.Elca.Iiop {
                             m_allowMultiplex = Convert.ToBoolean(entry.Value);
                             break;
                         case IiopClientChannel.MAX_NUMBER_OF_MULTIPLEXED_REQUESTS_KEY:
-                            maxNumberOfMultplexedRequests = Convert.ToInt32(entry.Value);
+                            m_maxNumberOfMultplexedRequests = Convert.ToInt32(entry.Value);
                             break;
                         case IiopClientChannel.MAX_NUMBER_OF_RETRIES_KEY:
                             maxNumberOfRetries = Convert.ToInt32(entry.Value);
@@ -527,8 +526,7 @@ namespace Ch.Elca.Iiop {
             clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
             clientTransportFactory.SetupClientOptions(nonDefaultOptions);
             InitChannel(clientTransportFactory, 
-                        (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption)),
-                        maxNumberOfMultplexedRequests);
+                        (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption)));
         }
 
         #endregion IConstructors
@@ -597,8 +595,7 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>initalize this channel</summary>
         private void InitChannel(IClientTransportFactory transportFactory,
-                                 IInterceptionOption[] interceptionOptions,
-                                 int maxNumberOfMultplexedRequests) {
+                                 IInterceptionOption[] interceptionOptions) {
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
             CodecFactory codecFactory =
@@ -613,12 +610,12 @@ namespace Ch.Elca.Iiop {
             if (!m_isBidir) {
                 m_conManager = new GiopClientConnectionManager(transportFactory, m_requestTimeOut,
                                                                m_unusedClientConnectionTimeOut, m_maxNumberOfConnections,
-                                                               m_allowMultiplex, maxNumberOfMultplexedRequests, 
+                                                               m_allowMultiplex, m_maxNumberOfMultplexedRequests, 
                                                                m_headerFlags);
             } else {
                 m_conManager = new GiopBidirectionalConnectionManager(transportFactory, m_requestTimeOut,
                                                                       m_unusedClientConnectionTimeOut, m_maxNumberOfConnections,
-                                                                      m_allowMultiplex, maxNumberOfMultplexedRequests, 
+                                                                      m_allowMultiplex, m_maxNumberOfMultplexedRequests, 
                                                                       m_headerFlags);
             }
             IiopClientTransportSinkProvider transportProvider =
