@@ -427,6 +427,9 @@ namespace Ch.Elca.Iiop {
         private IInterceptionOption[] m_interceptionOptions =
             InterceptorManager.EmptyInterceptorOptions;
         
+        private IClientTransportFactory m_transportFactory =
+            new TcpTransportFactory();
+        
         #endregion IFields
         #region SConstructor
 
@@ -448,7 +451,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         public IiopClientChannel() {
-            InitChannel(new TcpTransportFactory());
+            InitChannel();
         }
         
         public IiopClientChannel(IDictionary properties) : 
@@ -462,7 +465,6 @@ namespace Ch.Elca.Iiop {
                      "IIOPClientSideFormatter provider not found in chain, this channel is only usable with the IIOPFormatters"); 
             }
             m_providerChain = sinkProvider;
-            IClientTransportFactory clientTransportFactory = new TcpTransportFactory();
             IDictionary nonDefaultOptions = new Hashtable();
             int receiveTimeOut = 0;
             int sendTimeOut = 0;
@@ -481,7 +483,7 @@ namespace Ch.Elca.Iiop {
                             break;
                         case IiopChannel.TRANSPORT_FACTORY_KEY:
                             Type transportFactoryType = Type.GetType((string)entry.Value, true);
-                            clientTransportFactory = (IClientTransportFactory)
+                            m_transportFactory = (IClientTransportFactory)
                                 Activator.CreateInstance(transportFactoryType);
                             break;
                         case IiopClientChannel.CLIENT_RECEIVE_TIMEOUT_KEY:
@@ -527,9 +529,9 @@ namespace Ch.Elca.Iiop {
             m_interceptionOptions =
                 (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption));
             // handle the options now by transport factory
-            clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
-            clientTransportFactory.SetupClientOptions(nonDefaultOptions);
-            InitChannel(clientTransportFactory);
+            m_transportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
+            m_transportFactory.SetupClientOptions(nonDefaultOptions);
+            InitChannel();
         }
 
         #endregion IConstructors
@@ -597,7 +599,7 @@ namespace Ch.Elca.Iiop {
         }        
         
         /// <summary>initalize this channel</summary>
-        private void InitChannel(IClientTransportFactory transportFactory) {
+        private void InitChannel() {
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
             CodecFactory codecFactory =
@@ -605,17 +607,17 @@ namespace Ch.Elca.Iiop {
             omg.org.IOP.Codec codec = codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
                                              1, 2));
-            transportFactory.Codec = codec;
+            m_transportFactory.Codec = codec;
             m_iiopUrlUtil = 
                 omg.org.CORBA.OrbServices.GetSingleton().IiopUrlUtil;
             
             if (!m_isBidir) {
-                m_conManager = new GiopClientConnectionManager(transportFactory, m_requestTimeOut,
+                m_conManager = new GiopClientConnectionManager(m_transportFactory, m_requestTimeOut,
                                                                m_unusedClientConnectionTimeOut, m_maxNumberOfConnections,
                                                                m_allowMultiplex, m_maxNumberOfMultplexedRequests, 
                                                                m_headerFlags);
             } else {
-                m_conManager = new GiopBidirectionalConnectionManager(transportFactory, m_requestTimeOut,
+                m_conManager = new GiopBidirectionalConnectionManager(m_transportFactory, m_requestTimeOut,
                                                                       m_unusedClientConnectionTimeOut, m_maxNumberOfConnections,
                                                                       m_allowMultiplex, m_maxNumberOfMultplexedRequests, 
                                                                       m_headerFlags);
