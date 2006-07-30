@@ -82,6 +82,12 @@ namespace Ch.Elca.Iiop {
         /// </summary>
         public const string BIDIR_KEY = "isBidirChannel";
         
+        /// <summary>
+        /// if true, use big endian; if false use little endian.
+        /// If option is not specified, plattform endian is used.
+        /// </summary>
+        public const string ENDIAN_KEY = "endian";
+        
         #endregion Constants
         #region IFields
 
@@ -129,6 +135,10 @@ namespace Ch.Elca.Iiop {
                             m_channelPriority = Convert.ToInt32(entry.Value); 
                             clientProp[PRIORITY_KEY] = m_channelPriority;
                             serverProp[PRIORITY_KEY] = m_channelPriority;
+                            break;
+                        case ENDIAN_KEY:
+                            clientProp[ENDIAN_KEY] = entry.Value;
+                            serverProp[ENDIAN_KEY] = entry.Value; 
                             break;
                         case IiopServerChannel.PORT_KEY: 
                             serverProp[IiopServerChannel.PORT_KEY] = Convert.ToInt32(entry.Value); 
@@ -375,7 +385,7 @@ namespace Ch.Elca.Iiop {
         /// the delay between two retries after a TRANSIENT, completed_no exception.
         /// </summary>
         public const string RETRY_DELAY_KEY = "retryDelay";
-        
+                
         private const int UNUSED_CLIENT_CONNECTION_TIMEOUT = 300000;
         
         /// <summary>allow multiplexing of request, i.e. send a request before the response has been arrived.</summary>
@@ -408,7 +418,7 @@ namespace Ch.Elca.Iiop {
         /// The header flags to use for message initiated from this channel.
         /// </summary>
         private byte m_headerFlags =
-            GiopHeader.GetDefaultHeaderFlagsForEndian(true);
+            GiopHeader.GetDefaultHeaderFlagsForEndian(Endian.BigEndian);
         
         private RetryConfig m_retryConfig = new RetryConfig(MAX_NUMBER_OF_RETRIES,
                                                             RETRY_DELAY);
@@ -517,7 +527,12 @@ namespace Ch.Elca.Iiop {
                         case IiopChannel.BIDIR_KEY:
                             m_isBidir = Convert.ToBoolean(entry.Value);
                             interceptionOptions.Add(new BiDirIiopInterceptionOption());
-                            break;                             
+                            break;
+                        case IiopChannel.ENDIAN_KEY:
+                            Endian endian = 
+                                (Endian)Enum.Parse(typeof(Endian), (string)entry.Value);
+                            m_headerFlags = GiopHeader.GetDefaultHeaderFlagsForEndian(endian);
+                            break;
                         default: 
                             Debug.WriteLine("non-default property found for IIOPClient channel: " + entry.Key);
                             nonDefaultOptions[entry.Key] = entry.Value;
@@ -774,7 +789,7 @@ namespace Ch.Elca.Iiop {
         /// The header flags to use for message initiated from this channel.
         /// </summary>
         private byte m_headerFlags =
-            GiopHeader.GetDefaultHeaderFlagsForEndian(true);
+            GiopHeader.GetDefaultHeaderFlagsForEndian(Endian.BigEndian);
         
         private IInterceptionOption[] m_interceptionOptions =
             InterceptorManager.EmptyInterceptorOptions;            
@@ -856,6 +871,11 @@ namespace Ch.Elca.Iiop {
                             m_bidirConnectionManager = (GiopBidirectionalConnectionManager)entry.Value;
                             interceptionOptions.Add(new BiDirIiopInterceptionOption());                            
                             break;
+                        case IiopChannel.ENDIAN_KEY:
+                            Endian endian = 
+                                (Endian)Enum.Parse(typeof(Endian), (string)entry.Value);
+                            m_headerFlags = GiopHeader.GetDefaultHeaderFlagsForEndian(endian);
+                            break;                            
                         default: 
                             Debug.WriteLine("non-default property found for IIOPServer channel: " + entry.Key);
                             nonDefaultOptions[entry.Key] = entry.Value;

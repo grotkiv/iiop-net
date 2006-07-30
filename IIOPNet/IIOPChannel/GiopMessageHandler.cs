@@ -458,7 +458,7 @@ namespace Ch.Elca.Iiop.Tests {
             m_handler = 
                 new GiopMessageHandler(
                     new ArgumentsSerializerFactory(m_serFactory),
-                    GiopHeader.GetDefaultHeaderFlagsForEndian(true));
+                    GiopHeader.GetDefaultHeaderFlagsForEndian(Endian.BigEndian));
         }
                 
         /// <summary>
