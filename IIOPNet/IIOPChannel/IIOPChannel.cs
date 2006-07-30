@@ -415,6 +415,8 @@ namespace Ch.Elca.Iiop {
         
         private MessageTimeout m_requestTimeOut = MessageTimeout.Infinite;
 
+        private int m_unusedClientConnectionTimeOut = UNUSED_CLIENT_CONNECTION_TIMEOUT;
+        
         #endregion IFields
         #region SConstructor
 
@@ -436,7 +438,7 @@ namespace Ch.Elca.Iiop {
         #region IConstructors
         
         public IiopClientChannel() {
-            InitChannel(new TcpTransportFactory(), UNUSED_CLIENT_CONNECTION_TIMEOUT, false,
+            InitChannel(new TcpTransportFactory(), false,
                         InterceptorManager.EmptyInterceptorOptions, NUMBER_OF_CLIENT_CONNECTION_TO_SAME_TARGET, 
                         ALLOW_MULTIPLEX_REQUEST, NUMBER_OF_MULTIPLEXED_MAX);
         }
@@ -455,8 +457,7 @@ namespace Ch.Elca.Iiop {
             IClientTransportFactory clientTransportFactory = new TcpTransportFactory();
             IDictionary nonDefaultOptions = new Hashtable();
             int receiveTimeOut = 0;
-            int sendTimeOut = 0;
-            int unusedClientConnectionTimeout = UNUSED_CLIENT_CONNECTION_TIMEOUT;
+            int sendTimeOut = 0;            
             bool isBidir = false;
             ArrayList interceptionOptions = new ArrayList();
             int maxNumberOfConnections = NUMBER_OF_CLIENT_CONNECTION_TO_SAME_TARGET;
@@ -490,7 +491,7 @@ namespace Ch.Elca.Iiop {
                             m_requestTimeOut = new MessageTimeout(TimeSpan.FromMilliseconds(requestTimeOutMilllis));
                             break;
                         case IiopClientChannel.CLIENT_UNUSED_CONNECTION_KEEPALIVE_KEY:
-                            unusedClientConnectionTimeout = Convert.ToInt32(entry.Value);
+                            m_unusedClientConnectionTimeOut = Convert.ToInt32(entry.Value);
                             break;
                         case IiopClientChannel.CLIENT_CONNECTION_LIMIT_KEY:
                             maxNumberOfConnections = Convert.ToInt32(entry.Value);
@@ -523,7 +524,7 @@ namespace Ch.Elca.Iiop {
             clientTransportFactory.SetClientTimeOut(receiveTimeOut, sendTimeOut);
             clientTransportFactory.SetupClientOptions(nonDefaultOptions);
             InitChannel(clientTransportFactory, 
-                        unusedClientConnectionTimeout, isBidir, 
+                        isBidir, 
                         (IInterceptionOption[])interceptionOptions.ToArray(typeof(IInterceptionOption)),
                         maxNumberOfConnections, allowMultiplex, maxNumberOfMultplexedRequests);
         }
@@ -594,7 +595,7 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>initalize this channel</summary>
         private void InitChannel(IClientTransportFactory transportFactory,
-                                 int unusedClientConnectionTimeOut, bool isBidir, IInterceptionOption[] interceptionOptions,
+                                 bool isBidir, IInterceptionOption[] interceptionOptions,
                                  int maxNumberOfConnections, bool allowMultiplex, int maxNumberOfMultplexedRequests) {
             Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory argumentSerializerFactory =
                 omg.org.CORBA.OrbServices.GetSingleton().ArgumentsSerializerFactory;            
@@ -609,12 +610,12 @@ namespace Ch.Elca.Iiop {
             
             if (!isBidir) {
                 m_conManager = new GiopClientConnectionManager(transportFactory, m_requestTimeOut,
-                                                               unusedClientConnectionTimeOut, maxNumberOfConnections,
+                                                               m_unusedClientConnectionTimeOut, maxNumberOfConnections,
                                                                allowMultiplex, maxNumberOfMultplexedRequests, 
                                                                m_headerFlags);
             } else {
                 m_conManager = new GiopBidirectionalConnectionManager(transportFactory, m_requestTimeOut,
-                                                                      unusedClientConnectionTimeOut, maxNumberOfConnections,
+                                                                      m_unusedClientConnectionTimeOut, maxNumberOfConnections,
                                                                       allowMultiplex, maxNumberOfMultplexedRequests, 
                                                                       m_headerFlags);
             }
