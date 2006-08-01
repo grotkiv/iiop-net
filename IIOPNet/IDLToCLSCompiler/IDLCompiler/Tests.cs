@@ -69,9 +69,7 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         }
         
         private AssemblyName GetAssemblyName() {
-            AssemblyName result = new AssemblyName();
-            result.Name = "testAsm";
-            return result;
+            return GetAssemblyName("testAsm");            
         }
         
         private void WriteIdlTestInterfaceToStream(StreamWriter aWriter, String ifModifier) {
