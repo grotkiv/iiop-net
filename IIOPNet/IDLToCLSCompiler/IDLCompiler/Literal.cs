@@ -72,7 +72,9 @@ namespace parser {
         Literal And(Literal toAndWith);
         Literal ShiftLeftBy(Literal shift);
         Literal ShiftRightBy(Literal shift);
-        /* Literal MultBy(Literal toMultWith); */
+        Literal MultBy(Literal toMultWith);
+        Literal DivBy(Literal toDivBy);
+        Literal ModBy(Literal toModBy);
         Literal Add(Literal toAddTo);
         Literal Sub(Literal toSubTo);
         // void Negate();
@@ -149,6 +151,18 @@ namespace parser {
         public Literal ShiftLeftBy(Literal shift) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise shift on float");
         }
+        
+        public Literal MultBy(Literal toMultWith) {
+            return new FloatLiteral(m_value * toMultWith.GetFloatValue());
+        }
+        
+        public Literal DivBy(Literal toDivBy) {
+            return new FloatLiteral(m_value / toDivBy.GetFloatValue());
+        }
+        
+        public Literal ModBy(Literal toModBy) {
+            return new FloatLiteral(m_value % toModBy.GetFloatValue());
+        }        
         
         public Literal Add(Literal toAddTo) {
              return new FloatLiteral(m_value + toAddTo.GetFloatValue());
@@ -261,6 +275,18 @@ namespace parser {
             }
             return new IntegerLiteral(GetIntValue() << (int)shift.GetIntValue());
         }
+        
+        public Literal MultBy(Literal toMultWith) {
+            return new IntegerLiteral(m_value * toMultWith.GetIntValue());
+        }
+        
+        public Literal DivBy(Literal toDivBy) {
+            return new IntegerLiteral(m_value / toDivBy.GetIntValue());
+        }
+        
+        public Literal ModBy(Literal toModBy) {
+            return new IntegerLiteral(m_value % toModBy.GetIntValue());
+        }        
         
         public Literal Add(Literal toAddTo) {
             return new IntegerLiteral(m_value + toAddTo.GetIntValue());
@@ -491,6 +517,18 @@ namespace parser {
             throw new InvalidOperandInExpressionException("Cannot use bitwise shift on char");
         }
         
+        public Literal MultBy(Literal toMultWith) {
+            throw new InvalidOperandInExpressionException("Cannot use mult with char");            
+        }
+        
+        public Literal DivBy(Literal toDivBy) {
+            throw new InvalidOperandInExpressionException("Cannot use div with char");
+        }
+        
+        public Literal ModBy(Literal toModBy) {
+            throw new InvalidOperandInExpressionException("Cannot use mod with char");
+        }        
+        
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on char");
         }        
@@ -584,6 +622,18 @@ namespace parser {
         
         public Literal ShiftLeftBy(Literal shift) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise shift on string");
+        }
+        
+        public Literal MultBy(Literal toMultWith) {
+            throw new InvalidOperandInExpressionException("Cannot use mult with string");            
+        }
+        
+        public Literal DivBy(Literal toDivBy) {
+            throw new InvalidOperandInExpressionException("Cannot use div with string");
+        }
+        
+        public Literal ModBy(Literal toModBy) {
+            throw new InvalidOperandInExpressionException("Cannot use mod with string");
         }        
         
         public Literal Add(Literal toAddTo) {
@@ -675,6 +725,18 @@ namespace parser {
         public Literal ShiftLeftBy(Literal shift) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise shift on bool");
         }
+        
+        public Literal MultBy(Literal toMultWith) {
+            throw new InvalidOperandInExpressionException("Cannot use mult with bool");            
+        }
+        
+        public Literal DivBy(Literal toDivBy) {
+            throw new InvalidOperandInExpressionException("Cannot use div with bool");
+        }
+        
+        public Literal ModBy(Literal toModBy) {
+            throw new InvalidOperandInExpressionException("Cannot use mod with bool");
+        }        
         
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on bool");
@@ -774,7 +836,19 @@ namespace parser {
         
         public Literal ShiftLeftBy(Literal shift) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise shift on enum");
-        }                
+        }
+        
+        public Literal MultBy(Literal toMultWith) {
+            throw new InvalidOperandInExpressionException("Cannot use mult with enum");            
+        }
+        
+        public Literal DivBy(Literal toDivBy) {
+            throw new InvalidOperandInExpressionException("Cannot use div with enum");
+        }
+        
+        public Literal ModBy(Literal toModBy) {
+            throw new InvalidOperandInExpressionException("Cannot use mod with enum");
+        }
         
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on enum");

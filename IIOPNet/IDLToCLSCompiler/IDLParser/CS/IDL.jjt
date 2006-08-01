@@ -698,7 +698,10 @@ void add_expr() :
 void mult_expr() :
 {}
 {
-  unary_expr() ( ( "*" | "/" | "%" ) unary_expr() )*
+  unary_expr() ( ( "*" { jjtThis.AppendMultOperation(MultOps.Mult); }
+                 | "/" { jjtThis.AppendMultOperation(MultOps.Div); }
+                 | "%" { jjtThis.AppendMultOperation(MultOps.Mod); }
+               ) unary_expr() )*
 }
 
 /* Production 36 */

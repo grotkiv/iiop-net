@@ -1332,9 +1332,6 @@ public class MetaDataGenerator : IDLParserVisitor {
             }
         }
         return result;
-        
-        
-        
     }
 
     /**
@@ -1361,11 +1358,22 @@ public class MetaDataGenerator : IDLParserVisitor {
      * @see parser.IDLParserVisitor#visit(ASTmult_expr, Object)
      */
     public Object visit(ASTmult_expr node, Object data) {
-        if (node.jjtGetNumChildren() > 1) {
-            throw new NotImplementedException("only simple expressions are supported yet");
+        Literal result = 
+            (Literal)node.jjtGetChild(0).jjtAccept(this, data);
+        for(int i=1; i < node.jjtGetNumChildren(); i++) {
+            // evaluate the unary-expr and mult/div/mod it to the current result
+            switch (node.GetMultOperation(i-1)) {
+                case MultOps.Mult:
+                    result = result.MultBy((Literal)node.jjtGetChild(i).jjtAccept(this, data));
+                    break;
+                case MultOps.Div:
+                    result = result.DivBy((Literal)node.jjtGetChild(i).jjtAccept(this, data));
+                    break;
+                case MultOps.Mod:
+                    result = result.ModBy((Literal)node.jjtGetChild(i).jjtAccept(this, data));
+                    break;                    
+            }
         }
-        // evaluate the unary-expr
-        Object result = node.jjtGetChild(0).jjtAccept(this, data);
         return result;
     }
 
