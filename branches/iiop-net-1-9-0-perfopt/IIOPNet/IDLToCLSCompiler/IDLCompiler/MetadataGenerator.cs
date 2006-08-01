@@ -1326,12 +1326,13 @@ public class MetaDataGenerator : IDLParserVisitor {
     /**
      * @see parser.IDLParserVisitor#visit(ASTadd_expr, Object)
      */
-    public Object visit(ASTadd_expr node, Object data) {
-        if (node.jjtGetNumChildren() > 1) {
-            throw new NotImplementedException("only simple expressions are supported yet");
+    public Object visit(ASTadd_expr node, Object data) {        
+        // evaluate the mult-exprs
+        Literal result = 
+            (Literal)node.jjtGetChild(0).jjtAccept(this, data);
+        for(int i=1; i < node.jjtGetNumChildren(); i++) {
+           result = result.Add((Literal)node.jjtGetChild(i).jjtAccept(this, data));
         }
-        // evaluate the mult-expr
-        Object result = node.jjtGetChild(0).jjtAccept(this, data);
         return result;
     }
 
