@@ -299,7 +299,34 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                    
             CheckConstantValue("testmod.TestShiftRightAndLeft", result, 
                                (int)(0xFF << 4 >> 2));
-        }                
+        }          
+        
+        [Test]        
+        [ExpectedException(typeof(InvalidOperandInExpressionException))]
+        public void TestTooBigShiftLeft() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestTooBigShiftLeft = 0xFF << 0xFFFFFFFFFFFF;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestTooBigShiftLeft"));            
+        }
+        
+        [Test]        
+        [ExpectedException(typeof(InvalidOperandInExpressionException))]        
+        public void TestTooBigShiftRight() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestTooBigShiftRight = 0xFF >> 0xFFFFFFFFFFFF;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestTooBigShiftRight"));            
+        }
+        
 
         
     
