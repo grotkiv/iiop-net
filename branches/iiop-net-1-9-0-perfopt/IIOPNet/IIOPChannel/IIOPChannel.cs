@@ -84,7 +84,7 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>
         /// if true, use big endian; if false use little endian.
-        /// If option is not specified, plattform endian is used.
+        /// If option is not specified, big endian is used.
         /// </summary>
         public const string ENDIAN_KEY = "endian";
         
