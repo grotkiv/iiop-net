@@ -686,8 +686,8 @@ void shift_expr() :
 void add_expr() :
 {}
 {
-  mult_expr() ( ( "+" { jjtThis.SetAddOperation(AddOps.Plus); }
-                | "-" { jjtThis.SetAddOperation(AddOps.Minus); }
+  mult_expr() ( ( "+" { jjtThis.AppendAddOperation(AddOps.Plus); }
+                | "-" { jjtThis.AppendAddOperation(AddOps.Minus); }
               ) mult_expr() )*
 }
 
