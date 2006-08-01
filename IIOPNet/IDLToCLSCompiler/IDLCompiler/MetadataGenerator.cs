@@ -1279,24 +1279,26 @@ public class MetaDataGenerator : IDLParserVisitor {
      * @see parser.IDLParserVisitor#visit(ASTor_expr, Object)
      */
     public Object visit(ASTor_expr node, Object data) {
-        if (node.jjtGetNumChildren() > 1) {
-            throw new NotImplementedException("only simple expressions are supported yet");
+        Literal result = 
+            (Literal)node.jjtGetChild(0).jjtAccept(this, data);
+        for(int i=1; i < node.jjtGetNumChildren(); i++) {
+            // evaluate the xor-expr and or it to the current result
+            result = result.Or((Literal)node.jjtGetChild(i).jjtAccept(this, data));
         }
-        // evaluate the xor-expr
-        Object result = node.jjtGetChild(0).jjtAccept(this, data);
-        return result;
+        return result;                
     }
 
     /**
      * @see parser.IDLParserVisitor#visit(ASTxor_expr, Object)
      */
     public Object visit(ASTxor_expr node, Object data) {
-        if (node.jjtGetNumChildren() > 1) {
-            throw new NotImplementedException("only simple expressions are supported yet");
+        Literal result = 
+            (Literal)node.jjtGetChild(0).jjtAccept(this, data);
+        for(int i=1; i < node.jjtGetNumChildren(); i++) {
+            // evaluate the and-expr and xor it to the current result
+            result = result.Xor((Literal)node.jjtGetChild(i).jjtAccept(this, data));
         }
-        // evaluate the and-expr
-        Object result = node.jjtGetChild(0).jjtAccept(this, data);
-        return result;
+        return result;        
     }
 
     /**
@@ -1326,11 +1328,11 @@ public class MetaDataGenerator : IDLParserVisitor {
     /**
      * @see parser.IDLParserVisitor#visit(ASTadd_expr, Object)
      */
-    public Object visit(ASTadd_expr node, Object data) {        
-        // evaluate the mult-exprs
+    public Object visit(ASTadd_expr node, Object data) {                
         Literal result = 
             (Literal)node.jjtGetChild(0).jjtAccept(this, data);
         for(int i=1; i < node.jjtGetNumChildren(); i++) {
+            // evaluate the mult-expr and add/sub it to the current result
             switch (node.GetAddOperation(i-1)) {
                 case AddOps.Plus:
                     result = result.Add((Literal)node.jjtGetChild(i).jjtAccept(this, data));

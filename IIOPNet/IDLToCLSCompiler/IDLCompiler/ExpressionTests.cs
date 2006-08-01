@@ -195,6 +195,37 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             CheckConstantValue("testmod.TestAddAndSubInteger", result, (int)2);
         }
         
+        [Test]
+        public void TestBitwiseOr() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestBitwiseOr = 0xFF0000 | 0x1;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestBitwiseOr"));
+                                   
+            CheckConstantValue("testmod.TestBitwiseOr", result, 
+                               (int)(0xFF0000 | 0x1));
+        }        
+        
+        [Test]
+        public void TestBitwiseXor() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestBitwiseXor = 0xFF0000 ^ 0x1 ^ 0x10;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestBitwiseXor"));
+                                   
+            CheckConstantValue("testmod.TestBitwiseXor", result, 
+                               (int)(0xFF0000 ^ 0x1 ^ 0x10));
+        }        
+        
+        
         
         
     
