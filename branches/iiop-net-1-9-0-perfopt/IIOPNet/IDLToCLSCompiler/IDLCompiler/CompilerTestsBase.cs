@@ -56,7 +56,20 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         #endregion
         #region IMethods
         
-        protected Assembly CreateIdl(Stream source, AssemblyName targetName) {            
+        
+        /// <summary>
+        /// Get an assembly name for a string name.
+        /// </summary>
+        protected AssemblyName GetAssemblyName(string name) {
+            AssemblyName result = new AssemblyName();
+            result.Name = name;
+            return result;
+        }
+        
+        /// <summary>
+        /// Parses the idl and generates an assembly.
+        /// </summary>
+        protected Assembly CreateIdl(Stream source, AssemblyName targetName) {
             return CreateIdl(source, targetName, false, false);
         }                
         
@@ -77,8 +90,8 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             }
             generator.InitalizeForSource(parser.getSymbolTable());
             spec.jjtAccept(generator, null);
-            Assembly result = generator.ResultAssembly;
-            return result;            
+            Assembly result = generator.ResultAssembly;            
+            return result;
         }        
         
         
