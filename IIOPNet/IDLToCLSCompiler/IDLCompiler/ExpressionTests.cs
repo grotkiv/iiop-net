@@ -50,11 +50,81 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
     /// </summary>
     [TestFixture]
     public class ExpressionTest : CompilerTestsBase {
+                
+        private StreamWriter m_writer;
         
+        [SetUp]
+        public void SetUp() {
+            MemoryStream testSource = new MemoryStream();
+            m_writer = CreateSourceWriter(testSource);
+        }
+        
+        [TearDown]
+        public void TearDown() {
+            m_writer.Close();
+        }
+        
+        private void CheckConstantValue(string constTypeName, Assembly asm,
+                                          object expected) {
+            Type constType = asm.GetType(constTypeName, false);
+            Assertion.AssertNotNull("const type null?", constType);            
+            FieldInfo field = constType.GetField("ConstVal", BindingFlags.Public | BindingFlags.Static);
+            Assertion.AssertNotNull("const field", field);
+            Assertion.AssertEquals("field value", expected, field.GetValue(null));
+        }
        
         [Test]
-        public void TestAddInteger() {
-            
+        public void TestAddInteger() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestAddInteger = 1 + 2;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestAddInteger"));
+                                   
+            CheckConstantValue("testmod.TestAddInteger", result, (int)3);
+        }
+        
+        [Test]
+        public void TestAddFloat() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const double TestAddFloat = 1.0 + 2.0;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestAddFloat"));
+                                   
+            CheckConstantValue("testmod.TestAddFloat", result, (double)3);
+        }        
+        
+        [Test]
+        [ExpectedException(typeof(InvalidOperandInExpressionException))]
+        public void TestAddFloatAndInt() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const double TestAddFloatAndInt = 1.0 + 2;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestAddFloatAndInt"));            
+        }                
+        
+        [Test]
+        [ExpectedException(typeof(InvalidOperandInExpressionException))]
+        public void TestAddIntAndFloat() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestAddIntAndFloat = 1 + 2.0;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestAddIntAndFloat"));            
         }
         
     
