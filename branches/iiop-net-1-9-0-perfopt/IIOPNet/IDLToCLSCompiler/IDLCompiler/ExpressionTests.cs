@@ -126,6 +126,61 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assembly result = 
                 CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestAddIntAndFloat"));            
         }
+
+        [Test]
+        public void TestSubInteger() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestSubInteger = 2 - 1;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestSubInteger"));
+                                   
+            CheckConstantValue("testmod.TestSubInteger", result, (int)1);
+        }
+        
+        [Test]
+        public void TestSubFloat() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const double TestSubFloat = 2.0 - 1.0;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestSubFloat"));
+                                   
+            CheckConstantValue("testmod.TestSubFloat", result, (double)1);
+        }        
+        
+        [Test]
+        [ExpectedException(typeof(InvalidOperandInExpressionException))]
+        public void TestSubFloatAndInt() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const double TestSubFloatAndInt = 2.0 - 1;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestSubFloatAndInt"));            
+        }                
+        
+        [Test]
+        [ExpectedException(typeof(InvalidOperandInExpressionException))]
+        public void TestSubIntAndFloat() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestSubIntAndFloat = 2 - 1.0;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestSubIntAndFloat"));            
+        }
+        
         
     
     }

@@ -3,8 +3,19 @@
 using System;
 
 namespace parser {
+    
+public enum AddOps {
+    Plus, Minus
+}
 
 public class ASTadd_expr : SimpleNode {
+        
+  #region IFields
+    
+  private AddOps m_operation = AddOps.Plus;
+    
+  #endregion IFields        
+        
   public ASTadd_expr(int id) : base(id) {
   }
 
@@ -16,6 +27,15 @@ public class ASTadd_expr : SimpleNode {
   public override Object jjtAccept(IDLParserVisitor visitor, Object data) {
     return visitor.visit(this, data);
   }
+  
+  public void SetAddOperation(AddOps operation) {
+    m_operation = operation;
+  }
+    
+  public AddOps GetAddOperation() {
+    return m_operation;
+  }  
+  
 }
 
 

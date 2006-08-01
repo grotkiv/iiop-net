@@ -73,7 +73,7 @@ namespace parser {
         Literal ShiftBy(Literal shift);
         Literal MultBy(Literal toMultWith); */
         Literal Add(Literal toAddTo);
-        /* Literal Sub(Literal toSubTo); */
+        Literal Sub(Literal toSubTo);
         // void Negate();
         void InvertSign();
           
@@ -131,6 +131,10 @@ namespace parser {
         
         public Literal Add(Literal toAddTo) {
              return new FloatLiteral(m_value + toAddTo.GetFloatValue());
+        }
+        
+        public Literal Sub(Literal toSubTo) {
+             return new FloatLiteral(m_value - toSubTo.GetFloatValue());
         }
         
         public void InvertSign() {
@@ -213,6 +217,10 @@ namespace parser {
         
         public Literal Add(Literal toAddTo) {
             return new IntegerLiteral(m_value + toAddTo.GetIntValue());
+        }
+        
+        public Literal Sub(Literal toSubTo) {
+            return new IntegerLiteral(m_value - toSubTo.GetIntValue());
         }
         
         public void InvertSign() {
@@ -419,6 +427,10 @@ namespace parser {
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on char");
         }        
+        
+        public Literal Sub(Literal toSubTo) {
+            throw new InvalidOperandInExpressionException("Cannot use sub on char");
+        }
 
         public void InvertSign() {
             throw new InvalidOperationException("unary operator - not allowed for characters");
@@ -490,6 +502,10 @@ namespace parser {
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on string");
         }        
+        
+        public Literal Sub(Literal toSubTo) {
+            throw new InvalidOperandInExpressionException("Cannot use sub on string");
+        }
 
         public void InvertSign() {
             throw new InvalidOperationException("unary operator - not allowed for strings");
@@ -556,7 +572,10 @@ namespace parser {
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on bool");
         }
-        
+
+        public Literal Sub(Literal toSubTo) {
+            throw new InvalidOperandInExpressionException("Cannot use sub on bool");
+        }        
 
         public void InvertSign() {
             throw new InvalidOperationException("unary operator - not allowed for boolean");
@@ -633,6 +652,10 @@ namespace parser {
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on enum");
         }        
+        
+        public Literal Sub(Literal toSubTo) {
+            throw new InvalidOperandInExpressionException("Cannot use sub on enum");
+        }                
         
         public void InvertSign() {
             throw new InvalidOperationException("unary operator - not allowed for enum value");
