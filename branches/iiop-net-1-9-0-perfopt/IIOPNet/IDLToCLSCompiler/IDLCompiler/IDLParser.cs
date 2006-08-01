@@ -1823,11 +1823,11 @@ public class IDLParser{/*@bgen(jjtree)*/
         switch ((jj_ntk==-1)?jj_ntk_calc():jj_ntk) {
         case 40:
           jj_consume_token(40);
-                        jjtn000.SetAddOperation(AddOps.Plus);
+                        jjtn000.AppendAddOperation(AddOps.Plus);
           break;
         case 41:
           jj_consume_token(41);
-                        jjtn000.SetAddOperation(AddOps.Minus);
+                        jjtn000.AppendAddOperation(AddOps.Minus);
           break;
         default:
           jj_la1[40] = jj_gen;

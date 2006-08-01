@@ -91,14 +91,14 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         public void TestAddFloat() {            
             // idl:
             m_writer.WriteLine("module testmod {");
-            m_writer.WriteLine("const double TestAddFloat = 1.0 + 2.0;");
+            m_writer.WriteLine("const double TestAddFloat = 1.0 + 2.0 + 3.0;");
             m_writer.WriteLine("};");
             m_writer.Flush();
             m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
             Assembly result = 
                 CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestAddFloat"));
                                    
-            CheckConstantValue("testmod.TestAddFloat", result, (double)3);
+            CheckConstantValue("testmod.TestAddFloat", result, (double)6);
         }        
         
         [Test]
@@ -180,6 +180,21 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Assembly result = 
                 CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestSubIntAndFloat"));            
         }
+        
+        [Test]
+        public void TestAddAndSubInteger() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestAddAndSubInteger = 4 - 3 + 2 - 1;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestAddAndSubInteger"));
+                                   
+            CheckConstantValue("testmod.TestAddAndSubInteger", result, (int)2);
+        }
+        
         
         
     

@@ -1331,7 +1331,7 @@ public class MetaDataGenerator : IDLParserVisitor {
         Literal result = 
             (Literal)node.jjtGetChild(0).jjtAccept(this, data);
         for(int i=1; i < node.jjtGetNumChildren(); i++) {
-            switch (node.GetAddOperation()) {
+            switch (node.GetAddOperation(i-1)) {
                 case AddOps.Plus:
                     result = result.Add((Literal)node.jjtGetChild(i).jjtAccept(this, data));
                     break;
