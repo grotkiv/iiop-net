@@ -226,6 +226,22 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         }        
         
         [Test]
+        public void TestBitwiseXorUint64() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const unsigned long long TestBitwiseXorUint64 = 0xFFFFFFFFFFFFFFFF ^ 0xFFFFFFFFFFFFFFF0;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestBitwiseXorUint64"));
+            Assertion.Assert( "uint 64 bigger than int64.max?",
+                             (0xFFFFFFFFFFFFFFFF > Int64.MaxValue));
+            CheckConstantValue("testmod.TestBitwiseXorUint64", result, 
+                               (ulong)(0xFFFFFFFFFFFFFFFF ^ 0xFFFFFFFFFFFFFFF0));
+        }        
+        
+        [Test]
         public void TestBitwiseAnd() {            
             // idl:
             m_writer.WriteLine("module testmod {");
