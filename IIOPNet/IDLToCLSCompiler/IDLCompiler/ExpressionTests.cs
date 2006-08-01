@@ -256,7 +256,51 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                (int)(0xFF0011 & 0x101 & 0x11));
         }        
         
+        [Test]
+        public void TestShiftRight() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestShiftRight = 0xFF >> 4;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestShiftRight"));
+                                   
+            CheckConstantValue("testmod.TestShiftRight", result, 
+                               (int)(0xFF >> 4));
+        }        
         
+        [Test]
+        public void TestShiftLeft() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestShiftLeft = 0xFF << 4;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestShiftLeft"));
+                                   
+            CheckConstantValue("testmod.TestShiftLeft", result, 
+                               (int)(0xFF << 4));
+        }                
+        
+        [Test]
+        public void TestShiftRightAndLeft() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestShiftRightAndLeft = 0xFF << 4 >> 2;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestShiftRightAndLeft"));
+                                   
+            CheckConstantValue("testmod.TestShiftRightAndLeft", result, 
+                               (int)(0xFF << 4 >> 2));
+        }                
+
         
     
     }
