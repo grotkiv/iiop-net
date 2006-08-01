@@ -1317,13 +1317,24 @@ public class MetaDataGenerator : IDLParserVisitor {
     /**
      * @see parser.IDLParserVisitor#visit(ASTshift_expr, Object)
      */
-    public Object visit(ASTshift_expr node, Object data) {
-        if (node.jjtGetNumChildren() > 1) {
-            throw new NotImplementedException("only simple expressions are supported yet");
+    public Object visit(ASTshift_expr node, Object data) {        
+        Literal result = 
+            (Literal)node.jjtGetChild(0).jjtAccept(this, data);
+        for(int i=1; i < node.jjtGetNumChildren(); i++) {
+            // evaluate the add-expr and lshift/rshift the current result with it
+            switch (node.GetShiftOperation(i-1)) {
+                case ShiftOps.Right:
+                    result = result.ShiftRightBy((Literal)node.jjtGetChild(i).jjtAccept(this, data));
+                    break;
+                case ShiftOps.Left:
+                    result = result.ShiftLeftBy((Literal)node.jjtGetChild(i).jjtAccept(this, data));
+                    break;
+            }
         }
-        // evaluate the add-expr
-        Object result = node.jjtGetChild(0).jjtAccept(this, data);
         return result;
+        
+        
+        
     }
 
     /**

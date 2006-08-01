@@ -70,8 +70,9 @@ namespace parser {
         Literal Or(Literal toOrWith);
         Literal Xor(Literal toXorWith);
         Literal And(Literal toAndWith);
-        /* Literal ShiftBy(Literal shift);
-        Literal MultBy(Literal toMultWith); */
+        Literal ShiftLeftBy(Literal shift);
+        Literal ShiftRightBy(Literal shift);
+        /* Literal MultBy(Literal toMultWith); */
         Literal Add(Literal toAddTo);
         Literal Sub(Literal toSubTo);
         // void Negate();
@@ -139,7 +140,15 @@ namespace parser {
         
         public Literal And(Literal toAndWith) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise and on float");
-        }        
+        }
+        
+        public Literal ShiftRightBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on float");
+        }
+        
+        public Literal ShiftLeftBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on float");
+        }
         
         public Literal Add(Literal toAddTo) {
              return new FloatLiteral(m_value + toAddTo.GetFloatValue());
@@ -237,7 +246,15 @@ namespace parser {
         
         public Literal And(Literal toAndWith) {            
             return new IntegerLiteral(GetIntValue() & toAndWith.GetIntValue());
-        }        
+        }
+        
+        public Literal ShiftRightBy(Literal shift) {
+            return new IntegerLiteral(GetIntValue() >> (int)shift.GetIntValue());
+        }
+        
+        public Literal ShiftLeftBy(Literal shift) {
+            return new IntegerLiteral(GetIntValue() << (int)shift.GetIntValue());
+        }
         
         public Literal Add(Literal toAddTo) {
             return new IntegerLiteral(m_value + toAddTo.GetIntValue());
@@ -458,7 +475,15 @@ namespace parser {
         
         public Literal And(Literal toAndWith) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise and on char");
-        }        
+        }
+        
+        public Literal ShiftRightBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on char");
+        }
+        
+        public Literal ShiftLeftBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on char");
+        }
         
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on char");
@@ -545,6 +570,14 @@ namespace parser {
         
         public Literal And(Literal toAndWith) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise and on string");
+        }
+        
+        public Literal ShiftRightBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on string");
+        }
+        
+        public Literal ShiftLeftBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on string");
         }        
         
         public Literal Add(Literal toAddTo) {
@@ -627,7 +660,15 @@ namespace parser {
         
         public Literal And(Literal toAndWith) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise and on bool");
-        }        
+        }
+        
+        public Literal ShiftRightBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on bool");
+        }
+        
+        public Literal ShiftLeftBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on bool");
+        }
         
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on bool");
@@ -719,7 +760,15 @@ namespace parser {
         
         public Literal And(Literal toAndWith) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise and on enum");
+        }
+        
+        public Literal ShiftRightBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on enum");
         }        
+        
+        public Literal ShiftLeftBy(Literal shift) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise shift on enum");
+        }                
         
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on enum");
