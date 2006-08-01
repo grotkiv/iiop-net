@@ -327,7 +327,90 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                 CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestTooBigShiftRight"));            
         }
         
+        [Test]
+        public void TestMultInteger() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestMultInteger = 2 * 3;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestMultInteger"));
+                                   
+            CheckConstantValue("testmod.TestMultInteger", result, (int)6);
+        }
+        
+        [Test]
+        public void TestMultFloat() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const double TestMultFloat = 1.5 * 2.0 * 3.0;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestMultFloat"));
+                                   
+            CheckConstantValue("testmod.TestMultFloat", result, (double)9);
+        }        
+        
+        [Test]
+        public void TestDivInteger() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestDivInteger = 5 / 2;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestDivInteger"));
+                                   
+            CheckConstantValue("testmod.TestDivInteger", result, (int)5 / 2);
+        }
+        
+        [Test]
+        public void TestDivFloat() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const double TestDivFloat = 10.0 / 2.0 / 2.0;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestDivFloat"));
+                                   
+            CheckConstantValue("testmod.TestDivFloat", result, (double)2.5);
+        }        
 
+        [Test]
+        public void TestModInteger() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestModInteger = 5 % 2;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestModInteger"));
+                                   
+            CheckConstantValue("testmod.TestModInteger", result, (int)5 % 2);
+        }
+        
+        [Test]
+        public void TestModFloat() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const double TestModFloat = 20.0 % 11.0 % 2.0;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestModFloat"));
+                                   
+            CheckConstantValue("testmod.TestModFloat", result, (double) 20.0 % 11.0 % 2.0);
+        }        
+        
         
     
     }
