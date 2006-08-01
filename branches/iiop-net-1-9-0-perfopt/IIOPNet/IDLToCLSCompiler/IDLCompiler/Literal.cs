@@ -69,8 +69,8 @@ namespace parser {
         
         Literal Or(Literal toOrWith);
         Literal Xor(Literal toXorWith);
-        /* Literal And(Literal toAndWith);
-        Literal ShiftBy(Literal shift);
+        Literal And(Literal toAndWith);
+        /* Literal ShiftBy(Literal shift);
         Literal MultBy(Literal toMultWith); */
         Literal Add(Literal toAddTo);
         Literal Sub(Literal toSubTo);
@@ -135,6 +135,10 @@ namespace parser {
         
         public Literal Xor(Literal toXorWith) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise xor on float");
+        }
+        
+        public Literal And(Literal toAndWith) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise and on float");
         }        
         
         public Literal Add(Literal toAddTo) {
@@ -229,6 +233,10 @@ namespace parser {
         
         public Literal Xor(Literal toXorWith) {
             return new IntegerLiteral(GetIntValue() ^ toXorWith.GetIntValue());
+        }
+        
+        public Literal And(Literal toAndWith) {            
+            return new IntegerLiteral(GetIntValue() & toAndWith.GetIntValue());
         }        
         
         public Literal Add(Literal toAddTo) {
@@ -446,8 +454,12 @@ namespace parser {
         
         public Literal Xor(Literal toXorWith) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise xor on char");
+        }
+        
+        public Literal And(Literal toAndWith) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise and on char");
         }        
-                
+        
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on char");
         }        
@@ -531,6 +543,10 @@ namespace parser {
             throw new InvalidOperandInExpressionException("Cannot use bitwise xor on string");
         }
         
+        public Literal And(Literal toAndWith) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise and on string");
+        }        
+        
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on string");
         }        
@@ -607,6 +623,10 @@ namespace parser {
         
         public Literal Xor(Literal toXorWith) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise xor on bool");
+        }
+        
+        public Literal And(Literal toAndWith) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise and on bool");
         }        
         
         public Literal Add(Literal toAddTo) {
@@ -695,7 +715,11 @@ namespace parser {
         
         public Literal Xor(Literal toXorWith) {
             throw new InvalidOperandInExpressionException("Cannot use bitwise xor on enum");
-        }                
+        }
+        
+        public Literal And(Literal toAndWith) {
+            throw new InvalidOperandInExpressionException("Cannot use bitwise and on enum");
+        }        
         
         public Literal Add(Literal toAddTo) {
             throw new InvalidOperandInExpressionException("Cannot use add on enum");

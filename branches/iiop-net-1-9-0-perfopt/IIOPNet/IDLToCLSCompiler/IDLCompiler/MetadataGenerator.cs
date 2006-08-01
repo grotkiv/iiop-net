@@ -1305,11 +1305,12 @@ public class MetaDataGenerator : IDLParserVisitor {
      * @see parser.IDLParserVisitor#visit(ASTand_expr, Object)
      */
     public Object visit(ASTand_expr node, Object data) {
-        if (node.jjtGetNumChildren() > 1) {
-            throw new NotImplementedException("only simple expressions are supported yet");
+        Literal result = 
+            (Literal)node.jjtGetChild(0).jjtAccept(this, data);
+        for(int i=1; i < node.jjtGetNumChildren(); i++) {
+            // evaluate the shift-expr and and it to the current result
+            result = result.And((Literal)node.jjtGetChild(i).jjtAccept(this, data));
         }
-        // evaluate the shift-expr
-        Object result = node.jjtGetChild(0).jjtAccept(this, data);
         return result;
     }
 

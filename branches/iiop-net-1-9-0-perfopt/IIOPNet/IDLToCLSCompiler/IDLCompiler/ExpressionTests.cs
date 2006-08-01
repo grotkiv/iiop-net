@@ -225,6 +225,20 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                (int)(0xFF0000 ^ 0x1 ^ 0x10));
         }        
         
+        [Test]
+        public void TestBitwiseAnd() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestBitwiseAnd = 0xFF0011 & 0x101 & 0x11;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestBitwiseAnd"));
+                                   
+            CheckConstantValue("testmod.TestBitwiseAnd", result, 
+                               (int)(0xFF0011 & 0x101 & 0x11));
+        }        
         
         
         
