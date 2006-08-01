@@ -276,6 +276,19 @@ namespace Ch.Elca.Iiop {
             }
         }
         
+        /// <summary>
+        /// Gets the default header flags for the platform endian.
+        /// </summary>        
+        internal static byte GetDefaultHeaderFlagsForPlatform() {
+            Endian endian;
+            if (BitConverter.IsLittleEndian) {
+                endian = Endian.LittleEndian;
+            } else {
+                endian = Endian.BigEndian;
+            }
+            return GetDefaultHeaderFlagsForEndian(endian);
+        }
+        
         #endregion SMethods
     }
 }
@@ -302,6 +315,18 @@ namespace Ch.Elca.Iiop.Tests {
         public void TestGetHeaderFlagsForLittleEndian() {
             Assertion.AssertEquals(1, GiopHeader.GetDefaultHeaderFlagsForEndian(Endian.LittleEndian));
         }        
+        
+        [Test]
+        public void TestGetHeaderFlagsForPlatform() {
+            byte expected;
+            if (BitConverter.IsLittleEndian) {
+                expected = 1;
+            } else {
+                expected = 0;
+            }
+            Assertion.AssertEquals(expected,
+                                   GiopHeader.GetDefaultHeaderFlagsForPlatform());
+        }
         
     }
     
