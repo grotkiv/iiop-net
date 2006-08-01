@@ -264,7 +264,7 @@ namespace parser {
                 return Convert.ToInt64(m_value);
             } else if (m_value >= UInt64.MinValue && m_value <= UInt64.MaxValue) {
                 UInt64 asUint64 = Convert.ToUInt64(m_value);
-                return (Int64)asUint64;
+                return unchecked((Int64)asUint64); // do an unchecked cast, overflow no issue here
             } else {
                 throw new LiteralTypeMismatchException("integer literal need more than 64bit, not convertible to int64 value");                
             }
@@ -290,7 +290,7 @@ namespace parser {
                     throw new LiteralTypeMismatchException("integer literal need more than 16bit, not assignable to short");
                 }
                 System.UInt16 asUint16 = Convert.ToUInt16(m_value);
-                val = (System.Int16)asUint16; // cast to int16
+                val = unchecked((System.Int16)asUint16); // cast to int16; do an unchecked cast, overflow no issue here
             } else {
                 if ((m_value < Int16.MinValue) || (m_value > Int16.MaxValue)) {
                     throw new LiteralTypeMismatchException("integer literal need more than 16bit, not assignable to short");
@@ -308,7 +308,7 @@ namespace parser {
                     throw new LiteralTypeMismatchException("integer literal need more than 16bit, not assignable to short");
                 }
                 UInt32 asUint32 = Convert.ToUInt32(m_value);
-                val = (System.Int32)asUint32; // cast to int32
+                val = unchecked((System.Int32)asUint32); // cast to int32; do an unchecked cast, overflow no issue here
             } else {
                 if ((m_value < Int32.MinValue) || (m_value > Int32.MaxValue)) {
                     throw new LiteralTypeMismatchException("integer literal need more than 32bit, not assignable to long");
@@ -325,7 +325,7 @@ namespace parser {
                     throw new LiteralTypeMismatchException("integer literal need more than 64bit, not assignable to ulong long");
                 }
                 UInt64 asUint64 = Convert.ToUInt64(m_value);
-                val = (Int64)asUint64;
+                val = unchecked((Int64)asUint64); // cast to int64; do an unchecked cast, overflow no issue here
             } else {
                 if ((m_value < Int64.MinValue) || (m_value > Int64.MaxValue)) {
                     throw new LiteralTypeMismatchException("integer literal need more than 64bit, not assignable to long long");
@@ -341,7 +341,7 @@ namespace parser {
                 Console.WriteLine("illegal const value found for octet " + m_value + "; please change");
                 // compensate illegal java idl generated for some octet vals
                 SByte asSByte = Convert.ToSByte(m_value);
-                val = (Byte)asSByte;
+                val = unchecked((Byte)asSByte); // cast to byte; do an unchecked cast, overflow no issue here
             } else if ((m_value < Byte.MinValue) || (m_value > Byte.MaxValue)) {
                 throw new LiteralTypeMismatchException("integer literal need more than 8bit, not assignable to octet");
             } else {
