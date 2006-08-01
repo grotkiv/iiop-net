@@ -77,7 +77,7 @@ namespace parser {
         Literal ModBy(Literal toModBy);
         Literal Add(Literal toAddTo);
         Literal Sub(Literal toSubTo);
-        // void Negate();
+        void Negate();
         void InvertSign();
           
         object GetValue();
@@ -171,6 +171,10 @@ namespace parser {
         public Literal Sub(Literal toSubTo) {
              return new FloatLiteral(m_value - toSubTo.GetFloatValue());
         }
+        
+        public void Negate() {
+            throw new InvalidOperandInExpressionException("Cannot negate a float");
+        }        
         
         public void InvertSign() {
             m_value = m_value * (-1.0);
@@ -295,6 +299,10 @@ namespace parser {
         public Literal Sub(Literal toSubTo) {
             return new IntegerLiteral(m_value - toSubTo.GetIntValue());
         }
+        
+        public void Negate() {
+            m_value = ~ GetIntValue();
+        }        
         
         public void InvertSign() {
             m_value = m_value * (-1);
@@ -536,6 +544,10 @@ namespace parser {
         public Literal Sub(Literal toSubTo) {
             throw new InvalidOperandInExpressionException("Cannot use sub on char");
         }
+        
+        public void Negate() {
+            throw new InvalidOperandInExpressionException("Cannot negate a char");
+        }        
 
         public void InvertSign() {
             throw new InvalidOperationException("unary operator - not allowed for characters");
@@ -643,6 +655,10 @@ namespace parser {
         public Literal Sub(Literal toSubTo) {
             throw new InvalidOperandInExpressionException("Cannot use sub on string");
         }
+        
+        public void Negate() {
+            throw new InvalidOperandInExpressionException("Cannot negate a string");
+        }        
 
         public void InvertSign() {
             throw new InvalidOperationException("unary operator - not allowed for strings");
@@ -746,6 +762,10 @@ namespace parser {
             throw new InvalidOperandInExpressionException("Cannot use sub on bool");
         }        
 
+        public void Negate() {
+            throw new InvalidOperandInExpressionException("Cannot negate a bool");
+        }        
+        
         public void InvertSign() {
             throw new InvalidOperationException("unary operator - not allowed for boolean");
         }
@@ -856,7 +876,11 @@ namespace parser {
         
         public Literal Sub(Literal toSubTo) {
             throw new InvalidOperandInExpressionException("Cannot use sub on enum");
-        }                
+        }
+        
+        public void Negate() {
+            throw new InvalidOperandInExpressionException("Cannot negate an enum");
+        }        
         
         public void InvertSign() {
             throw new InvalidOperationException("unary operator - not allowed for enum value");

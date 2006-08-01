@@ -1385,7 +1385,8 @@ public class MetaDataGenerator : IDLParserVisitor {
         Literal result = (Literal)node.jjtGetChild(0).jjtAccept(this, data);
         switch (node.GetUnaryOperation()) {
             case UnaryOps.UnaryNegate:
-                throw new NotImplementedException("unary operator negation not implemented");
+                result.Negate();
+                break;
             case UnaryOps.UnaryMinus:
                 result.InvertSign();
                 break;
