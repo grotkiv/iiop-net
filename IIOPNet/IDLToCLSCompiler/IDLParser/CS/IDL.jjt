@@ -678,7 +678,9 @@ void and_expr() :
 void shift_expr() :
 {}
 {
-  add_expr() ( ( ">>" | "<<" ) add_expr() )*
+  add_expr() ( ( ">>" { jjtThis.AppendShiftOperation(ShiftOps.Right); }
+               | "<<" { jjtThis.AppendShiftOperation(ShiftOps.Left); }
+             ) add_expr() )*
 }
 
 /* Production 34 */
