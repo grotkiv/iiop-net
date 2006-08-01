@@ -686,7 +686,9 @@ void shift_expr() :
 void add_expr() :
 {}
 {
-  mult_expr() ( ( "+" | "-" ) mult_expr() )*
+  mult_expr() ( ( "+" { jjtThis.SetAddOperation(AddOps.Plus); }
+                | "-" { jjtThis.SetAddOperation(AddOps.Minus); }
+              ) mult_expr() )*
 }
 
 /* Production 35 */
