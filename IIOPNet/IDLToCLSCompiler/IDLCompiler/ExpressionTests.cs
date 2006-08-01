@@ -411,6 +411,21 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             CheckConstantValue("testmod.TestModFloat", result, (double) 20.0 % 11.0 % 2.0);
         }        
         
+        [Test]
+        public void TestNegate() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestNegate = ~(5);");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestNegate"));
+                                   
+            CheckConstantValue("testmod.TestNegate", result, (int)~5);
+        }
+        
+        
         
     
     }
