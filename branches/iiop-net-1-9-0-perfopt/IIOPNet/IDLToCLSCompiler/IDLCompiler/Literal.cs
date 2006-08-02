@@ -267,15 +267,17 @@ namespace parser {
         }
         
         public Literal ShiftRightBy(Literal shift) {
-            if (shift.GetIntValue() > Int32.MaxValue) {
-                throw new InvalidOperandInExpressionException("Invalid shift by argument; shift is only possible with values <= Int32.MaxValue");
+            if ((shift.GetIntValue() >= 64) || (shift.GetIntValue() < 0)) {
+                throw new InvalidOperandInExpressionException("Invalid shift by argument " + 
+                    shift.GetIntValue() + "; shift is only possible with values in the range 0 <= shift < 63.");
             }
             return new IntegerLiteral(GetIntValue() >> (int)shift.GetIntValue());
         }
         
         public Literal ShiftLeftBy(Literal shift) {
-            if (shift.GetIntValue() > Int32.MaxValue) {
-                throw new InvalidOperandInExpressionException("Invalid shift by argument; shift is only possible with values <= Int32.MaxValue");
+            if ((shift.GetIntValue() >= 64) || (shift.GetIntValue() < 0)) {
+                throw new InvalidOperandInExpressionException("Invalid shift by argument " + 
+                    shift.GetIntValue() + "; shift is only possible with values in the range 0 <= shift < 63.");
             }
             return new IntegerLiteral(GetIntValue() << (int)shift.GetIntValue());
         }
