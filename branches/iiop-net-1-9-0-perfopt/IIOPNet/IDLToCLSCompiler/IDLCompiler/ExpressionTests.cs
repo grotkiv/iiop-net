@@ -478,6 +478,21 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                    
             CheckConstantValue("testmod.TestUnaryPlus", result, (int)+1);
         }        
+        
+        [Test]
+        public void TestMixedExpression1() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long long TestMixedExpression1a = 1;");
+            m_writer.WriteLine("const long long TestMixedExpression1b = (TestMixedExpression1a << 16) | 0xFFFF00000;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestMixedExpression1"));
+                                   
+            CheckConstantValue("testmod.TestMixedExpression1b", result, (long)((1 << 16) | 0xFFFF00000));
+        }
     
     }
     
