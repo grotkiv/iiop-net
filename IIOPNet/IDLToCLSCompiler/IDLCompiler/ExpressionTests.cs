@@ -306,7 +306,7 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         public void TestTooBigShiftLeft() {
             // idl:
             m_writer.WriteLine("module testmod {");
-            m_writer.WriteLine("const long TestTooBigShiftLeft = 0xFF << 0xFFFFFFFFFFFF;");
+            m_writer.WriteLine("const long TestTooBigShiftLeft = 0xFF << 64;");
             m_writer.WriteLine("};");
             m_writer.Flush();
             m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
@@ -315,17 +315,43 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         }
         
         [Test]        
+        [ExpectedException(typeof(InvalidOperandInExpressionException))]
+        public void TestTooSmallShiftLeft() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestTooSmallShiftLeft = 0xFF << -1;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestTooSmallShiftLeft"));            
+        }        
+        
+        [Test]        
         [ExpectedException(typeof(InvalidOperandInExpressionException))]        
         public void TestTooBigShiftRight() {
             // idl:
             m_writer.WriteLine("module testmod {");
-            m_writer.WriteLine("const long TestTooBigShiftRight = 0xFF >> 0xFFFFFFFFFFFF;");
+            m_writer.WriteLine("const long TestTooBigShiftRight = 0xFF >> 64;");
             m_writer.WriteLine("};");
             m_writer.Flush();
             m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
             Assembly result = 
                 CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestTooBigShiftRight"));            
         }
+        
+        [Test]        
+        [ExpectedException(typeof(InvalidOperandInExpressionException))]
+        public void TestTooSmallShiftRight() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestTooSmallShiftRight = 0xFF >> -1;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestTooSmallShiftRight"));            
+        }        
         
         [Test]
         public void TestMultInteger() {            
@@ -425,8 +451,33 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             CheckConstantValue("testmod.TestNegate", result, (int)~5);
         }
         
+        [Test]
+        public void TestUnaryMinus() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestUnaryMinus = -1;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestUnaryMinus"));
+                                   
+            CheckConstantValue("testmod.TestUnaryMinus", result, (int)-1);
+        }
         
-        
+        [Test]
+        public void TestUnaryPlus() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long TestUnaryPlus = +1;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestUnaryPlus"));
+                                   
+            CheckConstantValue("testmod.TestUnaryPlus", result, (int)+1);
+        }        
     
     }
     
