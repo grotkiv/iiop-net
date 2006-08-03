@@ -66,11 +66,16 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         
         private void CheckConstantValue(string constTypeName, Assembly asm,
                                           object expected) {
+            object val = GetConstantValue(constTypeName, asm);
+            Assertion.AssertEquals("field value", expected, val);
+        }
+        
+        private object GetConstantValue(string constTypeName, Assembly asm) {
             Type constType = asm.GetType(constTypeName, false);
             Assertion.AssertNotNull("const type null?", constType);            
             FieldInfo field = constType.GetField("ConstVal", BindingFlags.Public | BindingFlags.Static);
             Assertion.AssertNotNull("const field", field);
-            Assertion.AssertEquals("field value", expected, field.GetValue(null));
+            return field.GetValue(null);
         }
        
         [Test]
@@ -493,6 +498,40 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
                                    
             CheckConstantValue("testmod.TestMixedExpression1b", result, (long)((1 << 16) | 0xFFFF00000));
         }
+        
+        [Test]
+        public void TestAssignInt64() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const long long TestAssignInt64_Max = " + Int64.MaxValue + ";");
+            m_writer.WriteLine("const long long TestAssignInt64_Min = " + Int64.MinValue + ";");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestAssignInt64"));
+                                   
+            CheckConstantValue("testmod.TestAssignInt64_Max", result, Int64.MaxValue);
+            CheckConstantValue("testmod.TestAssignInt64_Min", result, Int64.MinValue);
+        }
+        
+        [Test]
+        public void TestAssignUInt64() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const unsigned long long TestAssignUInt64_Max = " + UInt64.MaxValue + ";");
+            m_writer.WriteLine("const unsigned long long TestAssignUInt64_Min = " + UInt64.MinValue + ";");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestAssignUInt64"));
+
+            Int64 constVal = (Int64)GetConstantValue("testmod.TestAssignUInt64_Max", result);
+            Assertion.AssertEquals("value", UInt64.MaxValue, unchecked((UInt64)constVal));
+            CheckConstantValue("testmod.TestAssignUInt64_Min", result, UInt64.MinValue);
+        }
+        
     
     }
     
