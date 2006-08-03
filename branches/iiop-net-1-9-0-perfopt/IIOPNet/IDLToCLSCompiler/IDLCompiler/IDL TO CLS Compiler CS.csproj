@@ -19,7 +19,7 @@
     <FileAlignment>4096</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <Optimize>True</Optimize>
+    <Optimize>False</Optimize>
     <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
     <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
     <DefineConstants>DISABLE_STRONG_NAME UnitTest</DefineConstants>
@@ -182,9 +182,9 @@
     <Compile Include="CompileTimeTypeContainer.cs" />
     <Compile Include="ValueTypeImplGenerator.cs" />
     <Compile Include="StringToIntConverter.cs" />
-    <Compile Include="ASTprimary_expr_noLit.cs" />
     <Compile Include="ExpressionTests.cs" />
     <Compile Include="CompilerTestsBase.cs" />
+    <Compile Include="ASTprimary_expr.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\IIOPChannel\IIOPChannel.csproj">
