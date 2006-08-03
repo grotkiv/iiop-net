@@ -1,5 +1,5 @@
 ﻿Microsoft Visual Studio Solution File, Format Version 9.00
-# SharpDevelop 2.0.0.1135
+# SharpDevelop 2.0.0.1591
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IIOPChannel", "IIOPChannel\IIOPChannel.csproj", "{06B8BCFF-7887-4DCE-B451-0DCA831D4A2D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IDLPreProcCSharp", "IDLToCLSCompiler\IDLPreprocessor\IDLPreProcCSharp.csproj", "{76FDDBCE-9A94-48F4-9502-067736AC0533}"
