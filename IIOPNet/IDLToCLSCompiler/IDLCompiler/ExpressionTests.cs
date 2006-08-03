@@ -443,18 +443,33 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         }        
         
         [Test]
-        public void TestNegate() {            
+        public void TestNegateInt() {            
             // idl:
             m_writer.WriteLine("module testmod {");
-            m_writer.WriteLine("const long TestNegate = ~(5);");
+            m_writer.WriteLine("const long TestNegateInt = ~5;");
             m_writer.WriteLine("};");
             m_writer.Flush();
             m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
             Assembly result = 
-                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestNegate"));
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestNegateInt"));
                                    
-            CheckConstantValue("testmod.TestNegate", result, (int)~5);
+            CheckConstantValue("testmod.TestNegateInt", result, (int)~5);
         }
+        
+        [Test]
+        public void TestNegateBoolean() {            
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const boolean TestNegateBoolean = ~TRUE;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestNegateBoolean"));
+                                   
+            CheckConstantValue("testmod.TestNegateBoolean", result, false);                
+        }
+
         
         [Test]
         public void TestUnaryMinus() {            
@@ -530,8 +545,26 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
             Int64 constVal = (Int64)GetConstantValue("testmod.TestAssignUInt64_Max", result);
             Assertion.AssertEquals("value", UInt64.MaxValue, unchecked((UInt64)constVal));
             CheckConstantValue("testmod.TestAssignUInt64_Min", result, UInt64.MinValue);
-        }
+        }                
         
+        [Test]
+        public void TestFloatInifinity() {
+            // idl:
+            m_writer.WriteLine("module testmod {");
+            m_writer.WriteLine("const double TestFloatInifinity_Plus = Infinity;");
+            m_writer.WriteLine("const double TestFloatInifinity_Minus = - Infinity;");
+            m_writer.WriteLine("};");
+            m_writer.Flush();
+            m_writer.BaseStream.Seek(0, SeekOrigin.Begin);
+            Assembly result = 
+                CreateIdl(m_writer.BaseStream, GetAssemblyName("ExpressionTest_TestFloatInifinity"));
+                                   
+            CheckConstantValue("testmod.TestFloatInifinity_Plus", result, Double.PositiveInfinity);
+            CheckConstantValue("testmod.TestFloatInifinity_Minus", result, Double.NegativeInfinity);
+        
+            
+        
+        }
     
     }
     
