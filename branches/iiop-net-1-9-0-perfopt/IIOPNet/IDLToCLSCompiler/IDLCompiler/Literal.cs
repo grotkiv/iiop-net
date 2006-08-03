@@ -765,7 +765,7 @@ namespace parser {
         }        
 
         public void Negate() {
-            throw new InvalidOperandInExpressionException("Cannot negate a bool");
+            m_value = !m_value;
         }        
         
         public void InvertSign() {
