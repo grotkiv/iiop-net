@@ -599,14 +599,13 @@ namespace Ch.Elca.Iiop {
         /// <param name="interceptionOptions"></param>
         private void ConfigureSinkProviderChain(GiopClientConnectionManager conManager,
                                                 GiopMessageHandler messageHandler,
-                                                IiopUrlUtil iiopUrlUtil,
-                                                IInterceptionOption[] interceptionOptions,
+                                                IiopUrlUtil iiopUrlUtil,                                                
                                                 RetryConfig retries) {
             IClientChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopClientFormatterSinkProvider) {
                     ((IiopClientFormatterSinkProvider)prov).Configure(conManager, messageHandler, iiopUrlUtil,
-                                                                      interceptionOptions, retries);
+                                                                      retries);
                     break;
                 }
                 prov = prov.Next;
@@ -652,9 +651,9 @@ namespace Ch.Elca.Iiop {
             }            
             GiopMessageHandler messageHandler = 
                 new GiopMessageHandler(argumentSerializerFactory,
-                                       m_headerFlags);
+                                       m_headerFlags, m_interceptionOptions);
             ConfigureSinkProviderChain(m_conManager, messageHandler, m_iiopUrlUtil,
-                                       m_interceptionOptions, m_retryConfig);
+                                       m_retryConfig);
         }
 
         #region Implementation of IChannelSender
@@ -934,13 +933,11 @@ namespace Ch.Elca.Iiop {
         /// <summary>
         /// Configures the installed IIOPServerSideFormatterProivder
         /// </summary>        
-        private void ConfigureSinkProviderChain(GiopMessageHandler messageHandler,
-                                                IInterceptionOption[] interceptionOptions) {
+        private void ConfigureSinkProviderChain(GiopMessageHandler messageHandler) {
             IServerChannelSinkProvider prov = m_providerChain;
             while (prov != null) {
                 if (prov is IiopServerFormatterSinkProvider) {
-                    ((IiopServerFormatterSinkProvider)prov).Configure(messageHandler,
-                                                                      interceptionOptions);
+                    ((IiopServerFormatterSinkProvider)prov).Configure(messageHandler);
                     break;
                 }
                 prov = prov.Next;
@@ -972,8 +969,8 @@ namespace Ch.Elca.Iiop {
             }
             GiopMessageHandler messageHandler = 
                 new GiopMessageHandler(argumentSerializerFactory,
-                                       m_headerFlags);
-            ConfigureSinkProviderChain(messageHandler, m_interceptionOptions);            
+                                       m_headerFlags, m_interceptionOptions);
+            ConfigureSinkProviderChain(messageHandler);            
             
             IServerChannelSink sinkChain = ChannelServices.CreateServerChannelSinkChain(m_providerChain, this);
             m_transportSink = new IiopServerTransportSink(sinkChain);            
