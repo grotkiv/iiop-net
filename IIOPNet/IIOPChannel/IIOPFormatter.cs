@@ -108,9 +108,7 @@ namespace Ch.Elca.Iiop {
         private GiopMessageHandler m_messageHandler;
         
         private IiopUrlUtil m_iiopUrlUtil;
-        
-        private IInterceptionOption[] m_interceptionOptions;
-        
+                
         private RetryConfig m_retries;
         
         private Hashtable m_typesVerified = new Hashtable(); // contains the verified types for this proxy
@@ -124,13 +122,11 @@ namespace Ch.Elca.Iiop {
         /// IiopClientTransportSink must be present.</param>
         internal IiopClientFormatterSink(IClientChannelSink nextSink, GiopClientConnectionManager conManager,
                                          GiopMessageHandler messageHandler,
-                                         IiopUrlUtil iiopUrlUtil,
-                                         IInterceptionOption[] interceptionOptions,
+                                         IiopUrlUtil iiopUrlUtil,                                         
                                          RetryConfig retries) {
             m_nextSink = nextSink;            
             m_conManager = conManager;
             m_messageHandler = messageHandler;
-            m_interceptionOptions = interceptionOptions;            
             m_iiopUrlUtil = iiopUrlUtil;
             m_retries = retries;
         }
@@ -171,7 +167,7 @@ namespace Ch.Elca.Iiop {
             if (stream == null) { // the next sink delegated the decision to which stream the message should be serialised to this sink
                 stream = new MemoryStream(); // create a new stream
             }            
-            m_messageHandler.SerialiseOutgoingRequestMessage(msg, target, conDesc, stream, reqId, m_interceptionOptions);
+            m_messageHandler.SerialiseOutgoingRequestMessage(msg, target, conDesc, stream, reqId);
         }
 
         /// <summary>deserialises an IIOP-msg from the response stream</summary>
@@ -185,7 +181,7 @@ namespace Ch.Elca.Iiop {
             try {                
                 result = m_messageHandler.ParseIncomingReplyMessage(responseStream, 
                                               (IMethodCallMessage) requestMsg,
-                                              conDesc, m_interceptionOptions);
+                                              conDesc);
             } finally {
                 responseStream.Close(); // stream not needed any more                
             }            
@@ -478,19 +474,15 @@ namespace Ch.Elca.Iiop {
 
         private IDictionary m_properties = new Hashtable();
         
-        private GiopMessageHandler m_messageHandler;
-        
-        private IInterceptionOption[] m_interceptionOptions;
+        private GiopMessageHandler m_messageHandler;        
 
         #endregion IFields
         #region IConstructors
 
         internal IiopServerFormatterSink(IServerChannelSink nextSink,
-                                         GiopMessageHandler messageHandler,
-                                         IInterceptionOption[] interceptionOptions) {
+                                         GiopMessageHandler messageHandler) {
             m_nextSink = nextSink;
             m_messageHandler = messageHandler;
-            m_interceptionOptions = interceptionOptions;
         }
 
         #endregion IConstructors
@@ -538,8 +530,7 @@ namespace Ch.Elca.Iiop {
             // get the stream into which the message should be serialied from a stream handling
             // sink in the stream handling chain
             stream = GetResponseStreamFor(sinkStack, responseMsg, headers);            
-            m_messageHandler.SerialiseOutgoingReplyMessage(responseMsg, requestMsg, version, stream, con.ConDesc,
-                                                           m_interceptionOptions);
+            m_messageHandler.SerialiseOutgoingReplyMessage(responseMsg, requestMsg, version, stream, con.ConDesc);
         }
 
         /// <summary>serialises an Exception as GIOP reply message</summary>
@@ -574,7 +565,7 @@ namespace Ch.Elca.Iiop {
                 try {
                     // deserialise the request                    
                     deserReqMsg = m_messageHandler.ParseIncomingRequestMessage(msgInput, 
-                                                       serverCon.ConDesc, m_interceptionOptions);
+                                                       serverCon.ConDesc);
                 } finally {
                     //request deserialised -> safe to read next request while processing request in servant
                     // (or sending request deserialisation exception)
@@ -759,9 +750,7 @@ namespace Ch.Elca.Iiop {
         /// <summary>
         /// helper class to convert from url to ior.
         /// </summary>
-        private IiopUrlUtil m_iiopUrlUtil;
-        
-        private IInterceptionOption[] m_interceptionOptions = InterceptorManager.EmptyInterceptorOptions;
+        private IiopUrlUtil m_iiopUrlUtil;       
         
         private RetryConfig m_retries;
         
@@ -807,19 +796,17 @@ namespace Ch.Elca.Iiop {
             
             return new IiopClientFormatterSink(nextSink, m_conManager, m_messageHandler,
                                                m_iiopUrlUtil,
-                                               m_interceptionOptions, m_retries);
+                                               m_retries);
         }
 
         #endregion
 
         internal void Configure(GiopClientConnectionManager conManager, GiopMessageHandler messageHandler,
                                 IiopUrlUtil iiopUrlUtil,
-                                IInterceptionOption[] interceptionOptions,
                                 RetryConfig retries) {
             m_conManager = conManager;
             m_messageHandler = messageHandler;
             m_iiopUrlUtil = iiopUrlUtil;
-            m_interceptionOptions = interceptionOptions;
             m_retries = retries;
         }        
         
@@ -840,8 +827,6 @@ namespace Ch.Elca.Iiop {
         /// the giop message handler responsible for serializing/deserializing Giop messages.
         /// </summary>
         private GiopMessageHandler m_messageHandler;        
-        
-        private IInterceptionOption[] m_interceptionOptions = InterceptorManager.EmptyInterceptorOptions;
 
         #endregion IFields
         #region IConstructors
@@ -883,8 +868,7 @@ namespace Ch.Elca.Iiop {
             if (m_nextProvider != null) {
                 next = m_nextProvider.CreateSink(channel); // create the rest of the sink chain
             }
-            return new IiopServerFormatterSink(next, m_messageHandler,
-                                               m_interceptionOptions); // create the formatter
+            return new IiopServerFormatterSink(next, m_messageHandler);
         }
         
         public void GetChannelData(IChannelDataStore channelData) {
@@ -893,10 +877,8 @@ namespace Ch.Elca.Iiop {
 
         #endregion
         
-        internal void Configure(GiopMessageHandler messageHandler,
-                                IInterceptionOption[] interceptionOptions) {
+        internal void Configure(GiopMessageHandler messageHandler) {
             m_messageHandler = messageHandler;
-            m_interceptionOptions = interceptionOptions;
         }
 
         #endregion IMethods
