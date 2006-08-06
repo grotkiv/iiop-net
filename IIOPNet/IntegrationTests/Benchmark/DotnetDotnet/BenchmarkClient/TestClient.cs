@@ -35,6 +35,7 @@ using Ch.Elca.Iiop;
 using Ch.Elca.Iiop.Services;
 using Ch.Elca.Iiop.Idl;
 using omg.org.CosNaming;
+using System.Collections;
 
 namespace Ch.Elca.Iiop.Benchmarks {
     
@@ -72,7 +73,11 @@ namespace Ch.Elca.Iiop.Benchmarks {
 
         public void SetupEnvironment(string serviceUrl, string nsUrl, NameComponent[] name) {
             // register the channel
-            m_channel = new IiopChannel(0);
+            int port = 0;
+            IDictionary dict = new Hashtable();
+            dict["port"] = port;
+            dict["endian"] = "BigEndian";
+            m_channel = new IiopChannel(dict);
             ChannelServices.RegisterChannel(m_channel);
 
             m_testService = (TestService)RemotingServices.Connect(typeof(TestService), serviceUrl);
