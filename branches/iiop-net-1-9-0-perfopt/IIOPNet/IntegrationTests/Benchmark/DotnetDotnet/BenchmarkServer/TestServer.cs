@@ -31,6 +31,7 @@ using System;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Threading;
+using System.Collections;
 
 namespace Ch.Elca.Iiop.Benchmarks {
 
@@ -40,7 +41,10 @@ namespace Ch.Elca.Iiop.Benchmarks {
         public static void Main(String[] args) {
             // register the channel
             int port = 8087;
-            IiopChannel chan = new IiopChannel(port);
+            IDictionary dict = new Hashtable();
+            dict["port"] = port;
+            dict["endian"] = "BigEndian";
+            IiopChannel chan = new IiopChannel(dict);
             ChannelServices.RegisterChannel(chan);
 
             TestServiceImpl test = new TestServiceImpl();
