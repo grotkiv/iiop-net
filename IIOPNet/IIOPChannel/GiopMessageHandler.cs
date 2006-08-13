@@ -98,6 +98,21 @@ namespace Ch.Elca.Iiop.MessageHandling {
         internal static bool IsOneWayCall(IMethodCallMessage msg) {
             return RemotingServices.IsOneWay(msg.MethodBase);
         }
+        
+        /// <summary>
+        /// Checks, if the result message is a location forward.
+        /// </summary>
+        internal static bool IsLocationForward(IMessage resultMessage, 
+                                               out MarshalByRefObject fwdTarget) {
+            fwdTarget = null;
+            bool result = false;
+            LocationForwardMessage fwdMessage = resultMessage as LocationForwardMessage;
+            if (fwdMessage != null) {
+                fwdTarget = fwdMessage.FwdToProxy;
+                result = true;
+            }
+            return result;
+        }
 
         #endregion SMethods
         #region IMethods
@@ -140,15 +155,7 @@ namespace Ch.Elca.Iiop.MessageHandling {
             // deserialize message body            
             IMessage result = m_ser.DeserialiseReply(msgBody, msgInput.Header.Version, request,
                                                      conDesc);
-            if (!(result is LocationForwardMessage)) {
-                // a standard return message
-                return result;
-            } else {
-                // location-fwd
-                // reissue request to new target
-                return ForwardRequest(requestMessage, (LocationForwardMessage)result);
-            }
-                                                                                                            
+            return result;
         }
         
         /// <summary>
@@ -178,13 +185,18 @@ namespace Ch.Elca.Iiop.MessageHandling {
             }
             // create the return message
             return new ReturnMessage(retVal, outArgs, outArgs.Length, null, request); 
-        }        
+        }               
         
-        private IMessage ForwardRequest(IMethodCallMessage request,
-                                        LocationForwardMessage target) {
+        /// <summary>
+        /// Forward a request, after repeception of a forward request message.
+        /// </summary>
+        /// <param name="reuest">the original request</param>
+        /// <param name="fwdToTarget">the forward target</param>
+        internal IMessage ForwardRequest(IMethodCallMessage request,
+                                         MarshalByRefObject fwdToTarget) {            
             object[] reqArgs = new object[request.Args.Length];
             request.Args.CopyTo(reqArgs, 0);
-            object retVal = request.MethodBase.Invoke(target.FwdToProxy, reqArgs);
+            object retVal = request.MethodBase.Invoke(fwdToTarget, reqArgs);
             return CreateReturnMsgForValues(retVal, reqArgs, 
                                             request);
         }        
@@ -762,8 +774,14 @@ namespace Ch.Elca.Iiop.Tests {
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,
                                                                target);                
-                ReturnMessage result = 
-                    (ReturnMessage) m_handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc);
+                IMessage resultMsg = 
+                    (IMessage) m_handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc);
+                MarshalByRefObject fwdToTarget;
+                bool isFwd = GiopMessageHandler.IsLocationForward(resultMsg, out fwdToTarget);
+                Assertion.Assert("is a forward?", isFwd);
+                Assertion.AssertNotNull("new target reference null?", fwdToTarget);
+                ReturnMessage result = (ReturnMessage)
+                    m_handler.ForwardRequest(requestMsg, fwdToTarget);
                 Assertion.AssertEquals(3, result.ReturnValue);
                 Assertion.AssertEquals(0, result.OutArgCount);                
             } finally {
@@ -796,8 +814,15 @@ namespace Ch.Elca.Iiop.Tests {
             try {
                 Stream locFwdStream = PrepareLocationFwdStream("localhost", 8090,
                                                                target);
-                ReturnMessage result = 
-                    (ReturnMessage) m_handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc);
+               
+                IMessage resultMsg = 
+                    m_handler.ParseIncomingReplyMessage(locFwdStream, requestMsg, conDesc);                
+                MarshalByRefObject fwdToTarget;
+                bool isFwd = GiopMessageHandler.IsLocationForward(resultMsg, out fwdToTarget);
+                Assertion.Assert("is a forward?", isFwd);
+                Assertion.AssertNotNull("new target reference null?", fwdToTarget);
+                ReturnMessage result = (ReturnMessage)
+                    m_handler.ForwardRequest(requestMsg, fwdToTarget);                
                 Assertion.AssertEquals(true, result.ReturnValue);
                 Assertion.AssertEquals(0, result.OutArgCount);                
             } finally {
