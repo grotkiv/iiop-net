@@ -182,6 +182,13 @@ namespace Ch.Elca.Iiop {
                 result = m_messageHandler.ParseIncomingReplyMessage(responseStream, 
                                               (IMethodCallMessage) requestMsg,
                                               conDesc);
+                MarshalByRefObject fwdToTarget;
+                if (GiopMessageHandler.IsLocationForward(result, out fwdToTarget)) {
+                    // location-fwd
+                    // reissue request to new target
+                    result = m_messageHandler.ForwardRequest((IMethodCallMessage) requestMsg, 
+                                                             fwdToTarget);
+                }                
             } finally {
                 responseStream.Close(); // stream not needed any more                
             }            
