@@ -775,7 +775,8 @@ namespace Ch.Elca.Iiop {
         
         private IServerConnectionListener m_connectionListener;
         
-        private IList /* GiopClientServerMessageHandler */ m_transportHandlers = new ArrayList(); // the active transport handlers
+        private IList /* GiopClientServerMessageHandler */ m_activeClients = 
+            new ArrayList(); // the active clients represented by the transport handlers
         
         private GiopBidirectionalConnectionManager m_bidirConnectionManager = null;
         private IServerTransportFactory m_transportFactory =
@@ -1040,15 +1041,30 @@ namespace Ch.Elca.Iiop {
         }
 
         /// <summary>
-        /// this method handles the incoming messages; it's called by the IServerListener
+        /// this method handles the incoming messages from one client; 
+        /// it's called by the IServerListener
         /// </summary>
         private void ProcessClientMessages(IServerTransport transport) {
             GiopTransportMessageHandler handler = 
                 new GiopTransportMessageHandler(transport, m_headerFlags);
             GiopConnectionDesc conDesc = new GiopConnectionDesc(m_bidirConnectionManager, handler);            
             handler.InstallReceiver(m_transportSink, conDesc, m_serverThreadsMaxPerConnection);
-            m_transportHandlers.Add(handler);
+            handler.ConnectionClosed += 
+                new GiopTransportMessageHandler.ConnectionClosedDelegate(EndClientMessages);
+            lock(m_activeClients.SyncRoot) {
+                m_activeClients.Add(handler);
+            }
             handler.StartMessageReception();            
+        }
+        
+        /// <summary>
+        /// informs the channel, that the message handling for a specific client has ended.
+        /// </summary>
+        private void EndClientMessages(GiopTransportMessageHandler sender, EventArgs args) {
+            // the client is represented by the GiopTransportMessageHandler
+            lock(m_activeClients.SyncRoot) {
+                m_activeClients.Remove(sender); // remove from active clients.
+            }
         }
             
         public void StopListening(object data) {
@@ -1060,8 +1076,15 @@ namespace Ch.Elca.Iiop {
                     Debug.WriteLine("exception while stopping accept: " + ex);
                 }
                 // close connections to this server endpoint
-                try {
-                    foreach (GiopTransportMessageHandler handler in m_transportHandlers) {
+                try {                                        
+                    IList toClose;
+                    lock(m_activeClients.SyncRoot) {
+                        // new elements are no longer inserted, but make sure,
+                        // that during iteration a connection close message from a client
+                        // does not break the iteration.
+                        toClose = new ArrayList(m_activeClients);
+                    }
+                    foreach (GiopTransportMessageHandler handler in toClose) {
                         try {
                             try {
                                 handler.SendConnectionCloseMessage();
@@ -1073,7 +1096,9 @@ namespace Ch.Elca.Iiop {
                         }
                     }
                 } finally {
-                    m_transportHandlers.Clear();                
+                    lock(m_activeClients.SyncRoot) {
+                        m_activeClients.Clear();                
+                    }
                 }
                 // bidir connection data no longer usable/used -> clean up at the end
                 if (m_bidirConnectionManager != null) {

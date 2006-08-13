@@ -523,6 +523,13 @@ namespace Ch.Elca.Iiop {
         }
         
         #endregion ResponseWaiter-Types
+        
+        /// <summary>
+        /// delegate determining the siganture of the closed event.
+        /// </summary>
+        public delegate void ConnectionClosedDelegate(GiopTransportMessageHandler sender,
+                                                      EventArgs args);
+        
         #region IFields
                 
         private ITransport m_transport;
@@ -538,6 +545,11 @@ namespace Ch.Elca.Iiop {
         
         private GiopReceivedRequestMessageDispatcher m_reiceivedRequestDispatcher;
         private byte m_headerFlags;
+        
+        /// <summary>
+        /// This event informs about the closing of the underlying transport connection.
+        /// </summary>
+        internal event ConnectionClosedDelegate ConnectionClosed;
         
         #endregion IFields
         #region IConstructors
@@ -563,7 +575,7 @@ namespace Ch.Elca.Iiop {
             get {
                 return m_transport;
             }
-        }
+        }                
         
         #endregion IProperties
         #region IMethods        
@@ -649,8 +661,8 @@ namespace Ch.Elca.Iiop {
         
         /// <summary>abort all requests, which wait for a reply</summary>
         private void AbortAllPendingRequestsWaiting() {
-            lock (m_waitingForResponse.SyncRoot) {
-                try {
+            try {
+                lock (m_waitingForResponse.SyncRoot) {                
                     foreach (DictionaryEntry entry in m_waitingForResponse) {
                         try {
                             IResponseWaiter waiter = (IResponseWaiter)entry.Value;
@@ -664,9 +676,9 @@ namespace Ch.Elca.Iiop {
                         }
                     }
                     m_waitingForResponse.Clear();
-                } catch (Exception) {
-                    // ignore
                 }
+            } catch (Exception) {
+                // ignore
             }
         }
         
@@ -908,6 +920,7 @@ namespace Ch.Elca.Iiop {
                 case GiopMsgTypes.CloseConnection:
                     CloseConnection();
                     AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
+                    RaiseConnectionClosedEvent(); // inform about connection closure
                     break;
                 case GiopMsgTypes.CancelRequest:
                     CdrInputStreamImpl input = new CdrInputStreamImpl(messageStream);
@@ -919,6 +932,7 @@ namespace Ch.Elca.Iiop {
                 case GiopMsgTypes.MessageError:                    
                     CloseConnectionAfterUnexpectedException(new MARSHAL(16, CompletionStatus.Completed_MayBe));
                     AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
+                    RaiseConnectionClosedEvent(); // inform about connection closure
                     break;
                 default:
                     // should not occur; 
@@ -943,6 +957,7 @@ namespace Ch.Elca.Iiop {
             } catch (Exception) {                
             }                 
             AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them            
+            RaiseConnectionClosedEvent(); // inform about connection closure
         }        
         
         /// <summary>
@@ -952,8 +967,24 @@ namespace Ch.Elca.Iiop {
             Trace.WriteLine("connection closed while trying to read a message");
             CloseConnection();
             AbortAllPendingRequestsWaiting(); // if requests are waiting for a reply, abort them
+            RaiseConnectionClosedEvent(); // inform about closure
         }
         
+        /// <summary>
+        /// Notifies all intersted parties, that the connection has been closed and
+        /// that the handler is no longer usable.
+        /// </summary>
+        private void RaiseConnectionClosedEvent() {
+            try {
+                ConnectionClosedDelegate toNotify = ConnectionClosed;
+                if (toNotify != null) {
+                    toNotify(this, EventArgs.Empty);
+                }
+            } catch (Exception ex) {
+                // ignore this issue.
+                Debug.WriteLine("issue while notifying about connection closed event: " + ex);
+            }
+        }
         
         /// <summary>
         /// allows to install a receiver when ready to process messages.
