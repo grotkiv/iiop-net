@@ -652,7 +652,8 @@ namespace Ch.Elca.Iiop.MessageHandling {
                         response = new ReturnMessage(systemEx, request.Request); // definitive exception only available here, because interception chain may change exception
                         break;
                     case 3 :
-                        // LOCATION_FORWARD:
+                    case 4 :
+                        // LOCATION_FORWARD / LOCATION_FORWARD_PERM:
                         // --> deserialise it and return location fwd message
                         response = DeserialiseLocationFwdReply(cdrStream, version, request);
                         UpdateClientRequestWithReplyData(request, response, cntxColl);
