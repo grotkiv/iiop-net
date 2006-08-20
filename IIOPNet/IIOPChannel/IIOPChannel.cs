@@ -1053,6 +1053,8 @@ namespace Ch.Elca.Iiop {
                 new GiopTransportMessageHandler.ConnectionClosedDelegate(EndClientMessages);
             lock(m_activeClients.SyncRoot) {
                 m_activeClients.Add(handler);
+                Debug.WriteLine("added client; peer addr: " + handler.Transport.GetPeerAddress());
+                Debug.WriteLine("added client; new number of active: " + m_activeClients.Count);
             }
             handler.StartMessageReception();            
         }
@@ -1064,6 +1066,7 @@ namespace Ch.Elca.Iiop {
             // the client is represented by the GiopTransportMessageHandler
             lock(m_activeClients.SyncRoot) {
                 m_activeClients.Remove(sender); // remove from active clients.
+                Debug.WriteLine("removed client; new number of active: " + m_activeClients.Count);
             }
         }
             
@@ -1252,7 +1255,8 @@ namespace Ch.Elca.Iiop.Tests {
             IiopUrlUtil iiopUrlUtil =
                 IiopUrlUtil.Create(m_codec, new object[] { 
                     Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});                
-            m_serFactory.Initalize(iiopUrlUtil);
+            m_serFactory.Initalize(
+                new Ch.Elca.Iiop.Marshalling.SerializerFactoryConfig(), iiopUrlUtil);
         }
         
         [Test]

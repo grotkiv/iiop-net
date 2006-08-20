@@ -126,7 +126,7 @@ namespace Ch.Elca.Iiop.Tests {
             omg.org.IOP.Codec codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));            
-            serFactory.Initalize(IiopUrlUtil.Create(codec));            
+            serFactory.Initalize(new SerializerFactoryConfig(), IiopUrlUtil.Create(codec));
             m_argSerFactory = new ArgumentsSerializerFactory(serFactory);
         }
         

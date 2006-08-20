@@ -817,7 +817,7 @@ namespace Ch.Elca.Iiop.Tests {
             Codec codec = 
                 codecFactory.create_codec(
                     new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
-            m_serFactory.Initalize(IiopUrlUtil.Create(codec));
+            m_serFactory.Initalize(new SerializerFactoryConfig(), IiopUrlUtil.Create(codec));
         }
     	
     	private DataInputStream CreateInputStream(byte[] content) {
@@ -856,7 +856,7 @@ namespace Ch.Elca.Iiop.Tests {
             Codec codec = 
                 codecFactory.create_codec(
                     new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
-            m_serFactory.Initalize(IiopUrlUtil.Create(codec));
+            m_serFactory.Initalize(new SerializerFactoryConfig(), IiopUrlUtil.Create(codec));
         }        
     	
     	[Test]
