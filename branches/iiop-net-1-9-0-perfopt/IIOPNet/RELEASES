@@ -1,14 +1,29 @@
-version 1.9.0 ??? (in progress)
--------------------------------
+version 1.9.0 final (20 august 2006)
+------------------------------------
 
 bug fixed:
+- fixed memory leak on the server side: some resource allocated for clients were not freed until application end
 - improved object_to_string, string_to_object implementation to support more
   cases (interface type unknown, ...), see also bug #1470735
 - corrected misspelling of ORBInitializer (bug #1471200)
 - Too optimistic connection reusing (bug #1496479)
+- IDL to CLS compiler: removed idl grammer issue; negate without () around expression to negate is now possible,
+  e.g. ~5 (not only ~(5))
+- IDL to CLS compiler: fixed overflow problem in parser token manager (was a parser generator issue)
+  -> code works now also with overflow checks enabled
 
 new features:
+- IDL to CLS compiler supports now complex constant expressions, i.e. it's possible to let the compiler
+  calculate the value of a constant.
 - improved IDL to CLS compiler command line: added support for -lib: option.
+- retry on transient exceptions, completed_no
+- used endian for giop messages is now configurable on the channel level, by using the endian config key
+- now possible to configure string, idlseq and array serializer to serialize null as empty value
+
+other improvements:
+- additional performance improvements (to profit most: enable compiler optimizations when building IIOP.NET with set CSFLAGS=/o)
+- changed custom mapping for java.util.DateTime to work also with java 1.5
+- improved tracing in debug mode
 
 standard compliance:
 - improved usage of TRANSIENT/COMM_FAILURE:
