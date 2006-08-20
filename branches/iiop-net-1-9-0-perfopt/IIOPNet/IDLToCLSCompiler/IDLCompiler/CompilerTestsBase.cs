@@ -274,7 +274,7 @@ namespace Ch.Elca.Iiop.IdlCompiler.Tests {
         
 
         
-        #endregion IMethods
+        #endregion
 
         
         
