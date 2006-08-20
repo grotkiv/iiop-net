@@ -368,7 +368,7 @@ namespace Ch.Elca.Iiop.Tests {
             IiopUrlUtil iiopUrlUtil = 
                 IiopUrlUtil.Create(m_codec, new object[] { 
                     Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});                        
-            serFactory.Initalize(iiopUrlUtil);
+            serFactory.Initalize(new SerializerFactoryConfig(), iiopUrlUtil);
             m_defaultCodeSetTaggedComponent = 
                 Services.CodeSetService.CreateDefaultCodesetComponent(m_codec);
     	}        

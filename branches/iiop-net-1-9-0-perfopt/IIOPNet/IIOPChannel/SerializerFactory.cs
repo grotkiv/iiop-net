@@ -55,8 +55,8 @@ namespace Ch.Elca.Iiop.Marshalling {
         private Serializer m_wideCharSer = new CharSerializer(true);
         private Serializer m_nonWideCharSer = new CharSerializer(false);
         
-        private Serializer m_wideStringSer = new StringSerializer(true);
-        private Serializer m_nonWideStringSer = new StringSerializer(false);        
+        private Serializer m_wideStringSer;
+        private Serializer m_nonWideStringSer;
         
         private Serializer m_byteSer = new ByteSerializer();
         private Serializer m_sbyteSer = new SByteSerializer();
@@ -92,6 +92,7 @@ namespace Ch.Elca.Iiop.Marshalling {
             m_concValueInstanceSer = new Hashtable();
         
         private IiopUrlUtil m_iiopUrlUtil;
+        private SerializerFactoryConfig m_config;
         
         #endregion IFields
         #region IConstructors
@@ -113,13 +114,32 @@ namespace Ch.Elca.Iiop.Marshalling {
                                                               
             m_boxedStringValueSer = new BoxedValueSerializer(ReflectionHelper.StringValueType,
                                                              false, this);            
+            
+            // to create the iiop url util, the factory is already used before initalized, 
+            // therefore create a dummy config until then
+            m_config = new SerializerFactoryConfig();
+            m_wideStringSer = 
+                new StringSerializer(true, m_config.StringSerializationAllowNull);
+            m_nonWideStringSer = 
+                new StringSerializer(false, m_config.StringSerializationAllowNull);
         }
         
         #endregion IConstructors
         #region IMethods
         
-        internal void Initalize(IiopUrlUtil iiopUrlUtil) {
+        /// <summary>
+        /// Initalizes the factory. Before initialize is called,
+        /// the factory in non-usable.
+        /// </summary>
+        internal void Initalize(SerializerFactoryConfig config,
+                                IiopUrlUtil iiopUrlUtil) {
+            m_config = config;
             m_iiopUrlUtil = iiopUrlUtil;
+            // the following depend on the config
+            m_wideStringSer = 
+                new StringSerializer(true, config.StringSerializationAllowNull);
+            m_nonWideStringSer = 
+                new StringSerializer(false, config.StringSerializationAllowNull);
         }
                 
         /// <summary>determines the serialiser responsible for a specified formal type and the parameterattributes attributes</summary>
@@ -244,10 +264,14 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         public object MapToIdlSequence(System.Type clsType, int bound, AttributeExtCollection allAttributes, AttributeExtCollection elemTypeAttributes) {
-            return new IdlSequenceSerializer(clsType, elemTypeAttributes, bound, this);       
+            return new IdlSequenceSerializer(clsType, elemTypeAttributes, bound, 
+                                             m_config.SequenceSerializationAllowNull,
+                                             this);
         }
         public object MapToIdlArray(System.Type clsType, int[] dimensions, AttributeExtCollection allAttributes, AttributeExtCollection elemTypeAttributes) {            
-            return new IdlArraySerializer(clsType, elemTypeAttributes, dimensions, this);
+            return new IdlArraySerializer(clsType, elemTypeAttributes, dimensions,
+                                          m_config.ArraySerializationAllowNull,
+                                          this);
         }
         public object MapToIdlAny(System.Type clsType) {
             if (clsType.Equals(ReflectionHelper.AnyType)) {
@@ -359,6 +383,78 @@ namespace Ch.Elca.Iiop.Marshalling {
         #endregion IMethods                
     
     }
+    
+    /// <summary>
+    /// Configuration for serializer factory.
+    /// </summary>
+    public class SerializerFactoryConfig {
+    
+        #region IFields
+        
+        private bool m_stringSerializationAllowNull; // = false
+        private bool m_sequenceSerializationAllowNull; // = false
+        private bool m_arraySerializationAllowNull; // = false
+        
+        #endregion IFields
+        #region IConstructors
+        
+        /// <summary>
+        /// default constructor.
+        /// </summary>
+        internal SerializerFactoryConfig() {
+        }
+        
+        #endregion IConstructors
+        #region IProperties
+        
+        /// <summary>
+        /// Set to true, to allow, that the created string serializer
+        /// will allow to serialize a null string.
+        /// If null is passed, the serializer convert it to String.Empty before
+        /// serialization.
+        /// </summary>
+        public bool StringSerializationAllowNull {
+            get {
+                return m_stringSerializationAllowNull;
+            }
+            set {
+                m_stringSerializationAllowNull = value;
+            }
+        }
+
+        /// <summary>
+        /// Set to true, to allow, that the created sequence serializer
+        /// will allow to serialize a null sequence.
+        /// If null is passed, the serializer convert it to an empty sequence before
+        /// serialization.
+        /// </summary>
+        public bool SequenceSerializationAllowNull {
+            get {
+                return m_sequenceSerializationAllowNull;
+            }
+            set {
+                m_sequenceSerializationAllowNull = value;
+            }
+        }
+        
+        /// <summary>
+        /// Set to true, to allow, that the created array serializer
+        /// will allow to serialize a null array.
+        /// If null is passed, the serializer convert it to an empty array before
+        /// serialization.
+        /// </summary>
+        public bool ArraySerializationAllowNull {
+            get {
+                return m_arraySerializationAllowNull;
+            }
+            set {
+                m_arraySerializationAllowNull = value;
+            }
+        }        
+        
+        #endregion IProperties
+        
+    }
 
 }
 
@@ -391,7 +487,8 @@ namespace Ch.Elca.Iiop.Tests {
             Codec codec = 
                 codecFactory.create_codec(
                     new Encoding(ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
-            m_serFactory.Initalize(IiopUrlUtil.Create(codec));            
+            m_serFactory.Initalize(new SerializerFactoryConfig(), 
+                                   IiopUrlUtil.Create(codec));
         }
         
         private void GenericFactoryTest(Type createFor, Type expectedSerType) {

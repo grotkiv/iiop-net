@@ -362,12 +362,20 @@ namespace Ch.Elca.Iiop.Marshalling {
         #region IFields
         
         private bool m_useWide;
+        private bool m_allowNull;
         
         #endregion IFields
         #region IConstructors
         
-        public StringSerializer(bool useWide) {
+        /// <summary>
+        /// default constructor.
+        /// </summary>
+        /// <param name="useWide">Serialize as non-wide of wide-char.</param>
+        /// <param name="allowNull">Allow to serialize null or not. If allowed, serialize it
+        /// as empty string.</param>
+        public StringSerializer(bool useWide, bool allowNull) {
             m_useWide = useWide;
+            m_allowNull = allowNull;
         }
         
         #endregion IConstructors
@@ -375,7 +383,10 @@ namespace Ch.Elca.Iiop.Marshalling {
 
         internal override void Serialize(object actual,
                                        CdrOutputStream targetStream) {            
-            // string may not be null, if StringValueAttriubte is set
+            // string may not be null by default, if StringValueAttriubte is set
+            if (m_allowNull && actual == null) {
+                actual = String.Empty;
+            }
             CheckActualNotNull(actual);
             if (m_useWide) {
                 targetStream.WriteWString((string)actual);
@@ -1372,14 +1383,25 @@ namespace Ch.Elca.Iiop.Marshalling {
         #region IFields
         
         private int m_bound;
+        private bool m_allowNull;
         private Type m_forTypeElemType;
         private Serializer m_elementSerializer;
         
         #endregion IFields
         #region IConstructors
         
+        /// <summary>
+        /// default constructor.
+        /// </summary>
+        /// <param name="forType">The sequence type</param>
+        /// <param name="elemAttrs">The sequence element type attributes</param>
+        /// <param name="bound">the number of elements allowed maximally</param>
+        /// <param name="allowNull">Allow to serialize null or not. If allowed, serialize it
+        /// as empty sequence.</param>
+        /// <param name="serFactory">The serializer factory created this serializer</param>
         public IdlSequenceSerializer(Type forType, AttributeExtCollection elemAttrs,
-                                     int bound, SerializerFactory serFactory) {
+                                     int bound, bool allowNull, SerializerFactory serFactory) {
+            m_allowNull = allowNull;
             m_forTypeElemType = forType.GetElementType();
             m_bound = bound;    
             // element is not the same than the sequence -> therefore problems with recursion
@@ -1406,6 +1428,11 @@ namespace Ch.Elca.Iiop.Marshalling {
         }
         
         internal override void Serialize(object actual, CdrOutputStream targetStream) {
+            if (m_allowNull && actual == null) {
+                // if null allowed, handle null as empty sequence.
+                targetStream.WriteULong(0);
+                return;
+            }
             Array array = (Array) actual;
             // not allowed for a sequence:
             CheckActualNotNull(array);
@@ -1437,25 +1464,36 @@ namespace Ch.Elca.Iiop.Marshalling {
 
     }
 
-
     /// <summary>serialises IDL-arrays</summary>
     internal class IdlArraySerializer : Serializer {
 
         #region IFields
         
         private int[] m_dimensions;
-        private Type m_forTypeElemType;
+        private Type m_forTypeElemType;        
         private Serializer m_elementSer;
+        private bool m_allowNull;
         
         #endregion IFields
         #region IConstructors
         
+        /// <summary>
+        /// default constructor.
+        /// </summary>
+        /// <param name="forType">The idl array type</param>
+        /// <param name="elemAttrs">The array element type attributes</param>
+        /// <param name="dimensions">the fixed array dimensions</param>
+        /// <param name="allowNull">Allow to serialize null or not. If allowed, serialize it
+        /// as array with default elements.</param>
+        /// <param name="serFactory">The serializer factory created this serializer</param>
         public IdlArraySerializer(Type forType, AttributeExtCollection elemAttributes, 
-                                  int[] dimensions, SerializerFactory serFactory) {
+                                  int[] dimensions, bool allowNull,
+                                  SerializerFactory serFactory) {
             m_dimensions = dimensions;    
-            m_forTypeElemType = forType.GetElementType();
+            m_forTypeElemType = forType.GetElementType();            
             // element is not the same than the sequence -> therefore problems with recursion
             m_elementSer = serFactory.Create(m_forTypeElemType, elemAttributes);
+            m_allowNull = allowNull;
         }
         
         #endregion IConstructors
@@ -1489,7 +1527,11 @@ namespace Ch.Elca.Iiop.Marshalling {
         
         internal override void Serialize(object actual, CdrOutputStream targetStream) {
             Array array = (Array) actual;
-                // not allowed for an idl array:
+            // null not allowed for an idl array by default:
+            if (m_allowNull && actual == null) {
+                array = Array.CreateInstance(m_forTypeElemType,
+                                             m_dimensions);
+            }
             CheckActualNotNull(array);
             CheckInstanceDimensions(array);
             // get marshaller for elemtype                        
@@ -2221,59 +2263,69 @@ namespace Ch.Elca.Iiop.Tests {
         
         [Test]
         public void TestDeserializeEmptyStringNonWide() {
-            Serializer ser = new StringSerializer(false);
+            Serializer ser = new StringSerializer(false, false);
             GenericDeserTest(ser, new byte[] { 0, 0, 0, 1, 0 }, String.Empty);
             GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, String.Empty); // visibroker interop            
         }
         
         [Test]
         public void TestSerializeEmptyStringNonWide() {
-            Serializer ser = new StringSerializer(false);
+            Serializer ser = new StringSerializer(false, false);
             GenericSerTest(ser, String.Empty, new byte[] { 0, 0, 0, 1, 0 });
         }
         
         [Test]
         public void TestDeserializeEmptyStringWide() {
-            Serializer ser = new StringSerializer(true);            
+            Serializer ser = new StringSerializer(true, false);            
             GenericDeserTest(ser, new byte[] { 0, 0, 0, 0 }, String.Empty); // giop 1.2, no terminating null char
         }
         
         [Test]
         public void TestSerializeEmptyStringWide() {
-            Serializer ser = new StringSerializer(true);
+            Serializer ser = new StringSerializer(true, false);
             GenericSerTest(ser, String.Empty, new byte[] { 0, 0, 0, 0 }); // giop 1.2, no terminating null char
         }        
         
         [Test]
         public void TestDeserializeStringNonWide() {
-            Serializer ser = new StringSerializer(false);
+            Serializer ser = new StringSerializer(false, false);
             GenericDeserTest(ser, new byte[] { 0, 0, 0, 9, 73, 73, 79, 80, 46, 78, 69, 84, 0}, "IIOP.NET");
         }
         
         [Test]
         public void TestSerializeStringNonWide() {
-            Serializer ser = new StringSerializer(false);
+            Serializer ser = new StringSerializer(false, false);
             GenericSerTest(ser, "IIOP.NET", new byte[] { 0, 0, 0, 9, 73, 73, 79, 80, 46, 78, 69, 84, 0});
         }
         
         [Test]
         public void TestDeserializeStringWide() {
-            Serializer ser = new StringSerializer(true);
+            Serializer ser = new StringSerializer(true, false);
             GenericDeserTest(ser, new byte[] { 0, 0, 0, 16, 0, 73, 0, 73, 0, 79, 0, 80, 0, 46, 0, 78, 0, 69, 0, 84 }, 
                              "IIOP.NET");
         }        
         
         [Test]
         public void TestSerializeStringWide() {
-            Serializer ser = new StringSerializer(true);
+            Serializer ser = new StringSerializer(true, false);
             GenericSerTest(ser, "IIOP.NET", 
                            new byte[] { 0, 0, 0, 16, 0, 73, 0, 73, 0, 79, 0, 80, 0, 46, 0, 78, 0, 69, 0, 84 });
         }                
         
+    }
+    
+    /// <summary>
+    /// Serializer tests for WString / String Serialization.
+    /// </summary>
+    /// <remarks>move later all string ser tests here.</remarks>
+    [TestFixture]
+    public class AdvancedStringSerializerTest : AbstractSerializerTest {
+        
+
         [Test]
         [ExpectedException(typeof(BAD_PARAM))]
-        public void TestNotAllowEmptyStringForBasicStrings() {
-            StringSerializer stringSer = new StringSerializer(false);
+        public void TestNotAllowNullStringForBasicStrings() {
+            StringSerializer stringSer = new StringSerializer(false, false);
             MemoryStream outStream = new MemoryStream();
             try {            
                 CdrOutputStream cdrOut = new CdrOutputStreamImpl(outStream, 0);            
@@ -2282,6 +2334,12 @@ namespace Ch.Elca.Iiop.Tests {
                 outStream.Close();
             }            
         }        
+        
+        [Test]
+        public void TestAllowNullStringForBasicStringsIfConfigured() {
+            StringSerializer stringSer = new StringSerializer(false, true);
+            GenericSerTest(stringSer, null, new byte[] { 0, 0, 0, 1, 0 });
+        }
         
     }
     
@@ -2301,7 +2359,7 @@ namespace Ch.Elca.Iiop.Tests {
             omg.org.IOP.Codec codec = 
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
-            m_serFactory.Initalize(IiopUrlUtil.Create(codec));	        
+            m_serFactory.Initalize(new SerializerFactoryConfig(), IiopUrlUtil.Create(codec));
 	    }
         
         private void FlagsGenericSerTest(Type flagsType, object actual, byte[] expected) {
@@ -2611,7 +2669,7 @@ namespace Ch.Elca.Iiop.Tests {
             m_iiopUrlUtil = 
                 IiopUrlUtil.Create(m_codec, new object[] { 
                     Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});
-            m_serFactory.Initalize(m_iiopUrlUtil);
+            m_serFactory.Initalize(new SerializerFactoryConfig(), m_iiopUrlUtil);
     	}
         
 		[Test]
@@ -2683,7 +2741,7 @@ namespace Ch.Elca.Iiop.Tests {
             IiopUrlUtil iiopUrlUtil = 
                 IiopUrlUtil.Create(codec, new object[] { 
                     Services.CodeSetService.CreateDefaultCodesetComponent(codec)});            
-            m_serFactory.Initalize(iiopUrlUtil);
+            m_serFactory.Initalize(new SerializerFactoryConfig(), iiopUrlUtil);
     	}	    
 
 		[Test]
@@ -2979,7 +3037,8 @@ namespace Ch.Elca.Iiop.Tests {
                 codecFactory.create_codec(
                     new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal,
                                              1, 2));
-            m_serFactory.Initalize(IiopUrlUtil.Create(codec));
+            m_serFactory.Initalize(new SerializerFactoryConfig(), 
+                                   IiopUrlUtil.Create(codec));
     	}	    
 
 		[Test]
@@ -3062,6 +3121,187 @@ namespace Ch.Elca.Iiop.Tests {
 		
     }
 
+	/// <summary>
+	/// Serializer test for idl sequences
+	/// </summary>
+	[TestFixture]
+	public class SerializerTestSequence : AbstractSerializerTest {
+		    
+	    private SerializerFactory m_serFactory;
+	    private SerializerFactoryConfig m_config;
+	    private IiopUrlUtil m_iiopUrlUtil;
+	    private Type m_seqType;
+	    private AttributeExtCollection m_seqAttributes;
+	    
+	    [SetUp]
+	    public void SetUp() {
+	        m_serFactory = new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(m_serFactory);
+            omg.org.IOP.Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+            m_iiopUrlUtil = IiopUrlUtil.Create(codec);
+            m_config = new SerializerFactoryConfig();  
+            
+            m_seqAttributes = 
+                AttributeExtCollection.
+                    ConvertToAttributeCollection(
+                        new object[] { new IdlSequenceAttribute(0) } );
+            m_seqType = typeof(int[]);
+	    }
+	    
+
+	    private void AssertSerialization(object actual, byte[] expected) {
+	        m_serFactory.Initalize(m_config, m_iiopUrlUtil);
+            
+            Serializer ser =
+                m_serFactory.Create(m_seqType, m_seqAttributes);
+            
+            Assertion.AssertNotNull("ser", ser);
+            Assertion.AssertEquals("ser type", typeof(IdlSequenceSerializer),
+                                   ser.GetType());
+            
+            GenericSerTest(ser, actual, expected);            
+	    }
+	    
+	    [Test]
+        [ExpectedException(typeof(BAD_PARAM))]
+        public void TestNotAllowNullIdlSeuqnece() {
+            m_config.SequenceSerializationAllowNull = false;
+            AssertSerialization(null, new byte[0]);
+            
+        }        
+        
+        [Test]
+        public void TestAllowNullSequenceIfConfigured() {
+            m_config.SequenceSerializationAllowNull = true;
+            AssertSerialization(null, new byte[] { 0, 0, 0, 0 });
+        }	    
+        
+        [Test]
+        public void TestNotEmptySequenceNullNotAllowed() {
+            m_config.SequenceSerializationAllowNull = false;
+            AssertSerialization(new int[] { 1, 2 },
+                                new byte[] { 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0 , 2});
+        }        
+        
+        [Test]
+        public void TestNotEmptySequenceNullAllowed() {
+            m_config.SequenceSerializationAllowNull = true;
+            AssertSerialization(new int[] { 1, 2 },
+                                new byte[] { 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0 , 2});            
+        }
+        
+        
+	    
+	}
+	
+	
+    /// <summary>
+	/// Serializer test for idl sequences
+	/// </summary>
+	[TestFixture]
+	public class SerializerTestArray : AbstractSerializerTest {
+		    
+	    private SerializerFactory m_serFactory;
+	    private SerializerFactoryConfig m_config;
+	    private IiopUrlUtil m_iiopUrlUtil;
+	    private Type m_arrayType;
+	    private AttributeExtCollection m_arrayAttributes;
+	    
+	    [SetUp]
+	    public void SetUp() {
+	        m_serFactory = new SerializerFactory();
+            omg.org.IOP.CodecFactory codecFactory =
+                new Ch.Elca.Iiop.Interception.CodecFactoryImpl(m_serFactory);
+            omg.org.IOP.Codec codec = 
+                codecFactory.create_codec(
+                    new omg.org.IOP.Encoding(omg.org.IOP.ENCODING_CDR_ENCAPS.ConstVal, 1, 2));
+            m_iiopUrlUtil = IiopUrlUtil.Create(codec);
+            m_config = new SerializerFactoryConfig();  
+            
+            m_arrayAttributes = 
+                AttributeExtCollection.
+                    ConvertToAttributeCollection(
+                        new object[] { new IdlArrayAttribute(0, 2) } );
+            m_arrayType = typeof(int[]);
+	    }
+	    
+
+	    private void AssertSerialization(object actual, byte[] expected) {
+	        m_serFactory.Initalize(m_config, m_iiopUrlUtil);
+            
+            Serializer ser =
+                m_serFactory.Create(m_arrayType, m_arrayAttributes);
+            
+            Assertion.AssertNotNull("ser", ser);
+            Assertion.AssertEquals("ser type", typeof(IdlArraySerializer),
+                                   ser.GetType());
+            
+            GenericSerTest(ser, actual, expected);            
+	    }
+	    
+	    [Test]
+        [ExpectedException(typeof(BAD_PARAM))]
+        public void TestNotAllowNullIdlArray() {
+            m_config.ArraySerializationAllowNull = false;
+            AssertSerialization(null, new byte[0]);
+            
+        }                        
+        
+        [Test]        
+        public void TestAllowNullIdlArray() {
+            m_config.ArraySerializationAllowNull = true;
+            AssertSerialization(null, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 });
+        }                        
+        
+        [Test]
+        public void TestNotNullIdlArray1DimNotAllowNull() {
+            m_config.ArraySerializationAllowNull = false;
+            AssertSerialization(new int[] { 1, 2 },
+                                new byte[] { 0, 0, 0, 1, 0, 0, 0 , 2});
+        }
+        
+        [Test]
+        public void TestNotNullIdlArray1DimAllowNull() {            
+            m_config.ArraySerializationAllowNull = true;
+            AssertSerialization(new int[] { 1, 2 },
+                                new byte[] { 0, 0, 0, 1, 0, 0, 0 , 2});
+        }
+        
+        [Test]
+        public void Test2DimArrayNotNull() {
+            m_config.ArraySerializationAllowNull = false;
+            m_arrayType = typeof(int[,]);
+            m_arrayAttributes =  
+                AttributeExtCollection.
+                    ConvertToAttributeCollection(
+                        new object[] { new IdlArrayAttribute(0, 2),
+                                       new IdlArrayDimensionAttribute(0, 1, 3) } );
+            
+            AssertSerialization(new int[,] { { 1, 2, 3 }, { 4, 5, 6 } },
+                                new byte[] { 0, 0, 0, 1, 0, 0, 0, 2,  0, 0, 0, 3, 
+                                             0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6 });
+        }
+        
+        [Test]
+        public void Test2DimArrayNullAllowNull() {
+            m_config.ArraySerializationAllowNull = true;
+            m_arrayType = typeof(int[,]);
+            m_arrayAttributes =  
+                AttributeExtCollection.
+                    ConvertToAttributeCollection(
+                        new object[] { new IdlArrayAttribute(0, 2),
+                                       new IdlArrayDimensionAttribute(0, 1, 3) } );
+            
+            AssertSerialization(null,
+                                new byte[] { 0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 
+                                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
+        }        
+	    
+	}	
+	
 }
     
 #endif

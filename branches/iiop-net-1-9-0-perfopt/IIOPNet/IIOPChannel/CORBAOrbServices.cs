@@ -231,6 +231,7 @@ namespace omg.org.CORBA {
         private Ch.Elca.Iiop.Marshalling.ArgumentsSerializerFactory m_argSerializerFactory;
         private Ch.Elca.Iiop.Marshalling.SerializerFactory m_serializerFactory;
         private IiopUrlUtil m_iiopUrlUtil;
+        private Ch.Elca.Iiop.Marshalling.SerializerFactoryConfig m_serializerFactoryConfig;
         private bool m_isInitialized = false;
 		
         #endregion IFields
@@ -239,7 +240,9 @@ namespace omg.org.CORBA {
         private OrbServices() {         
             m_orbInitalizers = new ArrayList();
             m_piCurrentManager = new PICurrentManager();
-            m_interceptorManager = new InterceptorManager(this);            
+            m_interceptorManager = new InterceptorManager(this);  
+            m_serializerFactoryConfig = 
+                new Ch.Elca.Iiop.Marshalling.SerializerFactoryConfig();
         }
         
         #endregion IConstructors
@@ -288,6 +291,18 @@ namespace omg.org.CORBA {
                 return m_piCurrentManager;
             }
         }
+        
+        /// <summary>
+        /// The configuration for the serializer factory.
+        /// With this config, it's possible to configure some serializer
+        /// parameters.
+        /// </summary>
+        public Ch.Elca.Iiop.Marshalling.SerializerFactoryConfig SerializerFactoryConfig {
+            get {
+                EnsureNotInitalized();
+                return m_serializerFactoryConfig;
+            }
+        }
 		
         /// <summary>
         /// returns the factory responsible for creating ArgumentsSerializer
@@ -312,7 +327,7 @@ namespace omg.org.CORBA {
         #endregion IProperties
         #region IMethods
         
-        private void Initalize() {
+        private void Initalize() {            
             m_serializerFactory = new Ch.Elca.Iiop.Marshalling.SerializerFactory();
             m_codecFactory = new CodecFactoryImpl(m_serializerFactory);                        
             m_argSerializerFactory = 
@@ -324,7 +339,8 @@ namespace omg.org.CORBA {
             m_iiopUrlUtil = 
                 IiopUrlUtil.Create(iiopUrlUtilCodec, new object[] { 
                     Ch.Elca.Iiop.Services.CodeSetService.CreateDefaultCodesetComponent(iiopUrlUtilCodec)});
-            m_serializerFactory.Initalize(m_iiopUrlUtil);
+            m_serializerFactory.Initalize(m_serializerFactoryConfig, 
+                                          m_iiopUrlUtil);
         }
         
         private void EnsureInitialized() {
@@ -332,6 +348,14 @@ namespace omg.org.CORBA {
                 if (!m_isInitialized) {
                     Initalize();
                     m_isInitialized = true;
+                }
+            }
+        }
+        
+        private void EnsureNotInitalized() {
+            lock(this) {
+                if (m_isInitialized) {
+                    throw new BAD_INV_ORDER(691, CompletionStatus.Completed_MayBe);
                 }
             }
         }
@@ -720,7 +744,7 @@ namespace Ch.Elca.Iiop.Tests {
             IiopUrlUtil iiopUrlUtil = 
                 IiopUrlUtil.Create(m_codec, new object[] { 
                     Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});            
-            m_serFactory.Initalize(iiopUrlUtil);
+            m_serFactory.Initalize(new SerializerFactoryConfig(), iiopUrlUtil);
     	}
                        
         [Test]

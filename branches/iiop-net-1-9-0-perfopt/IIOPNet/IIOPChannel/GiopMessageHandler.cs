@@ -482,7 +482,7 @@ namespace Ch.Elca.Iiop.Tests {
             m_iiopUrlUtil = 
                 IiopUrlUtil.Create(m_codec, new object[] { 
                     Services.CodeSetService.CreateDefaultCodesetComponent(m_codec)});
-            m_serFactory.Initalize(m_iiopUrlUtil);
+            m_serFactory.Initalize(new SerializerFactoryConfig(), m_iiopUrlUtil);
             m_handler = 
                 new GiopMessageHandler(
                     new ArgumentsSerializerFactory(m_serFactory),
