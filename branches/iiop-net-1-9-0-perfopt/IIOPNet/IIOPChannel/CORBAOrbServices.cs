@@ -199,6 +199,9 @@ namespace omg.org.CORBA {
         /// Afterwards, the interceptors are enabled and are called during processing.
         /// </summary>
         void CompleteInterceptorRegistration();
+
+        #endregion Protable Interceptors
+        #region Config
         
         /// <summary>
         /// Overrides the IIOP.NET default for charset and wcharset. If this method is
@@ -209,7 +212,17 @@ namespace omg.org.CORBA {
         void OverrideDefaultCharSets(Ch.Elca.Iiop.Services.CharSet charSet, 
                                      Ch.Elca.Iiop.Services.WCharSet wcharSet);
 	    
-        #endregion Protable Interceptors
+
+        /// <summary>
+        /// The configuration for the serializer factory.
+        /// With this config, it's possible to configure some serializer
+        /// parameters.
+        /// </summary>
+        Ch.Elca.Iiop.Marshalling.SerializerFactoryConfig SerializerFactoryConfig {
+            get;
+        }
+
+        #endregion Config
 
     }
     
