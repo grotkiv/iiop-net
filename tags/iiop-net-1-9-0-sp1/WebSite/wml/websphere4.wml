@@ -1,0 +1,68 @@
+#include "layout.wml"
+
+<SUBJECT>IBM Websphere 4 compatibility howto</SUBJECT>
+
+
+<p/>
+This howto contains information for IIOP.NET 1.2.3 or newer.
+
+<p/>
+<b>Accessing the name service</b> <BR> <BR>
+
+The Websphere nameservice can be accessed from a .NET client with the following code:
+
+<pre>
+    RmiIiopInit init = new RmiIiopInit(nameServiceHost, nameServicePort);
+    NamingContext nameService = (NamingContext)init.GetNameService();
+</pre> <p/>
+
+Because the type of the NamingContext returned is Websphere-specific,
+the following file must be added to every IIOP.NET Websphere client, when using an IIOP.NET version prior to 1.3.1:
+
+<pre>
+    //IbmNaming.cs
+    
+    using Ch.Elca.Iiop.Idl; 
+    using Ch.Elca.Iiop.Services; 
+
+    namespace com.ibm.WsnOptimizedNaming { 
+    
+        [RepositoryIDAttribute("IDL:com.ibm/WsnOptimizedNaming/NamingContext:1.0")] 
+        [InterfaceTypeAttribute(IdlTypeInterface.ConcreteInterface)] 
+        public interface NamingContext : omg.org.CosNaming.NamingContext { 
+        } 
+
+    } 
+
+</pre>
+
+<p/>
+
+Hint: This interface has been added to the channel in version 1.3.1.
+<BR> <BR>
+
+Hint: The nameservice is listening normally on port 900.
+
+<p/>
+<b>Using an EJB</b> <BR> <BR>
+
+The ejb home interface is accessed using the name service in the following way:
+
+
+<pre>
+    NameComponent[] name = new NameComponent[] { new NameComponent("domain", ""),
+                                                 new NameComponent("legacyRoot", ""),
+                                                 new NameComponent("MyHome", "") };
+    // get the reference to the adder-home
+    MyEjbHome myHomeIf = (MyEjbHome)nameService.resolve(name);
+</pre> <p/>
+
+Hint: <BR>
+The namecomponents domain and legacyRoot are needed for every ejb home interface for WAS 4. <BR> <BR>
+
+
+The ejb can now be created using this home interface (standard ejb pattern):
+
+<pre>
+    MyEjb myBean = myHomeIf.create();
+</pre> <p/>
