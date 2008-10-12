@@ -1,1 +1,0 @@
-start bin\AdderServer.exe corbaloc::localhost:8099/NameService

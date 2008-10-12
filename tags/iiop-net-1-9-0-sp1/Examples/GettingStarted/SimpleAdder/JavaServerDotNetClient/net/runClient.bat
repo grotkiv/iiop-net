@@ -1,1 +1,0 @@
-bin\NClient.exe localhost 1050 

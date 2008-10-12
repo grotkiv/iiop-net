@@ -1,5 +1,0 @@
-This integration test checks the Flow rules of interception.
-
-
-
-
