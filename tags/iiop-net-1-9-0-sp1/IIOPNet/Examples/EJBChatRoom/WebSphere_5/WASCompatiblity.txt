@@ -1,3 +1,0 @@
-NOTE:
-This example does not work with Websphere5 FixPack1. 
-Either use no fixpack or Websphere 5 FixPack2.

@@ -1,5 +1,0 @@
-This integration test checks the serialization options in the IIOPChannel
-
-
-
-
