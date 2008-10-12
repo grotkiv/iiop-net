@@ -1,5 +1,0 @@
-This integration test checks the interoperation of IIOP.NET and OmniORB in Bidirectional mode.
-
-
-
-

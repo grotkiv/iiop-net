@@ -1,5 +1,0 @@
-This integration test checks the message timeout functionality of IIOP.NET.
-
-
-
-

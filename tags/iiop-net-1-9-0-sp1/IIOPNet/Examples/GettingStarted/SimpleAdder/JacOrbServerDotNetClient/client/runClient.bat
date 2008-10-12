@@ -1,1 +1,0 @@
-bin\NClient.exe corbaloc::localhost:8091/StandardNS/NameServer-POA/_root

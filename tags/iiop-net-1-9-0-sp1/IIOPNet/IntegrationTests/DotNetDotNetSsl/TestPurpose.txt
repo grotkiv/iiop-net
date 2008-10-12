@@ -1,5 +1,0 @@
-This integration test checks the basic SSL functionality of IIOP.NET.
-
-
-
-

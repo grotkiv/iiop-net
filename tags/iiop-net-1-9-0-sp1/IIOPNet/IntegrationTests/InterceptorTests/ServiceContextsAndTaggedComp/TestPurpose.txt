@@ -1,5 +1,0 @@
-This integration test checks sending/receiving service contexts and tagged components.
-
-
-
-
